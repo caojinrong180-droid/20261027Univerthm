@@ -1,0 +1,6 @@
+# Godot 4 缓存 / 导入产物
+.godot/
+*.import
+# 导出产物
+/build/
+/export/

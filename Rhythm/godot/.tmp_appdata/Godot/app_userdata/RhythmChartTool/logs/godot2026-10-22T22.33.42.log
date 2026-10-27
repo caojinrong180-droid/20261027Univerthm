@@ -1,0 +1,16 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2582)
+test chart: 4000 notes, 200.1 s, 8 lanes
+ok   index_at_time(10s) == 200（实际 200）
+ok   早于全部音符时返回 0
+ok   晚于全部音符时返回 size
+1 frame: timeline visited=19, preview visited=833, layout_calls=1
+ok   时间轴只扫视口内的音符（19，总量 4000）
+ok   舞台预览只扫回看窗口（833，总量 4000）
+ok   舞台预览每帧最多重算 1 次布局（实际 1）
+20 frames @ 4000 notes: 138 ms (6.9 ms/帧)
+ok   20 帧耗时可接受（138 ms）
+---
+perf: fail=0

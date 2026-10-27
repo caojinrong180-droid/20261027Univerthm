@@ -1,0 +1,10 @@
+# Godot 导入缓存 / 测试产物
+.godot/
+.tmp_appdata/
+.tmp_*.log
+.tmp_*.log.err
+tests/_shots/
+
+# Windows
+Thumbs.db
+build/

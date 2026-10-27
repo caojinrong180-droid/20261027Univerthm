@@ -1,0 +1,14 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+ERROR: Failed to read the root certificate store.
+   at: get_system_ca_certificates (platform/windows/os_windows.cpp:2582)
+ok   示例场景能加载
+[chart] 还没指定音频文件（可以继续编辑，但没法试听）
+ok   参考渲染器读到谱面
+ok   谱面有音符（87）
+ok   轨道可视长度为正
+ok   轨道方向是单位向量
+ok   参考渲染器 _draw 执行过（11 次）
+ok   chart_time 扣掉了音频偏移
+---
+stage smoke: fail=0

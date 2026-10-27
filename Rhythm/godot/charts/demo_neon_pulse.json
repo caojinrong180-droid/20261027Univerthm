@@ -1,0 +1,183 @@
+{
+  "format": "rchart",
+  "version": 3,
+  "meta": {
+    "title": "Neon Pulse (Demo)",
+    "artist": "Synth Engine",
+    "charter": "Rhythm Chart Editor",
+    "difficulty": "HARD",
+    "level": 8,
+    "description": "示例谱面：演示 N 轨 + 每轨位移/旋转/透明度/长度"
+  },
+  "audio": {
+    "file": "",
+    "offset": 0.0,
+    "volume_db": 0.0
+  },
+  "timing": {
+    "bpm": 150,
+    "beat_offset": 0.0,
+    "bpm_events": [ { "beat": 0.0, "bpm": 150 } ]
+  },
+  "stage": {
+    "lane_count": 4,
+    "lane_width": 96.0,
+    "highway_length": 6.0,
+    "scroll_speed": 1.0,
+    "judge_line_y": 0.0
+  },
+  "lanes": [
+    {
+      "name": "Outer L",
+      "color": "#ffffff",
+      "judge_zone": "none",
+      "position": { "x": -150, "y": 0.0 },
+      "rotation_deg": -9,
+      "alpha": 255,
+      "length_scale": 1,
+      "visible": true,
+      "volume": 1.0
+    },
+    {
+      "name": "Inner L",
+      "color": "#ffffff",
+      "judge_zone": "left",
+      "position": { "x": -50, "y": 0.0 },
+      "rotation_deg": -3,
+      "alpha": 242,
+      "length_scale": 1.05,
+      "visible": true,
+      "volume": 1.0,
+      "events": {
+        "x": [
+          { "start": 0.0, "end": 8.0, "from": -50.0, "to": -110.0, "ease": "inOutQuad" },
+          { "start": 8.0, "end": 16.0, "from": -110.0, "to": -50.0, "ease": "inOutQuad" }
+        ],
+        "alpha": [
+          { "start": 0.0, "end": 6.0, "from": 255.0, "to": 175.0, "ease": "inOutSine" },
+          { "start": 6.0, "end": 12.0, "from": 175.0, "to": 255.0, "ease": "inOutSine" }
+        ]
+      }
+    },
+    {
+      "name": "Inner R",
+      "color": "#ffffff",
+      "judge_zone": "right",
+      "position": { "x": 50, "y": 0.0 },
+      "rotation_deg": 3,
+      "alpha": 242,
+      "length_scale": 1.05,
+      "visible": true,
+      "volume": 1.0,
+      "events": {
+        "rotation": [
+          { "start": 0.0, "end": 10.0, "from": 3.0, "to": 10.0, "ease": "inOutCubic" },
+          { "start": 10.0, "end": 20.0, "from": 10.0, "to": 3.0, "ease": "inOutCubic" }
+        ],
+        "length": [
+          { "start": 0.0, "end": 12.0, "from": 1.05, "to": 1.18, "ease": "outQuad" }
+        ]
+      }
+    },
+    {
+      "name": "Outer R",
+      "color": "#ffffff",
+      "judge_zone": "none",
+      "position": { "x": 150, "y": 0.0 },
+      "rotation_deg": 9,
+      "alpha": 255,
+      "length_scale": 1,
+      "visible": true,
+      "volume": 1.0
+    }
+  ],
+  "notes": [
+    { "id": 1, "time": 0, "lane": 0, "type": "tap" },
+    { "id": 2, "time": 0.4, "lane": 1, "type": "tap" },
+    { "id": 3, "time": 0.8, "lane": 2, "type": "tap" },
+    { "id": 4, "time": 1.2, "lane": 3, "type": "tap" },
+    { "id": 5, "time": 1.6, "lane": 0, "type": "tap" },
+    { "id": 6, "time": 2, "lane": 1, "type": "tap" },
+    { "id": 7, "time": 2.4, "lane": 2, "type": "tap" },
+    { "id": 8, "time": 2.8, "lane": 3, "type": "tap" },
+    { "id": 9, "time": 3.2, "lane": 0, "type": "tap" },
+    { "id": 10, "time": 3.6, "lane": 1, "type": "tap" },
+    { "id": 11, "time": 4, "lane": 2, "type": "tap" },
+    { "id": 12, "time": 4.4, "lane": 3, "type": "tap" },
+    { "id": 13, "time": 4.8, "lane": 0, "type": "tap" },
+    { "id": 14, "time": 5.2, "lane": 1, "type": "tap" },
+    { "id": 15, "time": 5.6, "lane": 2, "type": "tap" },
+    { "id": 16, "time": 6, "lane": 3, "type": "tap" },
+    { "id": 17, "time": 6.4, "lane": 0, "type": "tap" },
+    { "id": 18, "time": 6.6, "lane": 2, "type": "tap" },
+    { "id": 19, "time": 6.8, "lane": 1, "type": "tap" },
+    { "id": 20, "time": 7, "lane": 3, "type": "tap" },
+    { "id": 21, "time": 7.2, "lane": 0, "type": "tap" },
+    { "id": 22, "time": 7.4, "lane": 2, "type": "tap" },
+    { "id": 23, "time": 7.6, "lane": 1, "type": "tap" },
+    { "id": 24, "time": 7.8, "lane": 3, "type": "tap" },
+    { "id": 25, "time": 8, "lane": 0, "type": "tap" },
+    { "id": 26, "time": 8.2, "lane": 2, "type": "tap" },
+    { "id": 27, "time": 8.4, "lane": 1, "type": "tap" },
+    { "id": 28, "time": 8.6, "lane": 3, "type": "tap" },
+    { "id": 29, "time": 8.8, "lane": 0, "type": "tap" },
+    { "id": 30, "time": 9, "lane": 2, "type": "tap" },
+    { "id": 31, "time": 9.2, "lane": 1, "type": "tap" },
+    { "id": 32, "time": 9.4, "lane": 3, "type": "tap" },
+    { "id": 33, "time": 9.6, "lane": 0, "type": "tap" },
+    { "id": 34, "time": 9.8, "lane": 2, "type": "tap" },
+    { "id": 35, "time": 10, "lane": 1, "type": "tap" },
+    { "id": 36, "time": 10.2, "lane": 3, "type": "tap" },
+    { "id": 37, "time": 10.4, "lane": 0, "type": "tap" },
+    { "id": 38, "time": 10.6, "lane": 2, "type": "tap" },
+    { "id": 39, "time": 10.8, "lane": 1, "type": "tap" },
+    { "id": 40, "time": 11, "lane": 3, "type": "tap" },
+    { "id": 41, "time": 11.2, "lane": 0, "type": "tap" },
+    { "id": 42, "time": 11.4, "lane": 2, "type": "tap" },
+    { "id": 43, "time": 11.6, "lane": 1, "type": "tap" },
+    { "id": 44, "time": 11.8, "lane": 3, "type": "tap" },
+    { "id": 45, "time": 12, "lane": 0, "type": "tap" },
+    { "id": 46, "time": 12.2, "lane": 2, "type": "tap" },
+    { "id": 47, "time": 12.4, "lane": 1, "type": "tap" },
+    { "id": 48, "time": 12.6, "lane": 3, "type": "tap" },
+    { "id": 49, "time": 12.8, "lane": 1, "type": "hold", "duration": 0.8 },
+    { "id": 50, "time": 12.8, "lane": 3, "type": "tap" },
+    { "id": 51, "time": 13.2, "lane": 3, "type": "tap" },
+    { "id": 52, "time": 13.6, "lane": 3, "type": "tap" },
+    { "id": 53, "time": 14, "lane": 3, "type": "tap" },
+    { "id": 54, "time": 14.4, "lane": 1, "type": "hold", "duration": 0.8 },
+    { "id": 55, "time": 14.4, "lane": 3, "type": "tap" },
+    { "id": 56, "time": 14.8, "lane": 3, "type": "tap" },
+    { "id": 57, "time": 15.2, "lane": 3, "type": "tap" },
+    { "id": 58, "time": 15.6, "lane": 3, "type": "tap" },
+    { "id": 59, "time": 16, "lane": 1, "type": "hold", "duration": 0.8 },
+    { "id": 60, "time": 16, "lane": 3, "type": "tap" },
+    { "id": 61, "time": 16.4, "lane": 3, "type": "tap" },
+    { "id": 62, "time": 16.8, "lane": 3, "type": "tap" },
+    { "id": 63, "time": 17.2, "lane": 3, "type": "tap" },
+    { "id": 64, "time": 17.6, "lane": 1, "type": "hold", "duration": 0.8 },
+    { "id": 65, "time": 17.6, "lane": 3, "type": "tap" },
+    { "id": 66, "time": 18, "lane": 3, "type": "tap" },
+    { "id": 67, "time": 18.4, "lane": 3, "type": "tap" },
+    { "id": 68, "time": 18.8, "lane": 3, "type": "tap" },
+    { "id": 69, "time": 19.2, "lane": 0, "type": "tap" },
+    { "id": 70, "time": 19.3, "lane": 1, "type": "tap" },
+    { "id": 71, "time": 19.4, "lane": 2, "type": "tap" },
+    { "id": 72, "time": 19.5, "lane": 3, "type": "tap" },
+    { "id": 73, "time": 19.6, "lane": 0, "type": "tap" },
+    { "id": 74, "time": 19.7, "lane": 1, "type": "tap" },
+    { "id": 75, "time": 19.8, "lane": 2, "type": "tap" },
+    { "id": 76, "time": 19.9, "lane": 3, "type": "tap" },
+    { "id": 85, "time": 20.8, "lane": 2, "type": "flick" },
+    { "id": 86, "time": 21.6, "lane": 0, "type": "mine" },
+    { "id": 77, "time": 22.4, "lane": 0, "type": "tap" },
+    { "id": 78, "time": 22.5, "lane": 1, "type": "tap" },
+    { "id": 79, "time": 22.6, "lane": 2, "type": "tap" },
+    { "id": 80, "time": 22.7, "lane": 3, "type": "tap" },
+    { "id": 81, "time": 22.8, "lane": 0, "type": "tap" },
+    { "id": 82, "time": 22.9, "lane": 1, "type": "tap" },
+    { "id": 83, "time": 23, "lane": 2, "type": "tap" },
+    { "id": 84, "time": 23.1, "lane": 3, "type": "tap" },
+    { "id": 87, "time": 24, "lane": 2, "type": "flick" }
+  ]
+}

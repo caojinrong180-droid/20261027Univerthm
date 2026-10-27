@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rhythm 故事板</title>
+<link rel="stylesheet" href="css/storyboard.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand"><b>故事板</b><span class="tag">rstory</span></div>
+
+    <button id="btn-import" class="btn" type="button" title="导入谱面（.json / .zip）——只读，不会改动谱面">导入谱面</button>
+    <button id="btn-audio" class="btn" type="button" title="谱面 zip 里没带音频时单独载入">载入音频</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-open" class="btn" type="button" title="打开故事板工程 .rstory.json">打开工程</button>
+    <button id="btn-save" class="btn" type="button" title="保存故事板工程（只存演出，不存谱面）">保存工程</button>
+    <button id="btn-bundle" class="btn" type="button" title="导出 zip：故事板 + 原始谱面 + 音频 + 曲绘">导出整包</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-play" class="btn primary" type="button">▶ 播放</button>
+    <button id="btn-stop" class="btn" type="button" title="回到开头">■</button>
+    <label class="chk-label" title="循环播放"><input id="chk-loop" type="checkbox" class="chk"> 循环</label>
+
+    <span class="sep"></span>
+
+    <button id="btn-undo" class="btn" type="button" disabled>撤销</button>
+    <button id="btn-redo" class="btn" type="button" disabled>重做</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-shot" class="btn" type="button" title="把当前画面存成 PNG">截图</button>
+    <button id="btn-record" class="btn" type="button" title="从当前位置录到结尾，导出 WebM">录制</button>
+
+    <span class="spacer"></span>
+    <span class="lock" id="lock-badge" title="谱面只读：故事板只能引用谱面，不能改谱面内容">🔒 谱面只读</span>
+    <span id="file-name" class="filename">未命名故事板</span>
+  </header>
+
+  <main>
+
+    <aside class="sidebar side-left">
+
+      <section class="group">
+        <h3>场景 <span class="sc-hint">故事板 = 场景拼接</span></h3>
+        <ul id="scene-list" class="scene-list"></ul>
+        <div class="btn-grid">
+          <button class="btn" type="button" data-add-scene="unlock">＋ 解锁场</button>
+          <button class="btn" type="button" data-add-scene="free">＋ 演出场</button>
+        </div>
+        <div class="btn-grid one">
+          <button class="btn" type="button" data-add-scene="chart" id="btn-add-chart">＋ 谱面场</button>
+        </div>
+        <div class="sc-note">解锁场 / 演出场在谱面<b>之外</b>：谱面场才开始画音符、才开始放音乐。</div>
+      </section>
+
+      <section class="group">
+        <h3>谱面 <span class="ro">只读</span></h3>
+        <div class="chart-card">
+          <img id="cover-img" class="cover" alt="" hidden>
+          <div class="chart-meta">
+            <div id="chart-title" class="chart-title">还没导入谱面</div>
+            <div id="chart-artist" class="chart-sub">-</div>
+            <div id="chart-charter" class="chart-sub">-</div>
+            <div id="chart-illust" class="chart-sub">-</div>
+          </div>
+        </div>
+        <div class="chip-row" id="chart-chips"></div>
+        <label class="row"><span>曲绘作者</span><input id="f-illust" type="text" autocomplete="off" placeholder="谱面没有这一栏，存在故事板里"></label>
+        <div class="kv" id="chart-kv">
+          <div><span>音符</span><b id="kv-notes">0</b></div>
+          <div><span>时长</span><b id="kv-len" class="mono">00:00.000</b></div>
+          <div><span>BPM</span><b id="kv-bpm" class="mono">150</b></div>
+          <div><span>轨道</span><b id="kv-lanes">4</b></div>
+        </div>
+        <div class="lock-note">
+          故事板<b>只引用</b>谱面：舞台画面按 <code>docs/GAME_INTEGRATION.md</code> 的公式实时算出来，
+          工程文件里只存文件名和指纹，<b>不会写回谱面</b>。
+        </div>
+        <label class="row"><span>谱面透明度</span><input id="st-chart-alpha" type="range" min="0" max="100" step="1" value="100"><em id="st-chart-alpha-txt">100%</em></label>
+        <label class="row"><span>可视秒数</span><input id="st-highway" type="number" min="0.3" max="20" step="0.1" value="2"></label>
+        <label class="row"><span>谱面基准</span>
+          <select id="st-chart-base" title="谱面里的 x/y 是按多大的画幅调的。350 = 游戏逻辑舞台（推荐，和 Godot 完全一致）">
+            <option value="350">游戏逻辑舞台 350×197</option>
+            <option value="380">制谱器预览窗 380×214</option>
+            <option value="1280">1280×720</option>
+            <option value="1920">1920×1080</option>
+          </select>
+        </label>
+        <div class="row"><span>总时长</span><em id="st-total-txt" class="mono dim" style="grid-column:2/4;text-align:left">00:00.000</em></div>
+        <label class="row"><span>背景色</span><input id="st-bg" type="color" value="#05070c"></label>
+      </section>
+
+      <section class="group">
+        <h3>音频</h3>
+        <div class="row"><span>文件</span><em id="audio-name" class="mono dim" style="grid-column:2/4;text-align:left;overflow:hidden;text-overflow:ellipsis">未载入</em></div>
+        <label class="row"><span>音量</span><input id="st-volume" type="range" min="0" max="100" step="1" value="100"><em id="st-volume-txt">100%</em></label>
+        <div class="row"><span></span><label class="chk-label"><input id="chk-mute" type="checkbox" class="chk"> 静音（只影响本机试听）</label></div>
+        <div class="btn-grid one">
+          <button id="btn-audio2" class="btn" type="button">载入 / 换一个音频…</button>
+        </div>
+        <div class="sc-note">音量存进工程（<code>stage.volume</code>），<b>不动谱面</b>自己的 <code>audio.volume_db</code>；录制时也按这个音量混进去。</div>
+      </section>
+
+      <section class="group">
+        <h3>添加图层</h3>
+        <div class="btn-grid">
+          <button class="btn" type="button" data-add="text">＋ 文字</button>
+          <button class="btn" type="button" data-add="unlock">＋ 解锁动画</button>
+          <button class="btn" type="button" data-add="image">＋ 图片</button>
+          <button class="btn" type="button" data-add="video">＋ 视频</button>
+          <button class="btn" type="button" data-add="shape">＋ 形状</button>
+        </div>
+        <label class="row"><span>模板</span>
+          <select id="tpl-select"></select>
+        </label>
+        <div class="row"><span></span><button id="btn-tpl" class="btn wide" type="button">套用到播放头</button></div>
+        <div class="row"><span></span><button id="btn-demo" class="btn wide ghost" type="button">载入示例（没有谱面也能看效果）</button></div>
+      </section>
+
+      <section class="group grow">
+        <h3>图层 <em id="layer-count" class="dim">0</em></h3>
+        <div class="layer-hint">越靠上 = 画在越前面</div>
+        <ul id="layer-list" class="layer-list"></ul>
+      </section>
+
+    </aside>
+
+    <section class="center">
+      <div class="stage-wrap">
+        <div class="stage-frame">
+          <canvas id="stage"></canvas>
+          <div class="stage-hint" id="stage-hint">导入一份谱面（或者点左边「载入示例」）开始做演出</div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-play2" class="btn primary" type="button">▶</button>
+        <span id="time-code" class="mono time">00:00.000</span>
+        <span class="dim">/</span>
+        <span id="total-code" class="mono dim">00:00.000</span>
+        <input id="scrub" class="scrub" type="range" min="0" max="1000" step="1" value="0">
+        <span class="sep"></span>
+        <label class="chk-label">吸附
+          <select id="snap-div">
+            <option value="1">1/1</option>
+            <option value="2">1/2</option>
+            <option value="3">1/3</option>
+            <option value="4" selected>1/4</option>
+            <option value="6">1/6</option>
+            <option value="8">1/8</option>
+            <option value="12">1/12</option>
+          </select>
+        </label>
+        <label class="chk-label" title="时间轴一格 = 多少拍的网格"><input id="chk-snap" type="checkbox" class="chk" checked> 网格</label>
+        <span class="sep"></span>
+        <label class="chk-label">缩放
+          <input id="zoom" type="range" min="20" max="600" step="1" value="60">
+        </label>
+      </div>
+
+      <div class="timeline-wrap">
+        <div class="tl-canvas-box"><canvas id="timeline"></canvas></div>
+      <div class="tl-scrollbar" id="tl-scrollbar" title="左右拖动 = 平移时间轴（滚轮也可以）">
+        <div class="tl-thumb" id="tl-thumb"></div>
+      </div>
+      </div>
+    </section>
+
+    <aside class="sidebar side-right">
+
+      <section class="group grow" id="inspector-group">
+        <h3>属性 <em id="insp-type" class="dim"></em></h3>
+        <div id="inspector" class="inspector"></div>
+      </section>
+
+      <section class="group grow" id="shader-group">
+        <h3>后处理 Shader <em id="shader-count" class="dim">0</em></h3>
+        <div id="shader-list" class="shader-list"></div>
+        <div class="row">
+          <select id="shader-preset"></select>
+          <button id="btn-add-shader" class="btn" type="button">＋ 加到播放头</button>
+        </div>
+        <div class="lock-note small">
+          多条 Shader 时间重叠时<b>逐层叠加</b>：一条 = 一层，按列表顺序各跑一遍（先辉光后暗角 ≠ 先暗角后辉光）。
+          「软边」控制两头渐入渐出的比例，0 = 一直是满强度。
+        </div>
+      </section>
+
+      <section class="group">
+        <h3>操作</h3>
+        <ul class="help">
+          <li>空格 = 播放 / 暂停，<code>Home</code>/<code>End</code> 跳首尾</li>
+          <li>时间轴上拖图层条 = 整体平移，拖两端 = 改起止</li>
+          <li><b>右键</b>时间轴上的图层条 / 后处理条 / 场景带 = 删除它（<code>Ctrl+Z</code> 撤销）</li>
+          <li>时间轴空白处拖 = 移动播放头（拖到哪停到哪）</li>
+          <li>后处理行<b>空白处拖一下</b> = 拉出一条新的后处理（只点不拖 = 移动播放头）</li>
+          <li><code>Shift</code>+拖动 / 中键拖动 = 平移视图</li>
+          <li><code>Ctrl</code>+滚轮 = 缩放时间轴，滚轮 = 左右平移</li>
+          <li><code>Del</code> = 删除选中图层 / Shader</li>
+          <li><code>Ctrl+D</code> = 复制图层，<code>[</code> <code>]</code> = 调层级</li>
+          <li><code>Ctrl+Z</code> / <code>Ctrl+Shift+Z</code> = 撤销 / 重做</li>
+          <li><code>Ctrl+S</code> = 保存工程</li>
+        </ul>
+      </section>
+
+    </aside>
+
+  </main>
+
+  <footer class="statusbar">
+    <span id="st-time" class="mono">00:00.000</span>
+    <span id="st-layers">图层 0</span>
+    <span id="st-chart" class="dim">谱面未导入</span>
+    <span class="spacer"></span>
+    <span id="st-warn" class="warn"></span>
+    <span id="st-hint" class="hint"></span>
+  </footer>
+
+</div>
+
+<input type="file" id="file-chart" accept=".json,.zip,application/json,application/zip" hidden>
+<input type="file" id="file-project" accept=".json,.rstory,application/json" hidden>
+<input type="file" id="file-audio" accept="audio/*" hidden>
+<input type="file" id="file-image" accept="image/*" hidden>
+<input type="file" id="file-video" accept="video/*" hidden>
+
+<script src="js/core.js"></script>
+<script src="js/sb_core.js"></script>
+<script src="js/chart_stage.js"></script>
+<script src="js/sb_render.js"></script>
+<script src="js/storyboard.js"></script>
+</body>
+</html>

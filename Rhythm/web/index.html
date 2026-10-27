@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rhythm 制谱器</title>
+<link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand"><b>制谱器</b><span class="tag">rchart</span></div>
+
+    <a class="btn" id="btn-storyboard" href="storyboard.html" title="故事板制作器：导入谱面（只读）做解锁动画 / 文字特效 / Shader">故事板 ↗</a>
+
+    <button id="btn-new" class="btn" type="button">新建</button>
+    <button id="btn-open" class="btn" type="button" title="支持 .json 和 .zip">打开</button>
+    <button id="btn-save" class="btn" type="button">保存</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-audio" class="btn" type="button">载入音频</button>
+    <button id="btn-play" class="btn primary" type="button">▶ 播放</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-undo" class="btn" type="button" disabled>撤销</button>
+    <button id="btn-redo" class="btn" type="button" disabled>重做</button>
+
+    <span class="sep"></span>
+
+    <button id="btn-validate" class="btn" type="button">校验谱面</button>
+
+    <span class="spacer"></span>
+    <span id="file-name" class="filename">新谱面</span>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+
+      <section class="group">
+        <h3>谱面信息</h3>
+        <label class="row"><span>曲名</span><input id="f-title" type="text" autocomplete="off"></label>
+        <label class="row"><span>艺术家</span><input id="f-artist" type="text" autocomplete="off"></label>
+        <label class="row"><span>谱师</span><input id="f-charter" type="text" autocomplete="off"></label>
+        <label class="row"><span>难度</span>
+          <select id="f-difficulty">
+            <option>EASY</option>
+            <option>NORMAL</option>
+            <option>HARD</option>
+            <option>EXPERT</option>
+            <option>MASTER</option>
+          </select>
+        </label>
+        <label class="row"><span>等级</span><input id="f-level" type="number" min="1" max="99" step="1"></label>
+        <label class="row"><span>曲绘画师</span><input id="f-illustrator" type="text" autocomplete="off" placeholder="画师 / Illustration by"></label>
+      </section>
+
+      <section class="group">
+        <h3>音频</h3>
+        <div class="row"><span>文件</span><div class="filename-box" id="audio-name">未载入</div></div>
+        <label class="row"><span>偏移 (s)</span><input id="f-offset" type="number" step="0.01"></label>
+        <label class="row"><span>音乐音量</span><input id="vol-music" type="range" min="0" max="100" step="1"><em id="vol-music-txt">100%</em></label>
+        <label class="row"><span>打击音</span><input id="vol-hit" type="range" min="0" max="100" step="1"><em id="vol-hit-txt">71%</em></label>
+        <label class="row"><span>播放倍速</span>
+          <select id="f-rate">
+            <option value="1">1.00×</option>
+            <option value="0.75">0.75×</option>
+            <option value="0.5">0.50×（慢放）</option>
+            <option value="0.25">0.25×（很慢）</option>
+          </select>
+        </label>
+        <div class="cover-wrap">
+          <img id="cover-img" class="cover-img" alt="" hidden>
+          <div class="cover-side">
+            <span id="cover-name" class="cover-name">未选择曲绘</span>
+            <button id="btn-cover" class="btn" type="button">选择曲绘…</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h3>时间轴</h3>
+        <label class="row"><span>BPM</span><input id="f-bpm" type="number" min="20" max="1000" step="0.1"></label>
+        <label class="row"><span>首拍偏移</span><input id="f-beatoffset" type="number" step="0.01"></label>
+        <label class="row"><span>吸附</span>
+          <select id="snap">
+            <option value="1">1/1 拍</option>
+            <option value="2">1/2 拍</option>
+            <option value="3">1/3 拍</option>
+            <option value="4">1/4 拍</option>
+            <option value="6">1/6 拍</option>
+            <option value="8">1/8 拍</option>
+            <option value="12">1/12 拍</option>
+            <option value="16">1/16 拍</option>
+          </select>
+        </label>
+        <label class="row"><span>可视秒数</span><input id="f-highway" type="number" min="0.3" max="20" step="0.1"></label>
+        <label class="row"><span>预览秒数</span><input id="f-pvsec" type="number" min="0.3" max="20" step="0.1"></label>
+        <label class="row"><span>轨道数</span><input id="f-lanecount" type="number" min="1" max="16" step="1"><button class="ls-btn" id="btn-lane-add" type="button" title="加一条轨道">＋</button><button class="ls-btn" id="btn-lane-del" type="button" title="删掉最后一条">－</button></label>
+        <label class="row"><span>打击音</span><input id="chk-hit" type="checkbox" class="chk" checked></label>
+      </section>
+
+      <section class="group help">
+        <h3>操作</h3>
+        <ul>
+          <li>左键点空白 = 放 tap（按住可以直接拖）</li>
+          <li>拖音符 = 改时间 / 轨道</li>
+          <li>拖 hold 顶端 = 改长度</li>
+          <li>右键点音符 = 删除</li>
+          <li>右键空白上下拖 = 画一个 hold</li>
+          <li>双击音符 = tap→hold→flick→mine</li>
+          <li>按住 Shift 拖 = 框选音符（可整组拖/删）</li>
+          <li>画布下面的滚动条 = 轨道超过 6 条时左右翻</li>
+          <li>Shift 拖 = 框选（音符区选音符、事件区选事件），Ctrl+C / Ctrl+V 粘贴到播放头</li>
+          <li>滚轮 = 翻页（Shift 一整小节）</li>
+          <li>Ctrl+滚轮 = 缩放</li>
+          <li>拖左侧刻度栏 = 移动播放头</li>
+          <li>空格 = 播放/暂停</li>
+          <li>← → = 选中音符换轨</li>
+          <li>↑ ↓ = 播放头按吸附步进</li>
+          <li>Del = 删除选中</li>
+          <li>Ctrl+Z / Ctrl+Shift+Z = 撤销 / 重做</li>
+          <li>Ctrl+S = 导出 JSON</li>
+          <li>判定区在事件区最后一列改（0=无 1=左 2=右）</li>
+          <li>轨道参数 = 起点那条默认事件；轨道数在左边「时间轴」组里</li>
+          <li>时间轴右半边上下拖 = 在那一列对应的参数通道里画事件</li>
+          <li>拖事件两端 = 改起止时间，拖中间 = 整体挪</li>
+          <li>右键点事件 = 删除</li>
+          <li>事件区底部 1 2 3 4 = 切换编辑哪条轨道的动画</li>
+        </ul>
+      </section>
+
+    </aside>
+
+    <section class="stage">
+      <canvas id="canvas"></canvas>
+      <div class="lane-scroll" id="lane-scroll" hidden>
+        <span class="ls-title">轨道</span>
+        <button class="ls-btn" id="ls-left" type="button" title="往前翻">◀</button>
+        <input type="range" id="ls-range" min="0" max="0" step="1" value="0">
+        <button class="ls-btn" id="ls-right" type="button" title="往后翻">▶</button>
+        <span class="ls-info" id="ls-info">1–6 / 8</span>
+      </div>
+    </section>
+
+    <aside class="preview-panel">
+      <div class="pv-head">
+        <span>预渲染窗口</span>
+        <span class="pv-tag">16 : 9</span>
+      </div>
+      <div class="pv-wrap">
+        <canvas id="preview"></canvas>
+        <div class="pv-empty" id="pv-empty">所有轨道的透明度都是 0 —— 只画音符、不画轨道<br>右下「透明度」那列点一下起点的事件，把值调大就有了</div>
+      </div>
+      <div class="pv-foot">跟播放头实时走 · 下落速度由左边「预览秒数」决定，和「可视秒数」无关</div>
+
+      <section class="group pv-group">
+        <h3>事件（动画）</h3>
+        <div class="ev-title" id="ev-title">右半边拖一下画事件</div>
+        <div class="ev-prop" id="ev-prop">属性：—</div>
+        <div class="ev-head-row"><span></span><span>头</span><span>尾</span></div>
+        <div class="ev-grid">
+          <label class="ev-row"><span id="ev-key">值</span><input id="ev-from" type="number" step="1"><input id="ev-to" type="number" step="1"></label>
+        </div>
+        <label class="row"><span>缓动</span><select id="ev-ease"></select></label>
+        <canvas id="ease-canvas" class="ease-canvas"></canvas>
+        <div class="lp-hint">右半边 7 列 = 6 个参数 + 判定区，各自一条通道（横轴是值、竖轴是时间）。拖两端：左右改值、上下改时间；拖中间整体平移。判定区一格 0=无 / 1=左 / 2=右。底下 1 2 3 4 切换轨道</div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <span id="st-time" class="mono">00:00.000</span>
+    <span id="st-notes">音符 0</span>
+    <span id="st-bpm" class="mono">BPM 150</span>
+    <span id="st-len" class="mono">谱面时长 00:00.000</span>
+    <span class="spacer"></span>
+    <span id="st-hint" class="hint"></span>
+  </footer>
+
+</div>
+
+<input type="file" id="file-chart" accept=".json,.zip,application/json,application/zip" hidden>
+<input type="file" id="file-audio" accept="audio/*" hidden>
+<input type="file" id="file-cover" accept="image/*" hidden>
+
+<script src="js/core.js"></script>
+<script src="js/chart_stage.js"></script>
+<script src="js/editor.js"></script>
+</body>
+</html>
