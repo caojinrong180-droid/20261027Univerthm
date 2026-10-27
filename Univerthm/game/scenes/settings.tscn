@@ -1,0 +1,1032 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/screens/settings_screen.gd" id="1_screen"]
+[ext_resource type="Script" path="res://src/ui/stepper_row.gd" id="2_r6d6q"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bfm3i"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78431374, 0.95686275, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6udjm"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.43529412, 0.8392157, 0.96862745, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_e631i"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b4vjc"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.22352941, 0.6627451, 0.8, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vpega"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.105882354, 0.1254902, 0.16078432, 0.4)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7cwr7"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gmahi"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.13725491, 0.16470589, 0.21176471, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19215687, 0.22745098, 0.29411766, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l56j8"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.105882354, 0.1254902, 0.16078432, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1pq7g"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.16862746, 0.2, 0.2509804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16470589, 0.49019608, 0.6, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mpjb"]
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bvrbq"]
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+bg_color = Color(0.105882354, 0.1254902, 0.16078432, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_phn0r"]
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_trlsy"]
+content_margin_left = 12.0
+content_margin_top = 7.0
+content_margin_right = 12.0
+content_margin_bottom = 7.0
+bg_color = Color(0.16862746, 0.2, 0.2509804, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dwqdx"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hoglx"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.19215687, 0.22745098, 0.29411766, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hqswa"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.16470589, 0.49019608, 0.6, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6g1ge"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h5oix"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rtvim"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2bw5n"]
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2nbg3"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t64su"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.105882354, 0.1254902, 0.16078432, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8ov01"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pptql"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ye357"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.19215687, 0.22745098, 0.29411766, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_skr5l"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.16470589, 0.49019608, 0.6, 1)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qbrun"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cipp"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="SystemFont" id="SystemFont_iod5f"]
+font_names = PackedStringArray("Bahnschrift", "Segoe UI Variable", "Segoe UI", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "WenQuanYi Micro Hei", "sans-serif")
+font_weight = 500
+
+[sub_resource type="Theme" id="Theme_q6yrq"]
+default_font = SubResource("SystemFont_iod5f")
+default_font_size = 16
+AccentButton/base_type = &"Button"
+AccentButton/colors/font_color = Color(0.043137256, 0.050980393, 0.07058824, 1)
+AccentButton/colors/font_focus_color = Color(0.043137256, 0.050980393, 0.07058824, 1)
+AccentButton/colors/font_hover_color = Color(0.043137256, 0.050980393, 0.07058824, 1)
+AccentButton/colors/font_pressed_color = Color(0.043137256, 0.050980393, 0.07058824, 1)
+AccentButton/styles/focus = SubResource("StyleBoxFlat_bfm3i")
+AccentButton/styles/hover = SubResource("StyleBoxFlat_6udjm")
+AccentButton/styles/normal = SubResource("StyleBoxFlat_e631i")
+AccentButton/styles/pressed = SubResource("StyleBoxFlat_b4vjc")
+Button/colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+Button/colors/font_disabled_color = Color(0.3647059, 0.4, 0.47058824, 1)
+Button/colors/font_focus_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+Button/colors/font_hover_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+Button/colors/font_pressed_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+Button/font_sizes/font_size = 16
+Button/styles/disabled = SubResource("StyleBoxFlat_vpega")
+Button/styles/focus = SubResource("StyleBoxFlat_7cwr7")
+Button/styles/hover = SubResource("StyleBoxFlat_gmahi")
+Button/styles/normal = SubResource("StyleBoxFlat_l56j8")
+Button/styles/pressed = SubResource("StyleBoxFlat_1pq7g")
+DimLabel/base_type = &"Label"
+DimLabel/colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+GhostButton/base_type = &"Button"
+GhostButton/colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+GhostButton/colors/font_focus_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+GhostButton/colors/font_hover_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+GhostButton/styles/focus = SubResource("StyleBoxFlat_5mpjb")
+GhostButton/styles/hover = SubResource("StyleBoxFlat_bvrbq")
+GhostButton/styles/normal = SubResource("StyleBoxFlat_phn0r")
+GhostButton/styles/pressed = SubResource("StyleBoxFlat_trlsy")
+HScrollBar/styles/grabber = SubResource("StyleBoxFlat_dwqdx")
+HScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_hoglx")
+HScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_hqswa")
+HScrollBar/styles/scroll = SubResource("StyleBoxFlat_6g1ge")
+HScrollBar/styles/scroll_focus = SubResource("StyleBoxFlat_h5oix")
+Label/colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+Label/font_sizes/font_size = 16
+Panel/styles/panel = SubResource("StyleBoxFlat_rtvim")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_2bw5n")
+PopupPanel/styles/panel = SubResource("StyleBoxFlat_2nbg3")
+ProgressBar/colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+ProgressBar/styles/background = SubResource("StyleBoxFlat_t64su")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_8ov01")
+VScrollBar/styles/grabber = SubResource("StyleBoxFlat_pptql")
+VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_ye357")
+VScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_skr5l")
+VScrollBar/styles/scroll = SubResource("StyleBoxFlat_qbrun")
+VScrollBar/styles/scroll_focus = SubResource("StyleBoxFlat_4cipp")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6wm04"]
+content_margin_left = 22.0
+content_margin_top = 12.0
+content_margin_right = 22.0
+content_margin_bottom = 12.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f4mfi"]
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+bg_color = Color(0.3647059, 0.4, 0.47058824, 0.16)
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_es4n0"]
+content_margin_left = 30.0
+content_margin_top = 14.0
+content_margin_right = 30.0
+content_margin_bottom = 14.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gis3k"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.09803922, 0.11372549, 0.14901961, 1)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_83j8s"]
+content_margin_left = 12.0
+content_margin_top = 3.0
+content_margin_right = 12.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0627451, 0.07450981, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="SystemFont" id="SystemFont_gjs24"]
+font_names = PackedStringArray("Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", "sans-serif")
+font_weight = 500
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_am25x"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.09803922, 0.11372549, 0.14901961, 1)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4ppmf"]
+content_margin_left = 12.0
+content_margin_top = 3.0
+content_margin_right = 12.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0627451, 0.07450981, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uhhto"]
+content_margin_left = 12.0
+content_margin_top = 3.0
+content_margin_right = 12.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0627451, 0.07450981, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1g033"]
+content_margin_left = 12.0
+content_margin_top = 3.0
+content_margin_right = 12.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0627451, 0.07450981, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_01roj"]
+content_margin_left = 12.0
+content_margin_top = 3.0
+content_margin_right = 12.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0627451, 0.07450981, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.13725491, 0.16078432, 0.21176471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wqwn7"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.09803922, 0.11372549, 0.14901961, 1)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_oe2nd"]
+content_margin_left = 22.0
+content_margin_top = 7.0
+content_margin_right = 22.0
+content_margin_bottom = 12.0
+bg_color = Color(0.078431375, 0.09019608, 0.12156863, 1)
+border_color = Color(0, 0, 0, 0)
+
+[node name="Settings" type="Control" unique_id=407131152]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_q6yrq")
+script = ExtResource("1_screen")
+
+[node name="ColorRect12" type="ColorRect" parent="." unique_id=1842177568]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.043137256, 0.050980393, 0.07058824, 1)
+
+[node name="VBoxContainer13" type="VBoxContainer" parent="." unique_id=758247823]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="PanelContainer14" type="PanelContainer" parent="VBoxContainer13" unique_id=400515457]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6wm04")
+
+[node name="HBoxContainer15" type="HBoxContainer" parent="VBoxContainer13/PanelContainer14" unique_id=1357932430]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label16" type="Label" parent="VBoxContainer13/PanelContainer14/HBoxContainer15" unique_id=913219465]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+theme_override_font_sizes/font_size = 21
+text = "RHYTHM"
+
+[node name="PanelContainer18" type="PanelContainer" parent="VBoxContainer13/PanelContainer14/HBoxContainer15" unique_id=43001568]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_f4mfi")
+
+[node name="Label17" type="Label" parent="VBoxContainer13/PanelContainer14/HBoxContainer15/PanelContainer18" unique_id=1315607830]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_font_sizes/font_size = 13
+text = "设置"
+
+[node name="Control19" type="Control" parent="VBoxContainer13/PanelContainer14/HBoxContainer15" unique_id=1558343130]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="VBoxContainer13/PanelContainer14/HBoxContainer15" unique_id=1921940422]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 14
+text = "← 返回"
+
+[node name="ScrollContainer22" type="ScrollContainer" parent="VBoxContainer13" unique_id=422508599]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="MarginContainer23" type="MarginContainer" parent="VBoxContainer13/ScrollContainer22" unique_id=1508156176]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 10
+
+[node name="CenterContainer24" type="CenterContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23" unique_id=157410022]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PanelContainer25" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24" unique_id=1763417715]
+custom_minimum_size = Vector2(840, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_es4n0")
+
+[node name="VBoxContainer26" type="VBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25" unique_id=284104826]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Label27" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=878369496]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_font_sizes/font_size = 20
+text = "设置"
+vertical_alignment = 1
+
+[node name="Label28" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1215257764]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_font_sizes/font_size = 12
+text = "改完立刻生效，自动保存。进了游戏后按 Esc 可以暂停。"
+
+[node name="Control29" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1585140220]
+custom_minimum_size = Vector2(4, 4)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="VBoxContainer33" type="VBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1577134791]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Control30" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer33" unique_id=1051073834]
+custom_minimum_size = Vector2(4, 4)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label31" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer33" unique_id=1391015453]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.16470589, 0.49019608, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+text = "对音"
+
+[node name="PanelContainer32" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer33" unique_id=442984991]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_gis3k")
+
+[node name="OffsetRow" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1389448091]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("2_r6d6q")
+title = "音画偏移"
+
+[node name="Title" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/OffsetRow" unique_id=1310232557]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+theme_override_font_sizes/font_size = 14
+text = "音画偏移"
+vertical_alignment = 1
+
+[node name="ValueBox" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/OffsetRow" unique_id=1475234615]
+custom_minimum_size = Vector2(210, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_83j8s")
+
+[node name="Value" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/OffsetRow/ValueBox" unique_id=1665618970]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 14
+text = "+0 ms"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prev" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/OffsetRow" unique_id=796845944]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "◀"
+
+[node name="Next" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/OffsetRow" unique_id=119322165]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "▶"
+
+[node name="Label34" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=511862291]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_font_sizes/font_size = 11
+text = "正数 = 谱面整体推后。耳机 / 蓝牙有延迟就慢慢加，靠听打击点调。"
+
+[node name="VBoxContainer38" type="VBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=829304391]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Control35" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer38" unique_id=1315362878]
+custom_minimum_size = Vector2(4, 4)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label36" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer38" unique_id=1956798241]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.16470589, 0.49019608, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+text = "声音"
+
+[node name="PanelContainer37" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/VBoxContainer38" unique_id=1930818281]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_am25x")
+
+[node name="MusicRow" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=264507643]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("2_r6d6q")
+title = "音乐音量"
+
+[node name="Title" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/MusicRow" unique_id=1772905014]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+theme_override_font_sizes/font_size = 14
+text = "音乐音量"
+vertical_alignment = 1
+
+[node name="ValueBox" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/MusicRow" unique_id=1525441377]
+custom_minimum_size = Vector2(210, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_4ppmf")
+
+[node name="Value" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/MusicRow/ValueBox" unique_id=329552962]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 14
+text = "85 %"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prev" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/MusicRow" unique_id=60784742]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "◀"
+
+[node name="Next" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/MusicRow" unique_id=639760051]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "▶"
+
+[node name="HitVolumeRow" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=151839827]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("2_r6d6q")
+title = "打击音音量"
+
+[node name="Title" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow" unique_id=749990360]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+theme_override_font_sizes/font_size = 14
+text = "打击音音量"
+vertical_alignment = 1
+
+[node name="ValueBox" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow" unique_id=1547681900]
+custom_minimum_size = Vector2(210, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_uhhto")
+
+[node name="Value" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow/ValueBox" unique_id=1657139165]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 14
+text = "60 %"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prev" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow" unique_id=788283918]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "◀"
+
+[node name="Next" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow" unique_id=1982344831]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "▶"
+
+[node name="PreviewButton" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HitVolumeRow" unique_id=470277320]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "试听"
+
+[node name="HBoxContainer39" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1012501443]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="HitSoundRow" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39" unique_id=2107894551]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+script = ExtResource("2_r6d6q")
+title = "打击音"
+value_width = 112
+
+[node name="Title" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitSoundRow" unique_id=348708820]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+theme_override_font_sizes/font_size = 14
+text = "打击音"
+vertical_alignment = 1
+
+[node name="ValueBox" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitSoundRow" unique_id=845657460]
+custom_minimum_size = Vector2(112, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1g033")
+
+[node name="Value" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitSoundRow/ValueBox" unique_id=1944456932]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 14
+text = "开"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prev" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitSoundRow" unique_id=704192652]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "◀"
+
+[node name="Next" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitSoundRow" unique_id=163527870]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "▶"
+
+[node name="HitFxRow" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39" unique_id=331453282]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+script = ExtResource("2_r6d6q")
+title = "打击特效"
+value_width = 112
+
+[node name="Title" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitFxRow" unique_id=1049979301]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5411765, 0.5764706, 0.6509804, 1)
+theme_override_font_sizes/font_size = 14
+text = "打击特效"
+vertical_alignment = 1
+
+[node name="ValueBox" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitFxRow" unique_id=916048758]
+custom_minimum_size = Vector2(112, 28)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_01roj")
+
+[node name="Value" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitFxRow/ValueBox" unique_id=946440952]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8745098, 0.89411765, 0.93333334, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 14
+text = "强"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prev" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitFxRow" unique_id=1983946207]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "◀"
+
+[node name="Next" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer39/HitFxRow" unique_id=340124684]
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 13
+text = "▶"
+
+[node name="Control40" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1421305024]
+custom_minimum_size = Vector2(4, 4)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PanelContainer41" type="PanelContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=958110125]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_wqwn7")
+
+[node name="Control42" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=784862671]
+custom_minimum_size = Vector2(2, 2)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HBoxContainer43" type="HBoxContainer" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26" unique_id=1089393436]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AccentBackButton" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer43" unique_id=1557253707]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AccentButton"
+theme_override_font_sizes/font_size = 16
+text = "← 返回（Esc）"
+
+[node name="ResetButton" type="Button" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer43" unique_id=1665758156]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"GhostButton"
+theme_override_font_sizes/font_size = 15
+text = "恢复默认（R）"
+
+[node name="Control44" type="Control" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer43" unique_id=275812414]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Label45" type="Label" parent="VBoxContainer13/ScrollContainer22/MarginContainer23/CenterContainer24/PanelContainer25/VBoxContainer26/HBoxContainer43" unique_id=368435795]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_fonts/font = SubResource("SystemFont_gjs24")
+theme_override_font_sizes/font_size = 11
+text = "C:/Users/Dy/Desktop/Rhythm/game/.tmp_appdata/Godot/app_userdata/Rhythm Game/settings.cfg"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PanelContainer46" type="PanelContainer" parent="VBoxContainer13" unique_id=2029710813]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_oe2nd")
+
+[node name="HBoxContainer47" type="HBoxContainer" parent="VBoxContainer13/PanelContainer46" unique_id=1636187493]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Label48" type="Label" parent="VBoxContainer13/PanelContainer46/HBoxContainer47" unique_id=1251845232]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Esc 返回  ·  R 恢复默认  ·  ◀▶ 调整数值"
+
+[node name="Control49" type="Control" parent="VBoxContainer13/PanelContainer46/HBoxContainer47" unique_id=621514214]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Label50" type="Label" parent="VBoxContainer13/PanelContainer46/HBoxContainer47" unique_id=334443332]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3647059, 0.4, 0.47058824, 1)
+theme_override_font_sizes/font_size = 12
+text = "存于 user://settings.cfg"
