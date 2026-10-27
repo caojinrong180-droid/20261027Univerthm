@@ -1,4 +1,4 @@
-﻿class_name Palette
+class_name Palette
 extends RefCounted
 ## 全部颜色都在这。想换皮先改这里（数值取自网页版制谱器 web/css/editor.css）。
 
@@ -19,15 +19,13 @@ const HOT := Color("#f72585")
 const OK := Color("#7cf5c1")
 const WARN := Color("#ffd166")
 const PURPLE := Color("#b06bff")
-const MINE := Color("#ef476f")
 
 const JUDGE_COLORS := {
 	"perfect_plus": Color("#e6ccff"),   # Perfect+ 浅紫（比 Perfect 更亮）
 	"perfect": Color("#b06bff"),        # 紫
 	"good": Color("#4c9aff"),           # 蓝
-	"miss": Color("#f72585"),
-	"mine": Color("#ef476f"),
-	"hold": Color("#b06bff"),
+	"bad": Color("#ffd166"),            # 黄
+	"miss": Color("#f72585"),           # 粉
 }
 
 const DIFFICULTY_COLORS := {

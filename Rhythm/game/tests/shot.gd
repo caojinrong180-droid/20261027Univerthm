@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## 截图脚本：把几个界面渲染成 png，放在 res://tests/_shots/（已在 .gitignore 里）。
 ## 需要窗口（不能 --headless）：
 ##   godot --path game res://tests/shot.tscn
@@ -12,7 +12,9 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	await get_tree().process_frame
 	await _shot_warning()
-	await _shot_start()
+	await _shot_menu()
+	await _shot_collection()
+	await _shot_profile()
 	await _shot_song_select()
 	await _shot_settings()
 	await _shot_gameplay()
@@ -45,12 +47,30 @@ func _shot_warning() -> void:
 	await _wait_frames(2)
 
 
-func _shot_start() -> void:
-	var start = load("res://scenes/start.tscn").instantiate()
-	get_tree().root.add_child(start)
-	await _wait_frames(4)
-	await _capture("00b_start")
-	start.queue_free()
+func _shot_menu() -> void:
+	var menu = load("res://scenes/main_menu.tscn").instantiate()
+	get_tree().root.add_child(menu)
+	await _wait_frames(6)
+	await _capture("00b_main_menu")
+	menu.queue_free()
+	await _wait_frames(2)
+
+
+func _shot_collection() -> void:
+	var screen = load("res://scenes/collection.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await _wait_frames(5)
+	await _capture("00c_collection")
+	screen.queue_free()
+	await _wait_frames(2)
+
+
+func _shot_profile() -> void:
+	var screen = load("res://scenes/profile.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await _wait_frames(5)
+	await _capture("00d_profile")
+	screen.queue_free()
 	await _wait_frames(2)
 
 

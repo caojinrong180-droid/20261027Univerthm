@@ -20,6 +20,9 @@ uniform float u_grain = 0.0;
 uniform float u_vignette = 0.0;
 uniform float u_invert = 0.0;
 uniform float u_stretch = 0.0;
+uniform float u_zoom = 0.0;
+uniform float u_punch_t0 = 0.0;
+uniform float u_shake = 0.0;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -67,6 +70,24 @@ void fragment() {
 		float edge = max(sa.x, sa.y);
 		float k = u_stretch * (0.16 * corner + 0.03 * edge * edge * edge);
 		uv = 0.5 + sp * (1.0 - clamp(k, 0.0, 0.35));
+	}
+
+	float punch = 0.0;
+	if (u_zoom > 0.001) {
+		// 冲击放大：进区间那一下「砰」地放大，0.22s 内回弹到原样（末尾略小于 1 = 过冲抖一下）
+		float k = clamp((t - u_punch_t0) / 0.22, 0.0, 1.0);
+		punch = pow(1.0 - k, 2.5);
+		float over = -0.05 * sin(3.14159 * k) * (1.0 - k);
+		float z = 1.0 + (0.18 * punch + over) * u_zoom;
+		uv = 0.5 + (uv - 0.5) / z;
+	}
+
+	if (u_shake > 0.001) {
+		// 抖动只在冲击那一下（幅度跟 punch 走）
+		float amp = 0.0075 * u_shake * punch;
+		float sx = sin(t * 41.0) * 0.6 + sin(t * 97.0 + 1.7) * 0.4;
+		float sy = cos(t * 37.0 + 0.5) * 0.6 + cos(t * 89.0 + 2.3) * 0.4;
+		uv += vec2(sx, sy) * amp;
 	}
 
 	uv = clamp(uv, vec2(0.0), vec2(1.0));

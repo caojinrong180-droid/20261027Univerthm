@@ -2,7 +2,7 @@ extends RefCounted
 ## 测试用的合成谱面：只在 tests/ 里用，不写盘、不进 charts。
 ##
 ## 不是给玩家玩的谱面，只是为了让「游玩 / 判定 / 渲染」能在没有真实谱面的情况下被验证。
-## 覆盖 tap / hold / flick / mine，带几条轨道事件（位移 / 旋转 / 透明度 / 流速）。
+## 覆盖 tap / hold，带几条轨道事件（位移 / 旋转 / 透明度 / 流速）。
 
 const BAR := 1.6
 const START := 1.2
@@ -18,10 +18,6 @@ static func raw() -> Dictionary:
 		notes.append({"time": b0 + 0.4, "lane": (rot + 1) % 4, "type": "tap"})
 		notes.append({"time": b0 + 0.8, "lane": (rot + 2) % 4, "type": "hold", "duration": 0.5})
 		notes.append({"time": b0 + 1.2, "lane": (rot + 3) % 4, "type": "tap"})
-		if bar % 3 == 2:
-			notes.append({"time": b0 + 1.45, "lane": (rot + 1) % 4, "type": "flick"})
-		if bar % 4 == 3:
-			notes.append({"time": b0 + 0.6, "lane": (rot + 3) % 4, "type": "mine"})
 
 	return {
 		"format": "rchart",

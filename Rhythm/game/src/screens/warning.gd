@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 ## 启动画面：光敏性癫痫警告。
 ## 停留 HOLD_SEC 秒后自动进入开始界面；中途按任意键 / 点一下可以跳过。
 
@@ -48,7 +48,7 @@ func _leave() -> void:
 	if _done:
 		return
 	_done = true
-	App.goto_start()
+	App.goto_menu()
 
 
 # --------------------------------------------------------------------------- #

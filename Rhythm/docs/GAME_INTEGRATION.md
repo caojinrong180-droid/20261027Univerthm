@@ -57,6 +57,40 @@ const speedMult = (p.speed * p.speed) / 100;      // 10 → 1.00×
 const laneLen = judgeY * (p.length / 10);         // 轨道像素长度，0 = 只剩判定线
 ```
 
+### 2.2.1 父子线（`parent`）
+
+父线是一个**事件通道**（`events.parent`），值 `0` = 没有父线、`i + 1` = 挂在第 `i` 条上，
+所以它会随时间变、也能取消。用 `parentAt(lane, t, laneCount)` 取当前父线（没有事件时退回静态 `parent`）：
+
+`js
+const parentIdx = parentAt(lane, t, lanes.length);   // -1 = 不挂
+` 
+
+拿到 `parentIdx >= 0` 时，这条轨道的 `x / y / rotation` 都是**相对父线**的：
+
+```js
+function laneFrame(lane, t, lanes) {
+  const p = laneParamsAt(lane, t);
+  const pi = parentAt(lane, t, lanes.length);        // 父线也是事件，会随时间变
+  const parent = (pi >= 0 && pi < lanes.length) ? lanes[pi] : null;
+  if (!parent) {
+    return { cx: W / 2 + p.x, cy: judgeY - p.y, rot: p.rotation };
+  }
+  const pf = laneFrame(parent, t, lanes);            // 递归，天然支持「爷爷线」
+  const prad = pf.rot * Math.PI / 180;
+  return {
+    cx: pf.cx + Math.cos(prad) * p.x + Math.sin(prad) * p.y,
+    cy: pf.cy + Math.sin(prad) * p.x - Math.cos(prad) * p.y,
+    rot: pf.rot + p.rotation                            // 角度叠加
+  };
+}
+```
+
+拿到 `{cx, cy, rot}` 之后，`dx / dy / sx / sy` 就按 2.2 节用 `rot` 算 —— 子线的音符、
+判定线、长条全都跟着父线走。
+
+> 递归层数做个数上限（比如 8），防止手改 JSON 时写出环卡死。
+
 ### 2.3 轨道本体
 
 一条从基点沿 `(dx, dy)` 延伸 `laneLen` 的平行四边形，宽 `2 * halfW`：
@@ -116,8 +150,6 @@ function noteQuad(px, py, dx, dy, sx, sy, halfW, th) {
 | type | 画法 |
 | --- | --- |
 | `tap` | 实心 `displayColor` 92% + 靠判定线一侧一条白色 55% 高光线 |
-| `flick` | 实心 `displayColor` + 中间一道沿轨道方向的深色短竖线 |
-| `mine` | 填充 `#1b1f28`、描边 `#ef476f` 1.5px |
 | `hold` | 从 `d(头部)` 到 `d(尾部)` 画一条半透明长条（`displayColor` 30%），头部再画上面那种 tap 块 |
 
 `hold` 的长条：`dHead = (note.time - t) * ...`，`dTail = (note.time + note.duration - t) * ...`，
@@ -142,7 +174,7 @@ const speedMult = (lane.speed * lane.speed) / 100;
 音符的 `head` 会随时间变成负数（过线了）。**不要让它继续往下掉**，编辑器/预览的做法是：
 
 ```js
-// 普通音符（tap / flick / mine）：落到判定线就消失，不做淡出
+// 普通音符（tap）：落到判定线就消失，不做淡出
 if (head < 0) continue;
 
 // hold：头贴在判定线上，身体随尾巴缩进去；按 tail 剔除
@@ -204,7 +236,6 @@ function judgePress(key, now) {
   let best = null;
   for (const note of chart.notes) {
     if (note.judged) continue;
-    if (note.type === 'mine') continue;              // 地雷不吃按键
     const lz = chart.lanes[note.lane].judge_zone;
     if (lz !== 'none' && lz !== zone) continue;
     const dt = now - note.time;
@@ -232,8 +263,6 @@ function judgePress(key, now) {
 | --- | --- |
 | `tap` | 按下时按 3.2 找音符，命中即判 |
 | `hold` | 头判同上；之后要求一直按住到 `time + duration`。中途松开 → hold 断开（判 MISS 或 BREAK），到尾部还在按 → 按时间差判 |
-| `flick` | 需要一次「划」的手势（触屏是滑动，键盘可以约定成按下 + 方向），或者退化成 tap 也能接受 |
-| `mine` | **不要按**。按下时命中它 → 扣血/判失败。时间自然过掉 → 无事发生 |
 
 ### 3.5 分数与连击建议
 

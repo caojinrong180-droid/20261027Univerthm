@@ -29,6 +29,10 @@
   'use strict';
 
   var RC = global.RChart;
+  // node 测试里没有 window.RChart：直接 require core.js
+  if (!RC && typeof require === 'function') {
+    try { RC = require('./core.js'); } catch (err) { RC = null; }
+  }
 
   var STAGE_W = 350;
   var STAGE_H = 350 * 9 / 16;      // 196.875
@@ -90,19 +94,51 @@
   }
 
   /** 一条轨道在 t 时刻的几何（同 stage_view._lane_geom） */
-  function laneGeom(lane, index, t, halfW, xyScale) {
+  /**
+   * 一条轨道在 t 时刻的几何。
+   * 有父线时，x / y / 旋转 都是在**父线坐标系**里的相对量：
+   *   x 沿父线横向、y 沿父线轨道方向（向上为正）、旋转叠加。
+   * 所以父线一动，挂在它下面的子线整条跟着动（和制谱器 editor.js 的 laneGeom 一致）。
+   */
+  function laneGeom(chart, index, t, halfW, xyScale, depth, seen) {
+    var lane = chart.lanes[index];
     var p = RC.laneParamsAt(lane, t);
-    var rad = num(p.rotation, 0) * Math.PI / 180;
     var xy = xyScale === undefined ? 1 : xyScale;
+    var rotDeg = num(p.rotation, 0);
+    var px = num(p.x, 0) * xy;
+    var py = num(p.y, 0) * xy;
+    depth = depth || 0;
+    seen = seen || {};
+
+    var count = (chart.lanes || []).length;
+    var parentIdx = RC.parentAt ? RC.parentAt(lane, t, count) : -1;
+
+    var base;
+    if (parentIdx >= 0 && parentIdx !== index && !seen[parentIdx] && depth < 8) {
+      seen[index] = true;
+      var pg = laneGeom(chart, parentIdx, t, halfW, xy, depth + 1, seen);
+      base = {
+        cx: pg.cx + pg.sx * px + pg.dx * py,
+        cy: pg.cy + pg.sy * px + pg.dy * py,
+        rot: pg.rotDeg + rotDeg
+      };
+    } else {
+      parentIdx = -1;
+      base = { cx: STAGE_W * 0.5 + px, cy: judgeY() - py, rot: rotDeg };
+    }
+
+    var rad = base.rot * Math.PI / 180;
     return {
       lane: lane,
       index: index,
+      parent: parentIdx,
+      rotDeg: base.rot,
       alpha: clamp(num(p.alpha, 0) / 100, 0, 1),
       speed: RC.laneSpeed(p),
       half: halfW,
       len: judgeY() * RC.laneLength(p),
-      cx: STAGE_W * 0.5 + num(p.x, 0) * xy,
-      cy: judgeY() - num(p.y, 0) * xy,
+      cx: base.cx,
+      cy: base.cy,
       dx: Math.sin(rad),
       dy: -Math.cos(rad),
       sx: Math.cos(rad),
@@ -222,7 +258,7 @@
       var j = i;
       var group = [];
       while (j < notes.length && Math.abs(num(notes[j].time, 0) - t) <= CHORD_EPS) {
-        if (String(notes[j].type || 'tap') !== 'mine') group.push(notes[j]);
+        group.push(notes[j]);
         j++;
       }
       if (group.length >= 2) {
@@ -352,7 +388,7 @@
 
       var headD = Math.max(0, head);
       var chordN = chords[String(note.lane) + ':' + note.time] || 0;
-      var isChord = chordN >= 2 && kind !== 'mine';
+      var isChord = chordN >= 2;
 
       if (isChord) drawChordGlow(ctx, info, headD, noteHalfW, t, alphaMul);
 
@@ -374,29 +410,9 @@
       var headR = Math.min(NOTE_RADIUS, Math.min(noteHalfW, headH * 0.5));
       var headPts = laneShape(info, (headBottom + headTop) * 0.5, noteHalfW * 2, headH, headR);
 
-      if (kind === 'mine') {
-        pathPoly(ctx, headPts);
-        ctx.fillStyle = '#1b1f28';
-        ctx.fill();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = rgba('#ef476f', alphaMul);
-        ctx.stroke();
-      } else if (kind === 'flick') {
-        pathPoly(ctx, headPts);
-        ctx.fillStyle = rgba(col, alphaMul);
-        ctx.fill();
-        var c = lanePoint(info, headD);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = rgba(BG_DEEP, alphaMul);
-        ctx.beginPath();
-        ctx.moveTo(c.x - info.dx * 2, c.y - info.dy * 2);
-        ctx.lineTo(c.x + info.dx * 2, c.y + info.dy * 2);
-        ctx.stroke();
-      } else {
-        pathPoly(ctx, headPts);
-        ctx.fillStyle = rgba(col, 0.92 * alphaMul);
-        ctx.fill();
-      }
+      pathPoly(ctx, headPts);
+      ctx.fillStyle = rgba(col, 0.92 * alphaMul);
+      ctx.fill();
     }
   }
 
@@ -440,7 +456,7 @@
     var lookback = holdLookback(chart);
 
     var geo = [];
-    for (var i = 0; i < n; i++) geo.push(laneGeom(lanes[i], i, t, halfW, xy));
+    for (var i = 0; i < n; i++) geo.push(laneGeom(chart, i, t, halfW, xy, 0, {}));
 
     ctx.save();
     for (i = 0; i < n; i++) drawLaneBody(ctx, geo[i], alpha);

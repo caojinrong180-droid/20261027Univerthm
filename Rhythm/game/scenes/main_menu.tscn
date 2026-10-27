@@ -1,0 +1,153 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://src/screens/main_menu.gd" id="1_menu"]
+[ext_resource type="Texture2D" path="res://assets/main_bg.png" id="2_bg"]
+[ext_resource type="Texture2D" path="res://assets/banners/Stra.png" id="3_girl"]
+[ext_resource type="Texture2D" path="res://assets/menu/Line.png" id="4_line"]
+[ext_resource type="Texture2D" path="res://assets/menu/User_name.png" id="5_name"]
+[ext_resource type="Texture2D" path="res://assets/menu/Start.png" id="6_start"]
+[ext_resource type="Texture2D" path="res://assets/menu/Collection.png" id="7_coll"]
+[ext_resource type="Texture2D" path="res://assets/menu/Setting.png" id="8_set"]
+[ext_resource type="Texture2D" path="res://assets/menu/User_profile.png" id="9_prof"]
+[ext_resource type="Texture2D" path="res://assets/menu/change_character.png" id="10_switch"]
+[ext_resource type="Script" path="res://src/ui/sprite_button.gd" id="11_btn"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Banner" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 682.0
+offset_top = 90.0
+offset_right = 1198.0
+offset_bottom = 970.0
+mouse_filter = 2
+texture = ExtResource("3_girl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Line" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 206.0
+offset_right = 182.0
+offset_bottom = 478.0
+mouse_filter = 2
+texture = ExtResource("4_line")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NamePlate" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 84.0
+offset_right = 370.0
+offset_bottom = 169.0
+mouse_filter = 2
+texture = ExtResource("5_name")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 142.0
+offset_top = 106.0
+offset_right = 430.0
+offset_bottom = 146.0
+theme_override_colors/font_color = Color(0.0784314, 0.0627451, 0.0941176, 1)
+theme_override_colors/font_outline_color = Color(0.0784314, 0.0627451, 0.0941176, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 23
+text = "User:  Player"
+vertical_alignment = 1
+
+[node name="StartButton" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 176.0
+offset_right = 566.0
+offset_bottom = 312.0
+focus_mode = 2
+texture = ExtResource("6_start")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("11_btn")
+
+[node name="CollectionButton" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 136.0
+offset_top = 328.0
+offset_right = 446.0
+offset_bottom = 421.0
+focus_mode = 2
+texture = ExtResource("7_coll")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("11_btn")
+
+[node name="SettingButton" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 162.0
+offset_top = 436.0
+offset_right = 365.0
+offset_bottom = 504.0
+focus_mode = 2
+texture = ExtResource("8_set")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("11_btn")
+
+[node name="ProfileButton" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 381.0
+offset_top = 436.0
+offset_right = 472.0
+offset_bottom = 505.0
+focus_mode = 2
+texture = ExtResource("9_prof")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("11_btn")
+
+[node name="SwitchButton" type="TextureRect" parent="."]
+modulate = Color(0.58, 0.42, 0.98, 0.82)
+layout_mode = 0
+offset_left = 1022.0
+offset_top = 534.0
+offset_right = 1123.0
+offset_bottom = 630.0
+focus_mode = 2
+texture = ExtResource("10_switch")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("11_btn")
+
+[node name="Version" type="Label" parent="."]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 688.0
+offset_right = 200.0
+offset_bottom = 712.0
+theme_override_colors/font_color = Color(0.101961, 0.0901961, 0.141176, 0.752941)
+theme_override_colors/font_outline_color = Color(0.980392, 0.980392, 1, 0.752941)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 13
+text = "v0.0.1"

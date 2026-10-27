@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 ## 游玩场景：倒计时 → 播放 → 判定 → 暂停 / 结算。
 ##
 ## 时间来源（docs/GAME_INTEGRATION.md 第 4 节）：
@@ -271,7 +271,7 @@ func _on_key_down(code: int, zone: String) -> void:
 	_held[code] = zone
 	_rebuild_zones()
 	var result := judge.press(zone, _input_time())
-	if bool(result.get("hit", false)) and str(result.get("kind", "")) != "mine":
+	if bool(result.get("hit", false)):
 		_play_hit()
 
 
@@ -298,7 +298,7 @@ func _autoplay_step(t: float) -> void:
 		var note: Dictionary = judge.notes[_auto_cursor]
 		if float(note["time"]) > t + 0.002:
 			break
-		if str(note["state"]) == "pending" and str(note["type"]) != "mine":
+		if str(note["state"]) == "pending":
 			if float(note["time"]) >= t - 0.25:
 				var lane: Dictionary = judge.lanes[int(note["lane"])]
 				var press_t := maxf(t, float(note["time"]))
@@ -389,6 +389,8 @@ func _finish() -> void:
 	}
 	App.last_result = result
 	debug_run_result = result
+	if not autoplay:
+		App.record_result(result)          # 个人资料里的游玩次数 / 最高分
 	if debug_mode:
 		return
 	get_tree().change_scene_to_file("res://scenes/results.tscn")

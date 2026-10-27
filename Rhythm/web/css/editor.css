@@ -1,4 +1,4 @@
-/* Rhythm 制谱器 · 样式 */
+﻿/* Rhythm 制谱器 · 样式 */
 
 :root {
   --bg: #0b0d12;
@@ -517,6 +517,14 @@ main {
 }
 
 /* ---------------- 状态栏 ---------------- */
+
+.statusbar .warn {
+  font-size: 11px;
+  color: var(--hot);
+  font-weight: 600;
+}
+
+.statusbar .warn:empty { display: none; }
 
 .statusbar {
   display: flex;

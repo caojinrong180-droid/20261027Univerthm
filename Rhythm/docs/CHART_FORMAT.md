@@ -45,8 +45,8 @@
   "notes": [
     { "id": 1, "time": 1.000, "lane": 0, "type": "tap" },
     { "id": 2, "time": 1.400, "lane": 1, "type": "hold", "duration": 0.800 },
-    { "id": 3, "time": 2.400, "lane": 2, "type": "flick" },
-    { "id": 4, "time": 3.200, "lane": 3, "type": "mine" }
+    { "id": 3, "time": 2.400, "lane": 2, "type": "tap" },
+    { "id": 4, "time": 3.200, "lane": 3, "type": "hold", "duration": 0.500 }
   ]
 }
 ```
@@ -124,6 +124,7 @@ secToBeat(sec)  = (sec - beat_offset) * bpm / 60
 | `speed` | float | `10` | 0~100 | 音符流速，**10 = 1.00×，平方曲线**（见 7.3） |
 | `length` | float | `10` | 0~100 | 轨道长度，**10 = 标准全长（判定线到画面顶），0 = 只剩判定线** |
 | `rotation` | float | `0` | ±3600 | 度，**顺时针为正**，0 = 竖直向上 |
+| `parent` | int | `-1` | 父线的**静态兜底值**（0 起），`-1` = 不跟；实际生效的是 `events.parent`，见 7.6 |
 | `events` | object | `{}` | | 动画通道，见 7.4 |
 
 ### 7.2 判定区
@@ -165,16 +166,20 @@ lenScale  = length / 10                 // 10 → 1.00×，0 → 0
   "x":        [ { "start": 2, "end": 6, "ease": "inOutQuad", "from": -60, "to": 60 } ],
   "alpha":    [ { "start": 2, "end": 4, "ease": "outCubic",  "from": 0,   "to": 100 } ],
   "rotation": [ { "start": 4, "end": 8, "ease": "outBack",   "from": 0,   "to": 90 } ],
-  "zone":     [ { "start": 6, "end": 6, "ease": "linear",    "from": 1,   "to": 1 } ]
+  "zone":     [ { "start": 6, "end": 6, "ease": "linear",    "from": 1,   "to": 1 } ],
+  "parent":   [ { "start": 2, "end": 2, "ease": "linear",    "from": 3,   "to": 3 } ]
 }
 ```
 
-- 通道名：`x` / `y` / `alpha` / `rotation` / `speed` / `length` / `zone`
+- 通道名：`x` / `y` / `alpha` / `rotation` / `speed` / `length` / `zone` / `parent`
 - 每个通道一个数组，数组里是事件；**通道之间完全独立**
 - 事件字段：`start` `end`（秒）、`ease`（缓动名）、`from` `to`（该参数的数值，不是对象）
 - `zone` 是**判定区通道**，值用数字表示：`0` = none（白）、`1` = left（紫）、`2` = right（黄）；
   求值后四舍五入取整再对应回名字，所以中间值只会落在三种状态之一。
   想「瞬间切换」就把 `start` 和 `end` 写成同一个值
+- `parent` 是**父线通道**：`0` = 没有父线，`i + 1` = 挂在第 `i` 条轨道上
+  （偏移一位是为了让 `0` 干净地表示「无」）。同样四舍五入取整。
+  **设回 `0` 就是取消跟随**
 - 同一通道里按 `start` 升序
 
 **求值规则**（`laneParamsAt`）：
@@ -226,6 +231,45 @@ function displayColorAt(lane, t) {               // 轨道该画成什么颜色
 }
 ```
 
+### 7.6 `parent` —— 父线 / 子线
+
+一条轨道可以挂到另一条轨道下面，变成「子线」。子线不是独立摆在舞台上，而是**以父线的坐标系为基准**：
+
+```
+子线基点 = 父线基点 + 父线横向单位向量 × 子.x + 父线轨道方向单位向量 × 子.y
+子线角度 = 父线角度 + 子.rotation
+```
+
+- 子线的 `x` 是**沿父线横向**的偏移，`y` 是**沿父线自身方向（向上）**的偏移
+- `rotation` 是**叠加**的：父线转 30°、子线写 15°，子线实际是 45°
+- `alpha` / `speed` / `length` 仍然是子线自己的，不继承
+- 父线动了（位置 / 旋转 / 事件动画），子线整条跟着动
+- 父线还可以再挂父线，形成链；**环会被忽略**（`A→B→A` 里成环的那条退回 `-1`）
+- `parent` 越界（父线被删了）时当成「没有父线」
+
+**父线也是一个事件通道**（`events.parent`），所以可以**随时间切换、也能取消**：
+
+```json
+"parent": [
+  { "start": 0, "end": 0, "ease": "linear", "from": 0, "to": 0 },   // 一开始不挂
+  { "start": 8, "end": 8, "ease": "linear", "from": 2, "to": 2 }    // 8 秒后挂到「第 2 条」上
+]
+```
+
+- `0` = 没有父线，`i + 1` = 挂在第 `i` 条轨道上
+- 想取消跟随，就在那一时刻放一条 `from: 0, to: 0`
+- 没有 `parent` 事件时，退回静态字段 `lanes[i].parent`
+
+```json
+"lanes": [
+  { "name": "Main", "x": 0,   "y": 0, "rotation": 0,  "alpha": 100, "length": 10 },
+  { "name": "Sub",  "x": -60, "y": 0, "rotation": 0, "alpha": 100, "length": 6,
+    "events": { "parent": [ { "start": 0, "end": 0, "ease": "linear", "from": 1, "to": 1 } ] } }
+]
+```
+
+上例里 `Sub` 挂在 `Main` 上（`1` = 第 0 条）：它的基点在主线的左边 60px。主线一旋转，`Sub` 跟着转。
+
 ## 8. `notes[i]` —— 一个音符
 
 | 字段 | 类型 | 默认 | 说明 |
@@ -233,7 +277,7 @@ function displayColorAt(lane, t) {               // 轨道该画成什么颜色
 | `id` | int | | **仅编辑器用**，游戏不要依赖 |
 | `time` | float | `0` | 到达判定线的谱面时间（秒），≥0 |
 | `lane` | int | `0` | 轨道序号 `0 .. lanes.length-1` |
-| `type` | string | `"tap"` | `tap` / `hold` / `flick` / `mine` |
+| `type` | string | `"tap"` | `tap` / `hold` |
 | `duration` | float | `0` | **仅 `hold` 有意义**：按住时长（秒） |
 
 `type` 语义：
@@ -242,10 +286,8 @@ function displayColorAt(lane, t) {               // 轨道该画成什么颜色
 | --- | --- |
 | `tap` | 单击一次 |
 | `hold` | 按住，直到 `time + duration` |
-| `flick` | 划键 / 上滑 |
-| `mine` | 地雷，**碰到扣血，不要按** |
 
-`duration <= 0` 的 `hold` 在读取时会被当成 `tap`。
+`duration <= 0` 的 `hold` 在读取时会被当成 `tap`；`flick` / `mine` 这类旧类型也会被当成 `tap`。
 
 ## 9. 缓动（`ease`）
 

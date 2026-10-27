@@ -1,4 +1,4 @@
-/* 核心逻辑单元测试：node web/test/core.test.js */
+﻿/* 核心逻辑单元测试：node web/test/core.test.js */
 'use strict';
 
 const RC = require('../js/core.js');
@@ -108,10 +108,14 @@ const st = RC.createChart({ lane_count: 4 });
 RC.addNote(st, { time: 0.0, lane: 0, type: 'tap' });
 RC.addNote(st, { time: 0.5, lane: 0, type: 'tap' });
 RC.addNote(st, { time: 1.0, lane: 1, type: 'hold', duration: 0.5 });
-RC.addNote(st, { time: 2.0, lane: 2, type: 'flick' });
-RC.addNote(st, { time: 3.0, lane: 3, type: 'mine' });
+RC.addNote(st, { time: 2.0, lane: 2, type: 'tap' });
+RC.addNote(st, { time: 3.0, lane: 3, type: 'tap' });
 const counts = RC.countNotes(st);
-eq([counts.total, counts.tap, counts.hold, counts.flick, counts.mine], [5, 2, 1, 1, 1], '音符统计');
+eq([counts.total, counts.tap, counts.hold], [5, 4, 1], '音符统计');
+eq(counts.flick, undefined, '不再有 flick 这个统计项');
+eq(counts.mine, undefined, '也不再 mine 这个统计项');
+const oldFlick = RC.normalize({ notes: [{ time: 4.0, lane: 0, type: 'flick' }] }).chart;
+eq(oldFlick.notes[0].type, 'tap', '旧谱面里的 flick 会当成 tap 读进来');
 near(RC.chartDuration(st), 3.0, 1e-9, '谱面时长');
 near(RC.chartDuration(RC.createChart()), 0, 1e-9, '空谱面时长 0');
 
@@ -341,9 +345,11 @@ eq(RC.EASE_NAMES.indexOf('inOutQuad') >= 0, true, '内置缓动表里有 inOutQu
 const ec = RC.createChart({ lane_count: 2 });
 const evLane = ec.lanes[0];
 eq(RC.EVENT_KEYS.join(','), 'x,y,alpha,rotation,speed,length', '6 条独立参数通道');
-eq(RC.ALL_KEYS.join(','), 'x,y,alpha,rotation,speed,length,zone', '事件区一共 7 列（6 个参数 + 判定区）');
-eq(Object.keys(evLane.events).length, 7, '新轨道 7 条通道都在');
+eq(RC.ALL_KEYS.join(','), 'x,y,alpha,rotation,speed,length,zone,parent', '事件区一共 8 列（6 个参数 + 判定区 + 父线）');
+eq(Object.keys(evLane.events).length, 8, '新轨道 8 条通道都在');
 eq(evLane.events.zone.length, 0, '判定区默认不铺事件（用静态值）');
+eq(evLane.events.parent.length, 1, '父线默认铺 1 条（0 = 无父线）');
+eq(evLane.events.parent[0].from, 0, '默认父线值是 0 = 不挂');
 
 // 新轨道在起点自带 6 条默认事件（侧栏那套参数输入框就是被它替代的）
 eq(RC.hasEvents(evLane), true, '新轨道自带默认事件');
@@ -355,7 +361,7 @@ near(RC.laneParamsAt(evLane, 0.2).speed, 10, 1e-9, '默认事件区间的参数�
 eq(evLane.events.x.length, 1, '每个通道只铺一条');
 
 // 清掉默认事件，后面测纯事件逻辑
-for (const k of RC.EVENT_KEYS) evLane.events[k].length = 0;
+for (const k of RC.ALL_KEYS) evLane.events[k].length = 0;
 eq(RC.hasEvents(evLane), false, '清空后没事件');
 
 const e1 = RC.addEvent(evLane, 'x', { start: 1, end: 3, from: 0, to: 100, ease: 'linear' });
@@ -464,6 +470,38 @@ hzc.lanes[0].speed = 0;
 for (const k of RC.ALL_KEYS) hzc.lanes[0].events[k].length = 0;
 eq(RC.holdSpeed(hzc.lanes[0], 1), 1, '从头到尾都是 0 流速 → 退回 1.00×');
 
+/* ---------------- 父线 / 子线 ---------------- */
+
+const pc = RC.createChart({ lane_count: 3 });
+eq(pc.lanes[0].parent, -1, '新轨道默认没有父线');
+pc.lanes[0].parent = 1;
+eq(RC.laneParentIndex(pc.lanes[0], 3), 1, '父线序号读得出来');
+eq(RC.laneParentIndex({ parent: 9 }, 3), -1, '越界的父线当没有');
+eq(RC.laneParentIndex({ parent: -1 }, 3), -1, '没有父线');
+
+const pc2 = RC.createChart({ lane_count: 3 });
+pc2.lanes[0].parent = 1;
+pc2.lanes[1].parent = 2;
+pc2.lanes[2].parent = 0;
+RC.fixLaneParents(pc2.lanes);
+eq(pc2.lanes[0].parent, -1, '成环的那条被断开');
+eq(pc2.lanes[1].parent, 2, '链上其余的关系保留');
+
+pc2.lanes[0].parent = 0;
+RC.fixLaneParents(pc2.lanes);
+eq(pc2.lanes[0].parent, -1, '不能把自己当父线');
+
+const pj = JSON.parse(JSON.stringify(RC.serialize(pc)));
+eq(pj.lanes[0].parent, 1, 'parent 会写进 JSON');
+eq(pj.lanes[1].parent, undefined, '没有父线就不写这个字段');
+eq(RC.normalize(pj).chart.lanes[0].parent, 1, 'parent 读得回来');
+eq(RC.serialize(RC.normalize(pj).chart), pj, '带父线也能完全往返');
+
+const pc3 = RC.createChart({ lane_count: 6 });
+pc3.lanes[2].parent = 5;
+RC.setLaneCount(pc3, 3);
+eq(pc3.lanes[2].parent, -1, '父线被删掉后自动解除');
+
 /* ---------------- 曲绘字段 ---------------- */
 
 const cov = RC.createChart({ lane_count: 2 });
@@ -564,6 +602,48 @@ function runAsyncChecks() {
   });
 }
 
+
+/* ---------------- 重叠分组 ---------------- */
+
+const dgc = RC.createChart({ lane_count: 3 });
+RC.addNote(dgc, { time: 1, lane: 0, type: 'tap' });
+RC.addNote(dgc, { time: 1, lane: 0, type: 'tap' });   // 重叠
+RC.addNote(dgc, { time: 1, lane: 1, type: 'tap' });   // 不同轨道，不算
+RC.addNote(dgc, { time: 2, lane: 0, type: 'hold', duration: 0.5 });
+RC.addNote(dgc, { time: 2, lane: 0, type: 'tap' });   // 又是一组
+eq(RC.duplicateGroups(dgc).length, 2, '找出 2 组重叠');
+eq(RC.duplicateGroups(dgc)[0].lane, 0, '第一组在轨道 0');
+eq(RC.duplicateGroups(dgc)[0].time, 1, '第一组在 1.0s');
+eq(RC.duplicateGroups(dgc)[0].notes.length, 2, '第一组有 2 个音符');
+eq(RC.duplicateGroups(dgc)[1].time, 2, '第二组在 2.0s（按时间排）');
+eq(RC.duplicateGroups(RC.createChart({ lane_count: 2 })).length, 0, '空谱面没有重叠');
+const dg3 = RC.createChart({ lane_count: 2 });
+RC.addNote(dg3, { time: 0.5, lane: 0, type: 'tap' });
+eq(RC.duplicateGroups(dg3).length, 0, '单个音符不算重叠');
+
+/* ---------------- 问题定位（chartIssues） ---------------- */
+
+const ic = RC.createChart({ lane_count: 3 });
+RC.addNote(ic, { time: 1, lane: 0, type: 'tap' });
+RC.addNote(ic, { time: 1, lane: 0, type: 'tap' });                 // 重复
+RC.addNote(ic, { time: 2, lane: 1, type: 'hold', duration: 0 });   // 零长 hold
+RC.addNote(ic, { time: 4, lane: 2, type: 'hold', duration: 2 });   // 4~6 的长条
+RC.addNote(ic, { time: 5, lane: 2, type: 'tap' });                 // 压在长条里
+const iss = RC.chartIssues(ic);
+eq(iss.length, 3, '找出 3 处问题');
+eq(iss[0].kind, 'dup', '第一处是重复音符');
+eq(iss[0].time, 1, '重复在 1.0s');
+eq(iss[1].kind, 'zero-hold', '第二处是零长 hold');
+eq(iss[2].kind, 'hold-cover', '第三处是长条压音符');
+eq(iss[2].time, 5, '压在 5.0s');
+ok(iss[2].ids.length === 2, '长条和被压的音符都带上 id');
+eq(RC.chartIssues(RC.createChart({ lane_count: 2 })).length, 0, '空谱面没有');
+
+// 长条端点上的音符不算「被压」
+const ic2 = RC.createChart({ lane_count: 2 });
+RC.addNote(ic2, { time: 1, lane: 0, type: 'hold', duration: 1 });
+RC.addNote(ic2, { time: 2, lane: 0, type: 'tap' });
+eq(RC.chartIssues(ic2).length, 0, '长条正好接在尾巴上的不算问题');
 /* ---------------- 收尾 ---------------- */
 
 runAsyncChecks().then(() => {

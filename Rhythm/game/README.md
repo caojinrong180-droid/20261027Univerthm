@@ -1,4 +1,4 @@
-﻿# Rhythm Game（Godot 4.7）
+# Rhythm Game（Godot 4.7）
 
 用 Godot 做的音游，读**网页版制谱器**导出的 `rchart v3` 谱面。
 游玩画面按**制谱器「预渲染窗口」的绘制规则**重画：同样的线宽 / 颜色 / 剔除规则，
@@ -20,8 +20,8 @@
 ```
 
 编辑器里也可以「导入」→ 选 `game/project.godot`，然后 **F5**。
-主场景是**光敏性癫痫警告**（`scenes/warning.tscn`）：停 5 秒自动进入**开始界面**（`scenes/start.tscn`），
-在开始界面点「开始」（或按 Enter / 空格）才进入**选曲界面**（`scenes/song_select.tscn`）。
+主场景是**光敏性癫痫警告**（`scenes/warning.tscn`）：停 5 秒自动进入**主界面**（`scenes/main_menu.tscn`），
+在主界面点「开始游戏」才进入**选曲界面**（`scenes/song_select.tscn`）。
 空谱面库时选曲界面会提示你把 zip 拖进来。
 
 窗口固定 **16:9**，默认开 **1920×1080**，可以随便拉伸缩放，拉伸时保持 16:9 不变形。
@@ -39,16 +39,18 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | | `Esc` | 暂停 / 继续 |
 | | `R` | 重试 |
 | | `F11` | 全屏 / 窗口（全屏按屏幕原生分辨率渲染，最清晰） |
-| 警告 | 任意键 / 点击 | 跳过，直接进开始界面（不按也会 5 秒后自动进） |
-| 开始 | `Enter` / `空格` | 进选曲界面 |
-| | `Esc` | 退出 |
+| 警告 | 任意键 / 点击 | 跳过，直接进主界面（不按也会 5 秒后自动进） |
+| 主界面 | `↑ ↓` / `Enter` | 切换按钮 / 确认 |
+| | `C` / `P` / `Esc` | 收藏品 / 个人资料 / 退出 |
 | 选曲 | `↑ ↓` | 选谱面 |
 | | `Enter` | 开始 |
 | | `A` | 自动演示（不会写进设置） |
-| | `F5` / `S` / `Esc` | 刷新谱面库 / 设置 / 返回开始界面 |
+| | `F5` / `S` / `Esc` | 刷新谱面库 / 设置 / 返回主界面 |
 | 暂停 | `Esc` `R` `Q` | 继续 / 重试 / 选曲 |
 | 结算 | `R` / `Esc` | 重试 / 选曲 |
-| 设置 | `◀ ▶` / `Esc` / `R` | 调值 / 返回 / 恢复默认 |
+| 收藏品 | `点击卡片` / `Esc` | 放大预览 / 返回主界面 |
+| 个人资料 | `Enter` / `Esc` | 保存名字 / 返回主界面 |
+| 设置 | `◀ ▶` / `Esc` / `R` | 调值 / 返回上一页 / 恢复默认 |
 
 拖拽：把 `.zip`（制谱器导出的包）或 `.json` 拖进窗口会自动复制到 `user://charts` 并刷新。
 
@@ -81,7 +83,6 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 长条的头 | 头贴到判定线后会被裁掉一半，此时**身体自己带圆角帽**（_head），不会剩下一个方缺口 |
 | 超长长条 | 绘制回看窗口 = max(最长 hold 时长 × 最大流速, 4s)（上限 60s），再长的长条也不会在半路被剔除 |
 | 没接住的长条 | 不消失：整体压到 50% 透明度继续走，直到尾巴过判定线（渐变长度同时缩短，免得淡到看不见） |
-| 自动演示 | 按键时带 lane_hint，同区相邻音符不会互相抢判（以前会漏按 → 断连击） |
 | `pps` | `judgeY / 可视秒数`，可视秒数默认取谱面的 `stage.highway_length` |
 | 舞台在窗口里的位置 | `scale = min(W/350, H/196.875)`，16:9 时正好 1280×720，没有黑边 |
 
@@ -101,13 +102,19 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 右下 | 等级（`Lv.5`） |
 
 HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / `hud_score_text()` 等几个小函数负责取字），
-没有血条 / 血量、没有判定弹字、没有倒计时。想往上/下微调整块画面，用 `设置 → 界面 → 画面垂直偏移`
+没有血条 / 血量、没有判定弹字、没有倒计时。
 （默认 **-24px**）。
 
 剩下的只有打击特效（设置里可以关成纯预览）和判定区动画：
 
 - 打击特效：一圈判定环（FX_RING_START/GROW/WIDTH 控制起半径、扩散量、线宽）；设置里可以关成纯预览；锚点用 _lane_fx_anchor() 在命中那一刻定死，轨道瞬移时不会被拽着走
-- 多押提示：同一时刻（±CHORD_EPS = 20ms）有 ≥2 个可判定音符时，这几颗 note 外圈会有一层**柔和的蓝光**（由外到内叠 6 层低透明度圆角块，没有硬描边；_draw_chord_glow()），地雷不算；CHORD_GLOW 是发光色，跟「打击特效」开关无关、永远显示
+- 多押提示：同一时刻（±CHORD_EPS = 20ms）有 ≥2 个可判定音符时，这几颗 note 外圈会有一层**柔和的蓝光**（由外到内叠 6 层低透明度圆角块，没有硬描边；_draw_chord_glow()）；CHORD_GLOW 是发光色，跟「打击特效」开关无关、永远显示
+- **父线 / 子线也支持**（`parent`）：轨道可以挂到另一条轨道上，`RhythmChart.lane_parent_at(lane, t, lane_count)`
+  取当前父线（`events.parent` 里 `0` = 不跟、`i + 1` = 挂第 `i` 条，没事件就退回静态 `lanes[i].parent`，0 起、`-1` = 不跟），
+  `RhythmChart.lane_frame_at(lanes, index, t)` 把父线 / 爷爷线一起叠成 `{x, y, rot}`：
+  子线基点 = 父线基点 + 父线横向 × 子.x + 父线方向 × 子.y，子线角度 = 父线角度 + 子.rotation；
+  父链最多 8 层，成环的那条当没有父线，父线越界也当没有。舞台的 `_lane_geom()` 直接用这个坐标系，
+  所以音符、判定线、长条、打击环全都跟着父线走；`alpha / speed / length / zone` 仍然用子线自己的值。
 - 判定区：**`zone` 事件通道也支持**（`events.zone`，数值 0/1/2 → none/left/right，带缓动插值），
   轨道颜色和可用按键都会跟着时间变（对齐 `core.js` 的 `zoneAt` / `displayColorAt`）
 - 舞台外的内容会被盖掉（`_draw_letterbox`）：谱面里 `x / y / length` 再离谱也画不出 16:9 舞台
@@ -130,12 +137,12 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 ```
 game/
   project.godot              工程设置（1280×720 虚拟分辨率 / 1920×1080 窗口，canvas_items 拉伸）
-  scenes/                    6 个场景：警告 / 开始 / 选曲 / 游玩 / 结算 / 设置（界面都是代码搭的）
+  scenes/                    8 个场景：警告 / 主界面 / 收藏品 / 个人资料 / 选曲 / 游玩 / 结算 / 设置（界面都是代码搭的）
   src/
     app.gd                   autoload「App」：设置 + 谱面库 + 本次游玩会话 + 结算数据
     core/
       rhythm_chart.gd        数据层：读谱容错、lane 参数、事件求值、缓动、音符换算
-      judge.gd               判定引擎：tap / hold / flick / mine、连击、分数（纯逻辑）
+      judge.gd               判定引擎：tap / hold、连击、分数（纯逻辑）
       chart_source.gd        谱面发现与加载（zip / 文件夹 / json、音频与曲绘字节 → 资源）
       settings.gd            玩家设置（user://settings.cfg 读写）
     game/
@@ -147,11 +154,17 @@ game/
       ui_kit.gd              建控件的小函数（label / button / panel / chip / stepper…）
     screens/
       warning.gd             启动：光敏性癫痫警告（5 秒自动继续，任意键 / 点击可跳过）
-      start.gd               开始界面：标题 +「开始」按钮（Enter / 空格）
+      main_menu.gd           主界面脚本：只做连线和换立绘（界面节点都在 scenes/main_menu.tscn 里，可在编辑器拖）
+      collection.gd          收藏品：看板娘立绘 + 曲绘图鉴（点卡片放大）
+      profile.gd             个人资料：改名 + 游玩统计
       song_select.gd         选曲：列表 + 详情 + 拖拽导入 + 空状态提示
       settings_screen.gd     设置项
       results.gd             结算
   audio/hit.wav              打击音（可换）
+  assets/main_bg.png         主界面背景（换成自己的科幻背景即可）
+  assets/banners/*.png       看板娘立绘（主界面右下角可切换，收藏品里也会列出来；按文件名排序）
+  assets/menu/*.png          主界面切图（User_name 名牌 / Start / Collection / Setting / User_profile 按钮 / change_character 切换立绘 / Line 装饰线）
+  src/ui/sprite_button.gd    切图按钮组件（TextureRect + 悬停上浮/不透明度变化），编辑器里可直接挂
   charts/                    ← 你的谱面放这里（现在只有 README）
   tests/
     run_core_tests.gd        纯逻辑单测（headless）
@@ -163,34 +176,33 @@ game/
 
 ## 判定 / 评分
 
-判定窗口（`settings.judge_window_scale` 会整体缩放，默认 1.00×）：
+判定窗口（固定值，不再提供缩放设置）：
 
 | 判定 | 时间窗 | 权重 |
 | --- | --- | --- |
 | PERFECT+ | ≤ 55 ms | 100% |
 | PERFECT | ≤ 80 ms | 100% |
-| GOOD | 80 ~ 160 ms | 75% |
-| MISS | 超过 160 ms 没打 / hold 断了（**没有 BAD 判定**） | 0% |
+| GOOD | 80 ~ 140 ms | 75% |
+| BAD | 140 ~ 220 ms | 0% |
+| MISS | 超过 220 ms 没打 / hold 断了 | 0% |
 
-- 按键找音符：轨道判定区接受这个键 + 未判定 + `|dt| ≤ 160ms`（Good 窗口），取 `|dt|` 最近的那个；超过就完全打不中
+- 按键找音符：轨道判定区接受这个键 + 未判定 + `|dt| ≤ 220ms`（Bad 窗口），取 `|dt|` 最近的那个；超过就完全打不中
 - **分数**：`1,000,000 × (Σ权重 / 可判定音符数) + 10,000 × (Perfect+ 数 / 可判定音符数)`
   - 全 Perfect+ = **1,010,000**（非 Perfect+ 部分满分 1,000,000，Perfect+ 单独再算 10,000）
   - 没有连击加成，分数只由准确率决定
 - **ACC（准确率）**：`Σ权重 / 判定数`（实时）/ `Σ权重 / 可判定音符数`（结算）
-  - Perfect+ / Perfect 记 100%，Good 记 75%，Miss 记 0%
-  - **Early / Late**：Perfect 和 Good 各分「早按 / 晚按」计数（`judge.early_late`），结算界面单独显示一行；Perfect+ 不区分
+  - Perfect+ / Perfect 记 100%，Good 记 75%，Bad / Miss 记 0%；**Bad 和 Miss 一样会断连击**
+  - **Early / Late**：Perfect 和 Good 各分「早按 / 晚按」计数（`judge.early_late`），结算界面单独显示一行；Perfect+ / Bad 不区分
 - 没有血量条也没有失败：漏了就是漏了，谱面一定播完（结算照常出评级）
 - 评级：≥96% `S`，≥92% `A`，≥85% `B`，≥75% `C`，其余 `D`
-- 徽章：`ALL PERFECT+`（全 Perfect+）、`ALL PERFECT`（全 PERFECT 及以上）、`FULL COMBO`（0 MISS）
+- 徽章：`ALL PERFECT+`（全 Perfect+）、`ALL PERFECT`（全 PERFECT 及以上）、`FULL COMBO`（0 MISS + 0 BAD）
 
-四种音符：
+两种音符：
 
 | type | 行为 |
 | --- | --- |
 | `tap` | 按到就判 |
 | `hold` | 头判命中后**只要键盘上还有任意键按着**就算保持（换手、换边、zone 事件切到另一侧都不算断）；所有键都松开才断（撤掉判定记 MISS）；按到尾部 → 完成 |
-| `flick` | 当前用按键触发（和 tap 一样），没做滑动识别 |
-| `mine` | **不要按**。按到（±120ms、同判定区）断连击、记 MINE；自然过线无事、不计入准确率与分数 |
 
 > 一个音符只产生一次判定：hold 的头判就是它的判定，断了会降级成 MISS。
 
@@ -208,43 +220,44 @@ game/
 | --- | --- |
 | 关 | 什么特效都不画（纯预渲染画面） |
 | 标准 | 一圈判定环（略细） |
-| 强（默认） | 一圈判定环（更粗）；地雷爆炸红环 + 强屏震 |
+| 强（默认） | 一圈判定环（更粗） |
 
 判定档位不一样的反馈（颜色在 [src/ui/palette.gd](src/ui/palette.gd) 的 `JUDGE_COLORS`）：
 
 | 判定 | 颜色 | 特效 |
 | --- | --- | --- |
-| PERFECT+ / PERFECT | 紫 `#b06bff` | **同一个效果**：一圈粗判定环（**不屏震**） |
-| GOOD | 蓝 `#4c9aff` | 同上，一圈判定环（**不屏震**） |
+| PERFECT+ / PERFECT | 紫 `#b06bff` | **同一个效果**：一圈粗判定环 |
+| GOOD | 蓝 `#4c9aff` | 同上，一圈判定环 |
+| BAD | 红 `#ff2d55` | 判定线**闪一下红**（`BAD_FLASH_TIME = 0.42s`，带一圈淡红光）；**tap**：音符在自己的位置自己渐变消失（`BAD_FADE_TIME = 0.25s`，不变红、不回到判定线）；**hold**：直接变成 50% 透明的样子继续下落；都没有判定环 |
 | MISS | — | **没有任何特效**（不画红叉，音符直接过线消失） |
-| 踩雷 | 红 | 红环 + 强屏震 |
 
-- `hold` 按到尾部有一个紫色的完成环；**hold 吃到 MISS 不会立刻消失**，
+- `hold` **按到尾部不放任何特效**（尾部没有判定环）；**hold 吃到 BAD / MISS 不会立刻消失**，
   而是压到 50% 透明度继续挂着，等尾巴过判定线才消失
 - 轨道本体和判定线**不做任何「击打变亮」**：命中时只有屏幕坐标上的那一圈判定环，
   轨道颜色、亮度、判定线宽度都只由谱面本身（`alpha` / `color` / `zone`）决定，和预渲染窗口完全一致
 - 全部在 [src/game/stage_view.gd](src/game/stage_view.gd) 的「打击特效」一节：
   `_draw_fx()` 画判定环（`_fx_color()` 决定颜色，Perfect+ 与 Perfect 同色）、
-  `_add_shake()` 屏震（现在只有踩雷会震）；寿命常量在文件顶部
+  寿命常量在文件顶部
   （`FX_RING_START` / `FX_RING_GROW` / `FX_RING_WIDTH` / `FX_RING_LIFE`）
 
 ## 和 docs 的对应（硬约束都在这）
 
 | 规范 | 实现位置 |
 | --- | --- |
-| `judge_y = round(H × 0.85)`、`cx = W/2 + x`、`cy = judge_y − y` | `stage_view.gd::_draw` / `_lane_geom` |
+| `judge_y = round(H × 0.85)`、`cx = W/2 + frame.x`、`cy = judge_y − frame.y`（`frame` 已含父线） | `stage_view.gd::_draw` / `_lane_geom` |
 | `dir = Vector2.UP.rotated(rad)`（0° 朝上、顺时针为正） | 同上 |
 | `lane_w = min(W×0.05, W×0.43/N)`、`half_w = max(2, lane_w/2 − 0.5)` | 同上 |
 | `d = (note.time − t) × base_pps × speedMult`，`speedMult = speed²/100` | `_draw_notes` |
 | `laneLen = judge_y × length/10`，透明度只藏轨道不藏音符 | `_draw_lane_body` / `_draw_notes` |
 | 渲染顺序：轨道 → 音符 → 判定线（判定线最后画） | `_draw` 分三趟画 |
-| 事件 6 通道、结束后保持尾值不回弹 | `rhythm_chart.gd::lane_params_at` |
+| 事件 6 通道 + `parent` / `zone`，结束后保持尾值不回弹 | `rhythm_chart.gd::lane_params_at` |
+| 父线坐标系（递归叠加，最多 8 层，防环） | `rhythm_chart.gd::lane_frame_at` |
 | hold 在流速 0 时回退到最近的非零流速 | `rhythm_chart.gd::hold_speed_mult`（对齐 core.js `holdSpeed`） |
 | 缓动（含 `bezier(...)`，数值和网页版一致） | `rhythm_chart.gd::ease_at` |
 | 谱面时间 = 音频时间 − `audio.offset` − 玩家偏移 | `gameplay.gd::_chart_offset/_sample_audio_time` |
 | 16:9 像素值自洽 | 逻辑 350×196.875 → 16:9 窗口里正好铺满 |
 
-`base_pps = judge_y / 可视秒数`，可视秒数 = 谱面 `stage.highway_length` / `settings.speed_mult`
+`base_pps = judge_y / 可视秒数`，可视秒数 = 谱面 `stage.highway_length` / `settings.speed_mult`（固定 1.0）
 （默认 2 秒，和制谱器预览一致）。
 
 ## 设置
@@ -252,14 +265,9 @@ game/
 | 项 | 默认 | 说明 |
 | --- | --- | --- |
 | 音画偏移 | 0 ms | 正数 = 谱面整体推后；蓝牙耳机有延迟就调它 |
-| 下落速度 | 1.00× | 判定线→画面顶的秒数 = 2.0 / 倍率 |
-| 判定窗口 | 1.00× | 55 / 80 / 160 ms 整体缩放 |
-| 自动演示 | 关 | 选曲界面按 `A` 也可以一次性开 |
 | 音乐/打击音音量 | 85% / 60% | 打击音音量旁边有「试听」 |
 | 打击音 | 开 | 暂停面板里也能切 |
-| 打击特效 | 强 | 关 / 标准 / 强（判定环粗细；只有踩雷会屏震） |
-| 键位布局 | `ASDF / JKL;` | 另一套是 `DF / JK` |
-| 画面垂直偏移 | -24 px | 在居中的基础上往上抬一点；调 0 = 严格居中 |
+| 打击特效 | 强 | 关 / 标准 / 强（判定环粗细） |
 
 存档：`user://settings.cfg`（Windows ≈ `%APPDATA%\Godot\app_userdata\Rhythm Game\settings.cfg`）。
 
@@ -285,7 +293,7 @@ game/
     由 `tools/bake_unlock.ps1` 烘焙成 `unlock_frames/*.jpg` + `unlock_audio.ogg` + `unlock.json`
     （本机 ffmpeg 的 libtheora 编码坏的，产不出可播 ogv，所以走帧序列）；任意键 / 点击跳过；`debug_mode` / 无头模式自动跳过
   - 谱面场的**后处理 Shader** 已生效：一条 shader = 一层，逐层叠加（`shaders/story_grade.gdshader` + `src/game/stage_post.gd`，
-    每层一个 ColorRect，层间插 `BackBufferCopy`），14 种预设和网页版同一套公式
+    每层一个 ColorRect，层间插 `BackBufferCopy`），15 种预设和网页版同一套公式
   - **解锁动画 / 文字 / 图片 / 形状图层还没画**（Godot 端只做了解析，图层渲染待补）
 - **曲绘作者**：谱面 `meta.illustrator`（制谱器侧栏「曲绘画师」那栏）。选曲详情在「谱师」下面多一行
   「曲绘 XXX」，结算界面标题下面也会显示；空串就整行不占位（老谱面不用改）
@@ -315,7 +323,6 @@ game/
 ## 已知限制
 
 - 不支持变速：`timing.bpm_events` 只取第一个 BPM（会告警）
-- `flick` 没有滑动/触屏判定，按键即算
 - 只有键盘判定，没有触摸音符、没有准星
 - 键位只有两套预设，没有自定义映射
 - 不保存成绩 / 排行 / 最佳记录

@@ -1,4 +1,4 @@
-﻿/* =============================================================================
+/* =============================================================================
  * Rhythm 制谱器 · 界面层
  * 时间轴（canvas 自绘）+ 鼠标键盘交互 + 音频播放 + JSON 存读 + 撤销
  * 只依赖 core.js（window.RChart）
@@ -36,6 +36,8 @@
     selectedEvs: [],
     eventClip: null,
     noteClip: null,
+    extraFiles: [],          // 打开 zip 时原样留着的其它文件（storyboard.json / assets/…）
+    storyboardName: '',
     lastArea: 'note',
     playRate: 1,
     playing: false,
@@ -221,6 +223,7 @@
     drawGrid();
     drawEvents();
     drawNotes();
+    drawDupMarks();
     drawBox();
     drawJudgeLine();
     drawMinimap();
@@ -265,7 +268,7 @@
   /** 右半边：事件区，6 列 = 6 个参数通道 */
   var KEY_LABEL = {
     x: 'X', y: 'Y', alpha: '透明度', rotation: '旋转', speed: '流速', length: '长度',
-    zone: '判定区'
+    zone: '判定区', parent: '父线'
   };
 
   /** 左边一屏最多显示几条轨道（多了用下面的滚动条翻） */
@@ -481,36 +484,13 @@
       var col = RC.displayColor(lane);
       var sel = isSelected(n);
 
-      if (n.type === 'mine') {
-        rr(r.x, r.y, r.w, Math.max(NOTE_H, r.h), 4);
-        g.fillStyle = '#1b1f28';
-        g.fill();
-        g.strokeStyle = '#ef476f';
-        g.lineWidth = 1.5;
-        g.stroke();
-        var mx = r.x + r.w / 2, my = r.y + Math.max(NOTE_H, r.h) / 2;
-        g.beginPath();
-        g.moveTo(mx - 4, my - 4); g.lineTo(mx + 4, my + 4);
-        g.moveTo(mx + 4, my - 4); g.lineTo(mx - 4, my + 4);
-        g.stroke();
-      } else if (n.type === 'hold') {
+      if (n.type === 'hold') {
         g.fillStyle = hexA(col, 0.28);
         g.fillRect(r.x + 4, r.y, r.w - 8, r.h);
         g.fillStyle = hexA(col, 0.55);
         g.fillRect(r.x, r.y, r.w, Math.max(3, Math.min(NOTE_H, r.h)));
         rr(r.x, r.y + r.h - NOTE_H, r.w, NOTE_H, 4);
         g.fillStyle = col;
-        g.fill();
-      } else if (n.type === 'flick') {
-        rr(r.x, r.y, r.w, NOTE_H, 5);
-        g.fillStyle = col;
-        g.fill();
-        g.fillStyle = '#0e1016';
-        g.beginPath();
-        g.moveTo(r.x + r.w / 2 + 7, r.y + 2);
-        g.lineTo(r.x + r.w / 2 - 3, r.y + NOTE_H / 2);
-        g.lineTo(r.x + r.w / 2 + 7, r.y + NOTE_H - 2);
-        g.closePath();
         g.fill();
       } else {
         rr(r.x, r.y, r.w, NOTE_H, 5);
@@ -592,20 +572,130 @@
     };
   }
 
-  /** 一条轨道在舞台上的几何：跑事件动画后的基点 + 朝向 + 长度 + 透明度 + 流速 */
-  function laneGeom(i) {
+  /* ---------- 重叠音符标记 ---------- */
+
+  var dupCache = null;
+
+  function dups() {
+    if (!dupCache) dupCache = RC.duplicateGroups(S.chart);
+    return dupCache;
+  }
+
+  function dropDupCache() { dupCache = null; issueCache = null; }
+
+  /** 跳到下一处重叠（找不到就绕回第一处），并选中那一组 */
+  function nextDupGroup() {
+    var list = dups();
+    if (!list.length) {
+      setHint('没有重叠的音符');
+      return;
+    }
+    var pick = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].time > S.viewTime + 1e-4) { pick = list[i]; break; }
+    }
+    if (!pick) pick = list[0];
+    if (S.playing) pause();
+    setPlayhead(pick.time);
+    S.selectedIds = pick.notes.map(function (n) { return n.id; });
+    S.selectedId = S.selectedIds[0];
+    var idx = list.indexOf(pick) + 1;
+    setHint('第 ' + idx + '/' + list.length + ' 组重叠：轨道 ' + (pick.lane + 1) +
+      ' · ' + RC.formTime(pick.time) + ' · ' + pick.notes.length + ' 个');
+    refreshStatus(true);
+  }
+
+  var issueCache = null;
+
+  function issues() {
+    if (!issueCache) issueCache = RC.chartIssues(S.chart);
+    return issueCache;
+  }
+
+  /** 跳到下一处有问题的地方（找不到就绕回第一处） */
+  function nextIssue() {
+    var list = issues();
+    if (!list.length) {
+      setHint('没发现问题');
+      return;
+    }
+    var pick = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].time > S.viewTime + 1e-4) { pick = list[i]; break; }
+    }
+    if (!pick) pick = list[0];
+    if (S.playing) pause();
+    setPlayhead(pick.time);
+    S.selectedIds = pick.ids.slice();
+    S.selectedId = S.selectedIds[0];
+    var idx = list.indexOf(pick) + 1;
+    setHint('第 ' + idx + '/' + list.length + ' 处问题：' + pick.text +
+      '（轨道 ' + (pick.lane + 1) + ' · ' + RC.formTime(pick.time) + '）');
+    refreshStatus(true);
+  }
+
+  /** 在时间轴里给重叠的音符描一圈 */
+  function drawDupMarks() {
+    var list = dups();
+    if (!list.length) return;
+    g.save();
+    g.strokeStyle = '#f72585';
+    g.lineWidth = 1.5;
+    g.setLineDash([3, 2]);
+    for (var i = 0; i < list.length; i++) {
+      var grp = list[i];
+      var local = grp.lane - L.laneScroll;
+      if (local < 0 || local >= L.visCount) continue;
+      var x = L.laneX0 + local * L.laneW;
+      var y = timeToY(grp.time);
+      if (y < -20 || y > L.judgeY + 20) continue;
+      g.strokeRect(x + 1.5, y - NOTE_H / 2 - 4, Math.max(4, L.laneW - 3), NOTE_H + 8);
+    }
+    g.restore();
+  }
+
+  /**
+   * 轨道在舞台上的几何。有父线时，x / y / 旋转 都是「在父线坐标系里的相对量」：
+   * x 沿父线的横向、y 沿父线的轨道方向（向上为正），旋转是叠加的。
+   * 所以父线一动，子线整条跟着动。父线是事件通道，可以随时间变、也可以设回 0 取消。
+   */
+  function laneGeom(i, depth, seen) {
+    depth = depth || 0;
+    seen = seen || {};
     var lane = S.chart.lanes[i];
     var p = RC.laneParamsAt(lane, S.viewTime);
-    var rad = RC.num(p.rotation, 0) * Math.PI / 180;
+    var rotDeg = RC.num(p.rotation, 0);
+    var px = RC.num(p.x, 0);
+    var py = RC.num(p.y, 0);
+
+    var base;
+    var parentIdx = RC.parentAt(lane, S.viewTime, S.chart.lanes.length);
+    // 防环：父链上再遇到自己就当没有父线
+    if (parentIdx >= 0 && parentIdx !== i && !seen[parentIdx] && depth < 8) {
+      seen[i] = true;
+      var pfg = laneGeom(parentIdx, depth + 1, seen);
+      base = {
+        cx: pfg.cx + pfg.sx * px + pfg.dx * py,
+        cy: pfg.cy + pfg.sy * px + pfg.dy * py,
+        rot: pfg.rotDeg + rotDeg
+      };
+    } else {
+      parentIdx = -1;
+      base = { cx: PV.W / 2 + px, cy: PV.judgeY - py, rot: rotDeg };   // Y 向上为正，所以减
+    }
+
+    var rad = base.rot * Math.PI / 180;
     return {
       lane: lane,
       index: i + 1,                      // 轨道编号（1 起）
+      parent: parentIdx,
+      rotDeg: base.rot,
       alpha: RC.laneAlpha(p),
       speed: RC.laneSpeed(p),
       halfW: Math.max(2, PV.laneWidth / 2 - 0.5),
       len: PV.judgeY * RC.laneLength(p),
-      cx: PV.W / 2 + RC.num(p.x, 0),
-      cy: PV.judgeY - RC.num(p.y, 0),   // Y 向上为正，所以这里减
+      cx: base.cx,
+      cy: base.cy,
       dx: Math.sin(rad),
       dy: -Math.cos(rad),
       sx: Math.cos(rad),
@@ -777,35 +867,15 @@
       // 长条的头贴在判定线上，身体随尾巴一起缩进去
       var q = noteQuad(g, headD, halfW, NOTE_TH);
 
-      if (nt.type === 'mine') {
-        pathQuad(pg, q);
-        pg.fillStyle = '#1b1f28';
-        pg.fill();
-        pg.strokeStyle = '#ef476f';
-        pg.lineWidth = 1.5;
-        pg.stroke();
-      } else if (nt.type === 'flick') {
-        pathQuad(pg, q);
-        pg.fillStyle = col;
-        pg.fill();
-        var c = lanePointAt(g, headD);
-        pg.strokeStyle = '#080a0e';
-        pg.lineWidth = 1.5;
-        pg.beginPath();
-        pg.moveTo(c.x - g.dx * 2, c.y - g.dy * 2);
-        pg.lineTo(c.x + g.dx * 2, c.y + g.dy * 2);
-        pg.stroke();
-      } else {
-        pathQuad(pg, q);
-        pg.fillStyle = hexA(col, 0.92);
-        pg.fill();
-        pg.strokeStyle = 'rgba(255,255,255,0.55)';
-        pg.lineWidth = 1.5;
-        pg.beginPath();
-        pg.moveTo(q[0].x, q[0].y);
-        pg.lineTo(q[1].x, q[1].y);
-        pg.stroke();
-      }
+      pathQuad(pg, q);
+      pg.fillStyle = hexA(col, 0.92);
+      pg.fill();
+      pg.strokeStyle = 'rgba(255,255,255,0.55)';
+      pg.lineWidth = 1.5;
+      pg.beginPath();
+      pg.moveTo(q[0].x, q[0].y);
+      pg.lineTo(q[1].x, q[1].y);
+      pg.stroke();
 
       pg.globalAlpha = 1;
     }
@@ -913,6 +983,7 @@
   };
 
   function evRange(key) {
+    if (key === 'parent') return [0, Math.max(1, S.chart.lanes.length)];
     return EV_RANGE[key] || [0, 100];
   }
 
@@ -1155,13 +1226,18 @@
   }
 
   function markDirty() {
+    dropDupCache();
     S.dirty = true;
     updateTitle();
   }
 
+  function sbTag() {
+    return S.storyboardName ? ' · 含故事板' : '';
+  }
+
   function updateTitle() {
     var name = S.fileName || '新谱面';
-    $('file-name').textContent = (S.dirty ? '● ' : '') + name;
+    $('file-name').textContent = (S.dirty ? '● ' : '') + name + sbTag();
   }
 
   function pushUndo(before) {
@@ -1183,6 +1259,7 @@
   }
 
   function restore(json) {
+    dropDupCache();
     var res = RC.normalize(JSON.parse(json));
     if (!res.chart) return;
     S.chart = res.chart;
@@ -1225,10 +1302,14 @@
     var c = RC.countNotes(S.chart);
     $('st-time').textContent = RC.formTime(S.viewTime);
     $('st-notes').textContent =
-      '音符 ' + c.total + '（tap ' + c.tap + ' · hold ' + c.hold +
-      ' · flick ' + c.flick + ' · mine ' + c.mine + '）';
+      '音符 ' + c.total + '（tap ' + c.tap + ' · hold ' + c.hold + '）';
     $('st-bpm').textContent = 'BPM ' + S.chart.timing.bpm;
     $('st-len').textContent = '谱面时长 ' + RC.formTime(RC.chartDuration(S.chart));
+    var nd = $('st-dup');
+    if (nd) {
+      var dg = dups();
+      nd.textContent = dg.length ? ('重叠 ' + dg.length + ' 组') : '';
+    }
   }
 
   function setHint(text) {
@@ -1718,7 +1799,7 @@
         S.selectedLane = lb;
         ensureLaneVisible(lb);        // 左边跟着滚过去
         syncLaneScrollUI();
-        selectEvOnly('x', 0);
+            selectEvOnly('x', 0);
         syncInputs();
         refreshStatus(true);
         return;
@@ -2074,7 +2155,7 @@
     if (!hit) return;
     var n = hit.note;
     act(function () {
-      var order = ['tap', 'hold', 'flick', 'mine'];
+      var order = ['tap', 'hold'];
       var i = order.indexOf(n.type);
       n.type = order[(i + 1) % order.length];
       if (n.type === 'hold') {
@@ -2375,6 +2456,7 @@
     }
   }
 
+  /** 父线下拉（针对当前选中的轨道） */
   function bindPlayRate() {
     var sel = $('f-rate');
     if (!sel) return;
@@ -2568,6 +2650,8 @@
   }
 
   function setChart(chart, name) {
+    dropDupCache();
+    if (!name || !/\.zip$/i.test(name)) { S.extraFiles = []; S.storyboardName = ''; }
     S.chart = chart;
     selectOnly(0);
     selectEvOnly('x', 0);
@@ -2601,6 +2685,19 @@
 
     function finish(extra) {
       var all = fixed.concat(extra);
+
+      // 打开时带进来的其它文件（storyboard.json / assets/…）原样放回去，
+      // 别让「打开 zip 再导出」把故事板和 Shader 弄丢
+      var used = {};
+      var i;
+      for (i = 0; i < all.length; i++) used[all[i].name] = 1;
+      for (i = 0; i < S.extraFiles.length; i++) {
+        var ef = S.extraFiles[i];
+        if (used[ef.name]) continue;
+        used[ef.name] = 1;
+        all.push({ name: ef.name, data: ef.data });
+      }
+
       var bytes = RC.zipStore(all);
       var blob = new Blob([bytes], { type: 'application/zip' });
       var url = URL.createObjectURL(blob);
@@ -2699,10 +2796,24 @@
       var coverName = pickEntry(files, S.chart.meta.cover, /\.(png|jpe?g|webp|gif)$/i);
       if (coverName) setCoverBytes(coverName, files[coverName]);
 
+      // 其余东西原样留着（storyboard.json、assets/ 里的视频图片…），导出时带回去
+      S.extraFiles = [];
+      var keep = {};
+      keep[jsonName] = 1;
+      if (audioName) keep[audioName] = 1;
+      if (coverName) keep[coverName] = 1;
+      for (var nm in files) {
+        if (!Object.prototype.hasOwnProperty.call(files, nm)) continue;
+        if (keep[nm]) continue;
+        S.extraFiles.push({ name: nm, data: files[nm] });
+      }
+      var sbEntry = pickEntry(files, 'storyboard.json', /(?!)/);
+      S.storyboardName = sbEntry || '';
+
       S.dirty = false;
       updateTitle();
       setHint('已打开 ' + zipName + '（' +
-        [jsonName, audioName, coverName].filter(Boolean).join(' + ') + '）');
+        [jsonName, audioName, coverName, sbEntry ? '故事板' : ''].filter(Boolean).join(' + ') + '）');
     });
   }
 
@@ -2765,6 +2876,8 @@
     });
 
     $('btn-play').addEventListener('click', togglePlay);
+    if ($('btn-dup')) $('btn-dup').addEventListener('click', nextDupGroup);
+    if ($('btn-issue')) $('btn-issue').addEventListener('click', nextIssue);
     $('btn-validate').addEventListener('click', function () {
       var issues = RC.validate(S.chart);
       if (!issues.length) {

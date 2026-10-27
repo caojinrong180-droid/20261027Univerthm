@@ -11,7 +11,7 @@ extends RefCounted
 ## 这个文件不依赖场景树，可以单独跑（tests/run_core_tests.gd 会直接调用）。
 
 const MAX_LANES := 16
-const NOTE_TYPES := ["tap", "hold", "flick", "mine"]
+const NOTE_TYPES := ["tap", "hold"]
 const KEYS := ["x", "y", "alpha", "rotation", "speed", "length"]
 
 ## 轨道参数默认值 / 合法范围（CHART_FORMAT 7.1）
@@ -171,11 +171,15 @@ static func parse(raw) -> Dictionary:
 			"name": _str_of(src.get("name"), "Lane %d" % (i + 1)),
 			"color": _hex_color(src.get("color"), DEFAULT_LANE_COLOR),
 			"judge_zone": normalize_zone(src.get("judge_zone")),
+			# 父线：静态字段是 0 起（-1 = 不跟）
+			"parent": -1,
 			"events": {},
 		}
 		for key in KEYS:
 			var lim: Vector2 = LIMITS[key]
 			lane[key] = _round3(clampf(_num(src.get(key), DEFAULTS[key]), lim.x, lim.y))
+		var parent_i := _int_of(src.get("parent"), -1)
+		lane["parent"] = parent_i if (parent_i >= 0 and parent_i < lane_count) else -1
 
 		# 事件：6 条通道各自一个数组
 		var evs = src.get("events", {})
@@ -229,6 +233,31 @@ static func parse(raw) -> Dictionary:
 					})
 				zout.sort_custom(func(a, b): return float(a["start"]) < float(b["start"]))
 				lane["events"]["zone"] = zout
+
+			# parent 通道（父线）：0 = 不跟，i + 1 = 挂在第 i 条轨道上
+			var parr = evs.get("parent", [])
+			if parr is Array:
+				var pout: Array = []
+				for e in parr:
+					if typeof(e) != TYPE_DICTIONARY:
+						continue
+					var pstart := _num(e.get("start"), 0.0)
+					var pend := _num(e.get("end"), pstart)
+					if pend < pstart:
+						pend = pstart
+					var pease := _str_of(e.get("ease"), "linear")
+					if not is_known_ease(pease):
+						pease = "linear"
+					pout.append({
+						"start": pstart,
+						"end": pend,
+						"ease": pease,
+						"from": clampf(_num(e.get("from"), 0.0), 0.0, float(lane_count)),
+						"to": clampf(_num(e.get("to"), 0.0), 0.0, float(lane_count)),
+					})
+				pout.sort_custom(func(a, b): return float(a["start"]) < float(b["start"]))
+				if not pout.is_empty():
+					lane["events"]["parent"] = pout
 		chart["lanes"].append(lane)
 
 	# ---- notes ----
@@ -247,8 +276,8 @@ static func parse(raw) -> Dictionary:
 				lane_i = clampi(lane_i, 0, lane_count - 1)
 			var type := _str_of(rn.get("type"), "tap")
 			if not NOTE_TYPES.has(type):
-				warnings.append("有音符类型不认识（%s），当成 tap" % type)
-				type = "tap"
+				# flick / mine 已经不支持了：直接丢掉，不当成 tap 混进来
+				continue
 			var dur := 0.0
 			if type == "hold":
 				dur = maxf(0.0, _round3(_num(rn.get("duration"), 0.0)))
@@ -409,6 +438,57 @@ static func lane_params_at(lane: Dictionary, t: float) -> Dictionary:
 	return p
 
 
+## 某一刻这条轨道的父线序号（-1 = 没有父线）
+## 静态字段 `parent` 是 0 起（-1 = 不跟）；事件通道 `parent` 是 0 = 不跟、i + 1 = 轨道 i
+static func lane_parent_at(lane: Dictionary, t: float, lane_count: int) -> int:
+	var idx := _int_of(lane.get("parent"), -1)
+	var evs = lane.get("events", {})
+	if evs is Dictionary:
+		var arr = evs.get("parent", [])
+		if arr is Array and not arr.is_empty():
+			var cur = null
+			for e in arr:
+				if float(e["start"]) <= t + 1e-9:
+					cur = e
+				else:
+					break
+			if cur != null:
+				var span: float = float(cur["end"]) - float(cur["start"])
+				var k: float = 1.0 if span <= 1e-9 else clampf((t - float(cur["start"])) / span, 0.0, 1.0)
+				var eased := ease_at(str(cur["ease"]), k)
+				var v := float(cur["from"]) + (float(cur["to"]) - float(cur["from"])) * eased
+				idx = int(roundf(v)) - 1
+	if idx < 0 or idx >= lane_count:
+		return -1
+	return idx
+
+
+## 轨道坐标系（已把父线 / 爷爷线叠进来）：
+##   x / y = 相对「舞台中心 / 判定线」的偏移（y 向上为正），rot = 累计角度
+## 子线的 x 是沿父线横向的偏移、y 是沿父线方向（向上）的偏移，rotation 叠加。
+## 父链最多走 8 层，环会被切断（成环的那条当没有父线）。
+static func lane_frame_at(lanes: Array, index: int, t: float) -> Dictionary:
+	var chain: Array = []
+	var seen := {}
+	var cur := index
+	while cur >= 0 and cur < lanes.size() and chain.size() < 8 and not seen.has(cur):
+		seen[cur] = true
+		chain.append(cur)
+		cur = lane_parent_at(lanes[cur], t, lanes.size())
+
+	var ox := 0.0
+	var oy := 0.0
+	var rot := 0.0
+	for i in range(chain.size() - 1, -1, -1):        # 从根往叶子累加
+		var p := lane_params_at(lanes[chain[i]], t)
+		var rad := deg_to_rad(rot)
+		var px := float(p["x"])
+		var py := float(p["y"])
+		ox += cos(rad) * px + sin(rad) * py
+		oy += -sin(rad) * px + cos(rad) * py
+		rot += float(p["rotation"])
+	return {"x": ox, "y": oy, "rot": rot}
+
 ## 音符结束时间（hold 是 time + duration）
 static func note_end(note: Dictionary) -> float:
 	if str(note.get("type", "tap")) == "hold":
@@ -428,8 +508,7 @@ static func chart_duration(chart: Dictionary) -> float:
 static func judgeable_count(chart: Dictionary) -> int:
 	var c := 0
 	for n in chart.get("notes", []):
-		if str(n.get("type", "tap")) != "mine":
-			c += 1
+		c += 1
 	return c
 
 

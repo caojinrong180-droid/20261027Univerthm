@@ -101,7 +101,8 @@
     'uniform sampler2D uTex;',
     'uniform vec2 uRes;',
     'uniform float uTime;',
-    'uniform float uBloom, uRgb, uScan, uWave, uGlitch, uHeat, uPixel, uPoster, uGrain, uVignette, uInvert, uStretch;',
+    'uniform float uPunchT0;',
+    'uniform float uBloom, uRgb, uScan, uWave, uGlitch, uHeat, uPixel, uPoster, uGrain, uVignette, uInvert, uStretch, uZoom, uShake;',
     '',
     'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
     '',
@@ -147,6 +148,24 @@
     '    float edge = max(sa.x, sa.y);',
     '    float k = uStretch * (0.16 * corner + 0.03 * edge * edge * edge);',
     '    uv = 0.5 + sp * (1.0 - clamp(k, 0.0, 0.35));',
+    '  }',
+    '',
+    '  float punch = 0.0;',
+    '  if (uZoom > 0.001) {',
+    '    // 冲击放大：进区间那一下「砰」地放大，0.22s 内回弹到原样（末尾略小于 1 = 过冲抖一下）',
+    '    float k = clamp((t - uPunchT0) / 0.22, 0.0, 1.0);',
+    '    punch = pow(1.0 - k, 2.5);',
+    '    float over = -0.05 * sin(3.14159 * k) * (1.0 - k);',
+    '    float z = 1.0 + (0.18 * punch + over) * uZoom;',
+    '    uv = 0.5 + (uv - 0.5) / z;',
+    '  }',
+    '',
+    '  if (uShake > 0.001) {',
+    '    // 抖动只在冲击那一下：幅度跟着 punch 走，放大瞬间抖得最厉害',
+    '    float amp = 0.0075 * uShake * punch;',
+    '    float sx = sin(t * 41.0) * 0.6 + sin(t * 97.0 + 1.7) * 0.4;',
+    '    float sy = cos(t * 37.0 + 0.5) * 0.6 + cos(t * 89.0 + 2.3) * 0.4;',
+    '    uv += vec2(sx, sy) * amp;',
     '  }',
     '',
     '  uv = clamp(uv, 0.0, 1.0);',
@@ -207,7 +226,9 @@
     grain: 'uGrain',
     vignette: 'uVignette',
     invert: 'uInvert',
-    stretch: 'uStretch'
+    stretch: 'uStretch',
+    zoom: 'uZoom',
+    shake: 'uShake'
   };
 
   function compile(gl, type, src) {
@@ -314,7 +335,8 @@
       var u = {
         uTex: gl.getUniformLocation(prog, 'uTex'),
         uRes: gl.getUniformLocation(prog, 'uRes'),
-        uTime: gl.getUniformLocation(prog, 'uTime')
+        uTime: gl.getUniformLocation(prog, 'uTime'),
+      uPunchT0: gl.getUniformLocation(prog, 'uPunchT0')
       };
       for (var key in WEIGHT_UNIFORMS) {
         if (Object.prototype.hasOwnProperty.call(WEIGHT_UNIFORMS, key)) {
@@ -385,7 +407,9 @@
     var stack = scene ? SB.activeShaders(scene, local) : [];
     this.lastStack = stack;
     this.lastWeights = scene ? SB.combineShaderWeights(scene, local) : SB.emptyWeights();
-    this.postStack(stack, frame.phase === undefined ? frame.t : frame.phase);
+    var globalT = frame.phase === undefined ? frame.t : frame.phase;
+    // 冲击放大用的 punchT0 是「场景内时间」，而 uTime 是全局时间 → 这里算差值
+    this.postStack(stack, globalT, globalT - local);
   };
 
   /** 只重画后处理（UI 里拖 shader 强度时不用整帧重画） */
@@ -466,7 +490,7 @@
   };
 
   /** 逐层叠加：层 1 → 层 2 → … → 屏幕 */
-  Renderer.prototype.postStack = function (stack, time) {
+  Renderer.prototype.postStack = function (stack, time, shift) {
     var gl = this.gl;
     var t = time || 0;
     if (!gl) {
@@ -511,6 +535,10 @@
       gl.viewport(0, 0, W, H);
       gl.bindTexture(gl.TEXTURE_2D, tg.tex[cur]);
       this.setWeights(stack[i].weights);
+      if (this.uniforms.uPunchT0) {
+        var t0 = stack[i].punchT0 === undefined ? 0 : stack[i].punchT0;
+        gl.uniform1f(this.uniforms.uPunchT0, t0 + (shift || 0));
+      }
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       cur = next;
     }

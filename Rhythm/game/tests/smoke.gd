@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## headless 冒烟测试：真把选曲 / 游玩 / 结算 / 设置建起来跑一遍，
 ## 并用「自动演示」把一个**运行时合成的测试谱面**（tests/fixtures/synthetic_chart.gd）
 ## 从头打到尾，检查判定统计。
@@ -66,7 +66,6 @@ func _check_fx_rules() -> void:
 	game.debug_start_now()
 	var stage: StageView = game.stage
 	stage._fx.clear()
-	stage._shake_amp = 0.0
 
 	eq(Palette.judge_color("perfect").to_html(false), "b06bff", "Perfect 颜色 = 紫")
 	eq(Palette.judge_color("good").to_html(false), "4c9aff", "Good 颜色 = 蓝")
@@ -74,12 +73,22 @@ func _check_fx_rules() -> void:
 	stage._on_note_judged({"type": "tap", "lane": 0, "state": "judged"}, "perfect", 0.0)
 	check(stage._fx.size() == 1, "Perfect 只有一圈判定环")
 	eq(stage._fx_color("perfect_plus").to_html(false), stage._fx_color("perfect").to_html(false), "Perfect+ 与 Perfect 特效同色")
-	check(is_zero_approx(stage._shake_amp), "Perfect 不屏震")
 
 	stage._fx.clear()
 	stage._on_note_judged({"type": "tap", "lane": 0, "state": "judged"}, "good", 0.0)
 	check(stage._fx.size() == 1, "Good 也有一圈判定环")
-	check(is_zero_approx(stage._shake_amp), "Good 不屏震")
+
+	stage._fx.clear()
+	var bad_note := {"type": "tap", "lane": 0, "state": "judged"}
+	stage._on_note_judged(bad_note, "bad", 0.0)
+	check(stage._fx.is_empty(), "Bad 不产生判定环")
+	check(bad_note.has("bad_fade_t"), "Bad 的音符变红快速淡出")
+
+	stage._fx.clear()
+	var hold_bad := {"type": "hold", "lane": 0, "state": "judged"}
+	stage._on_note_judged(hold_bad, "bad", 0.0)
+	check(not hold_bad.has("bad_fade_t"), "Hold 的 Bad 不做淡出")
+	check(bool(hold_bad.get("hold_dim", false)), "Hold 的 Bad 直接变半透明继续下落")
 
 	stage._fx.clear()
 	stage._on_note_judged({"type": "tap", "lane": 0, "state": "judged"}, "miss", 0.0)
@@ -91,8 +100,10 @@ func _check_fx_rules() -> void:
 	check(bool(hold_miss.get("hold_dim", false)), "Hold 的 Miss 会压到 50% 透明")
 	check(stage._fx.is_empty(), "Hold 的 Miss 不放特效")
 
-	stage._on_mine_detonated({"type": "mine", "lane": 0}, 0.0)
-	check(stage._shake_amp > 0.0, "踩雷还屏震")
+	stage._fx.clear()
+	stage._on_hold_completed({"type": "hold", "lane": 0, "state": "judged", "result": "perfect"})
+	check(stage._fx.is_empty(), "长条按到尾部不放判定环")
+
 	game.queue_free()
 	await get_tree().process_frame
 
@@ -224,8 +235,7 @@ func _check_gameplay_autoplay() -> void:
 		check(str(result["grade"]) == "S", "自动演示评级 S")
 		check(bool(result["ap"]), "自动演示 AP")
 		check(int(result["max_combo"]) >= int(result["total"]), "最大连击 ≥ 可判定数")
-		check(int(result["counts"]["mine"]) == 0, "自动演示不会踩地雷")
-		check(int(result["note_count"]) - judgeable > 0, "谱面里的地雷不计入判定数")
+		check(int(result["note_count"]) == judgeable, "谱面里每颗音符都计入判定数")
 	check(not game.stage._fx.is_empty(), "自动演示全程有判定环")
 	game.queue_free()
 	await get_tree().process_frame
@@ -303,7 +313,7 @@ func _check_key_input() -> void:
 	await get_tree().process_frame
 
 
-## 多押标记：同一时刻（±20ms）≥2 个可判定音符才算，地雷不算
+## 多押标记：同一时刻（±20ms）≥2 个音符才算
 func _check_chord_marking() -> void:
 	var chart := SyntheticChart.build()
 	chart["notes"] = [
@@ -311,7 +321,6 @@ func _check_chord_marking() -> void:
 		{"time": 1.0, "lane": 1, "type": "tap"},
 		{"time": 1.01, "lane": 2, "type": "tap"},
 		{"time": 2.0, "lane": 2, "type": "hold", "duration": 0.5},
-		{"time": 2.0, "lane": 3, "type": "mine"},
 		{"time": 3.0, "lane": 0, "type": "tap"},
 	]
 	var stage := StageView.new()
@@ -321,8 +330,8 @@ func _check_chord_marking() -> void:
 	eq(int(notes[0].get("chord", 0)), 3, "同刻三押 → chord=3")
 	eq(int(notes[1].get("chord", 0)), 3, "三押第二颗也标记")
 	eq(int(notes[2].get("chord", 0)), 3, "20ms 内也算同刻")
-	eq(int(notes[3].get("chord", 0)), 0, "hold + 地雷同刻 → 地雷不算，不成多押")
-	eq(int(notes[5].get("chord", 0)), 0, "单独音符没有多押标记")
+	eq(int(notes[3].get("chord", 0)), 0, "hold 不和前面的 tap 算同刻")
+	eq(int(notes[4].get("chord", 0)), 0, "单独音符没有多押标记")
 	stage.free()
 	await get_tree().process_frame
 
@@ -333,7 +342,7 @@ func _check_settings() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	check(screen.get_child_count() > 0, "设置界面建起来了")
-	check(screen._labels.size() >= 8, "设置项数量")
+	check(screen._labels.size() >= 5, "设置项数量（音画偏移 / 音乐音量 / 打击音音量 / 打击音 / 打击特效）")
 	screen._refresh()
 	check(App.settings.key_layout in AppSettings.KEY_LAYOUTS, "键位布局合法")
 	screen.queue_free()

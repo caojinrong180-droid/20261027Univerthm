@@ -31,6 +31,8 @@
     <span class="sep"></span>
 
     <button id="btn-validate" class="btn" type="button">校验谱面</button>
+      <button id="btn-dup" class="btn" type="button" title="跳到下一处重叠音符">找重叠</button>
+      <button id="btn-issue" class="btn" type="button" title="跳到下一处有问题的地方（重叠 / 零长 hold / 长条压音符）">跳到问题</button>
 
     <span class="spacer"></span>
     <span id="file-name" class="filename">新谱面</span>
@@ -110,7 +112,7 @@
           <li>拖 hold 顶端 = 改长度</li>
           <li>右键点音符 = 删除</li>
           <li>右键空白上下拖 = 画一个 hold</li>
-          <li>双击音符 = tap→hold→flick→mine</li>
+          <li>双击音符 = tap ↔ hold 切换</li>
           <li>按住 Shift 拖 = 框选音符（可整组拖/删）</li>
           <li>画布下面的滚动条 = 轨道超过 6 条时左右翻</li>
           <li>Shift 拖 = 框选（音符区选音符、事件区选事件），Ctrl+C / Ctrl+V 粘贴到播放头</li>
@@ -176,6 +178,7 @@
     <span id="st-notes">音符 0</span>
     <span id="st-bpm" class="mono">BPM 150</span>
     <span id="st-len" class="mono">谱面时长 00:00.000</span>
+    <span id="st-dup" class="warn"></span>
     <span class="spacer"></span>
     <span id="st-hint" class="hint"></span>
   </footer>

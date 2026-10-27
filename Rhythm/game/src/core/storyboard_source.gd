@@ -26,6 +26,7 @@ const SHADER_PRESETS := {
 	"vignette": {"vignette": 1.0},
 	"grain": {"grain": 1.0, "vignette": 0.3},
 	"stretch": {"stretch": 1.0},
+	"zoomShake": {"zoom": 1.0, "shake": 1.0},
 	"dream": {"bloom": 0.7, "wave": 0.22, "grain": 0.12},
 	"flash": {"invert": 1.0, "bloom": 0.4},
 }
@@ -35,7 +36,7 @@ const INSTANT_PRESETS := ["rgb"]
 
 const WEIGHT_KEYS := [
 	"bloom", "rgb", "scan", "wave", "glitch", "heat",
-	"pixel", "poster", "grain", "vignette", "invert", "stretch",
+	"pixel", "poster", "grain", "vignette", "invert", "stretch", "zoom", "shake",
 ]
 
 
@@ -249,7 +250,7 @@ static func active_shaders(scene: Dictionary, local: float) -> Array:
 		var w := {}
 		for key in base:
 			w[key] = float(base[key]) * v
-		out.append({"preset": preset, "value": v, "weights": w})
+		out.append({"preset": preset, "value": v, "weights": w, "punchT0": float(fx.get("start", 0.0))})
 	return out
 
 

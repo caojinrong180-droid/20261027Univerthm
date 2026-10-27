@@ -1,4 +1,4 @@
-﻿class_name AppSettings
+class_name AppSettings
 extends RefCounted
 ## 玩家设置。存在 user://settings.cfg，Windows 上大约是
 ## %APPDATA%\Godot\app_userdata\Rhythm Game\settings.cfg
@@ -14,7 +14,7 @@ const KEY_LAYOUT_LABELS := {
 var audio_offset_ms := 0.0
 ## 下落速度倍率：1.0 = 判定线到画面顶走 2 秒，2.0 = 1 秒，0.5 = 4 秒
 var speed_mult := 1.0
-## 判定窗口倍率：1.0 = 45 / 90 / 135 ms
+## 判定窗口倍率：1.0 = 55 / 80 / 140 / 220 ms
 var judge_window_scale := 1.0
 ## 音乐 / 打击音音量 0~1
 var music_volume := 0.85
@@ -28,6 +28,10 @@ var autoplay := false
 var key_layout := "asdf_jkl"
 ## 画面垂直偏移（屏幕像素，正数往下）。默认 -24 = 在严格居中的基础上往上抬一点
 var stage_offset_px := -24.0
+## 玩家名（主界面左上角、个人资料里显示 / 修改）
+var player_name := "User"
+## 主界面看板娘立绘序号（assets/banners/ 里的第几张）
+var banner_index := 0
 
 
 func save() -> void:
@@ -42,6 +46,8 @@ func save() -> void:
 	cf.set_value("play", "autoplay", autoplay)
 	cf.set_value("play", "key_layout", key_layout)
 	cf.set_value("ui", "stage_offset_px", stage_offset_px)
+	cf.set_value("ui", "player_name", player_name)
+	cf.set_value("ui", "banner_index", banner_index)
 	var err := cf.save(PATH)
 	if err != OK:
 		push_warning("设置存不下来: %s" % error_string(err))
@@ -64,6 +70,9 @@ static func load_settings() -> AppSettings:
 	if KEY_LAYOUTS.has(layout):
 		s.key_layout = layout
 	s.stage_offset_px = clampf(float(cf.get_value("ui", "stage_offset_px", s.stage_offset_px)), -400.0, 400.0)
+	var nm := str(cf.get_value("ui", "player_name", s.player_name)).strip_edges()
+	s.player_name = nm if nm != "" else "User"
+	s.banner_index = clampi(int(cf.get_value("ui", "banner_index", s.banner_index)), 0, 99)
 	return s
 
 
@@ -78,6 +87,8 @@ func reset() -> void:
 	autoplay = false
 	key_layout = "asdf_jkl"
 	stage_offset_px = -24.0
+	player_name = "User"
+	banner_index = 0
 
 
 ## 毫秒 → 秒，判定时用

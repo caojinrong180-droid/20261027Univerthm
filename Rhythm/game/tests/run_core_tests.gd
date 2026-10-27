@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## 数据层 + 判定引擎的 headless 单测。
 ## 跑法：
 ##   godot --headless --path game --script res://tests/run_core_tests.gd
@@ -11,6 +11,7 @@ var failed := 0
 func _initialize() -> void:
 	print("== RhythmChart.parse ==")
 	_test_parse_defaults()
+	_test_zoom_shake_preset()
 	_test_unlock_frames()
 	_test_parse_clamp()
 	_test_parse_events()
@@ -29,8 +30,8 @@ func _initialize() -> void:
 	_test_judge_lane_hint()
 	_test_judge_miss()
 	_test_judge_hold()
-	_test_judge_mine()
 	_test_judge_early_late()
+	_test_parent_lanes()
 	_test_judge_stats()
 
 	print("== 谱面加载 ==")
@@ -88,7 +89,7 @@ func _test_parse_defaults() -> void:
 	eq(int(chart["notes"][0]["lane"]), 0, "lane 0")
 	check(RhythmChart.parse("not a dict")["chart"] == null, "非对象 → chart = null")
 	eq(RhythmChart.parse({"notes": [{"time": 1.0, "lane": 0, "type": "hold", "duration": 0}]})["chart"]["notes"][0]["type"], "tap", "duration<=0 的 hold → tap")
-	eq(RhythmChart.parse({"notes": [{"time": 0, "lane": 0, "type": "bogus"}]})["chart"]["notes"][0]["type"], "tap", "未知 type → tap")
+	eq(RhythmChart.parse({"notes": [{"time": 0, "lane": 0, "type": "bogus"}]})["chart"]["notes"].size(), 0, "未知 type（flick / mine 等）→ 直接丢掉")
 
 
 func _test_parse_clamp() -> void:
@@ -102,8 +103,8 @@ func _test_parse_clamp() -> void:
 		],
 		"notes": [
 			{"time": 3.0, "lane": 0, "type": "tap"},
+			{"time": 1.0, "lane": 1, "type": "tap"},
 			{"time": -2.0, "lane": 9, "type": "tap"},
-			{"time": 1.0, "lane": 1, "type": "flick"},
 		],
 	}
 	var chart: Dictionary = RhythmChart.parse(raw)["chart"]
@@ -172,12 +173,12 @@ func _test_duration_helpers() -> void:
 		"notes": [
 			{"time": 1.0, "lane": 0},
 			{"time": 2.0, "lane": 1, "type": "hold", "duration": 1.5},
-			{"time": 3.0, "lane": 2, "type": "mine"},
+			{"time": 3.0, "lane": 2, "type": "flick"},      # 不支持的类型，解析时会被丢掉
 		],
 		"lanes": [{}, {}, {}, {}],
 	})["chart"]
 	near(RhythmChart.chart_duration(chart), 3.5, "chart_duration 算到 hold 尾部")
-	eq(RhythmChart.judgeable_count(chart), 2, "地雷不计入可判定数")
+	eq(RhythmChart.judgeable_count(chart), 2, "不支持的 flick 会被丢掉，只剩 2 颗")
 	near(RhythmChart.note_end(chart["notes"][1]), 3.5, "note_end")
 
 
@@ -325,15 +326,27 @@ func _test_judge_windows() -> void:
 	near(j.score, 750000.0, "单个 Good = 750,000", 0.5)
 	near(j.accuracy_live(), 0.75, "Good 权重 75%")
 
-	# 没有 Bad 判定：超出 Good 窗口的按键打不中，音符过线后算 Miss
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
 	r = j.press("left", 1.2)
-	check(not bool(r["hit"]), "200ms（超过 Good 窗口）打不中")
-	j.update(1.2)
-	eq(int(j.counts["miss"]), 1, "漏掉的音符记 Miss")
-	near(j.score, 0.0, "Miss 不给分", 0.5)
-	near(j.accuracy_live(), 0.0, "Miss 权重 0%")
+	eq(str(r["result"]), "bad", "200ms → Bad（140~220ms）")
+
+	chart = _make_chart([{"time": 1.0, "lane": 0}])
+	j = _new_judge(chart)
+	r = j.press("left", 1.15)
+	eq(str(r["result"]), "bad", "150ms → Bad（Good 只到 140ms）")
+	near(j.score, 0.0, "Bad 不给分", 0.5)
+	near(j.accuracy_live(), 0.0, "Bad 权重 0%")
+	check(not j.is_full_combo(), "有 Bad 不算 FC")
+
+	# Bad 断连：先打一个 Perfect，再打一个 Bad
+	chart = _make_chart([{"time": 1.0, "lane": 0}, {"time": 2.0, "lane": 0}])
+	j = _new_judge(chart)
+	j.press("left", 1.0)
+	eq(j.combo, 1, "Perfect 连击 1")
+	j.press("left", 2.2)
+	eq(int(j.counts["bad"]), 1, "200ms 记 Bad")
+	eq(j.combo, 0, "Bad 断连")
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
@@ -344,8 +357,8 @@ func _test_judge_windows() -> void:
 	# 窗口倍率
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart, 2.0)
-	r = j.press("left", 1.3)
-	eq(str(r["result"]), "good", "窗口 2× 时 300ms 还能打到（good）")
+	r = j.press("left", 1.4)
+	eq(str(r["result"]), "bad", "窗口 2× 时 400ms 还能打到（bad）")
 
 
 func _test_judge_zones() -> void:
@@ -447,19 +460,6 @@ func _test_judge_hold() -> void:
 	eq(int(j3.counts["miss"]), 1, "hold 头判漏按 → miss")
 
 
-func _test_judge_mine() -> void:
-	var chart := _make_chart([{"time": 1.0, "lane": 0, "type": "mine"}, {"time": 3.0, "lane": 1, "type": "mine"}])
-	var j := _new_judge(chart)
-	eq(RhythmChart.judgeable_count(chart), 0, "地雷不算可判定")
-	var r := j.press("left", 1.02)
-	eq(str(r["kind"]), "mine", "按到地雷")
-	eq(int(j.counts["mine"]), 1, "地雷计数")
-	j.update(3.3)
-	eq(int(j.counts["miss"]), 0, "地雷过线不记 miss")
-	eq(j.mines_passed, 1, "地雷过线计数")
-	eq(str(chart["notes"][1]["state"]), "passed", "地雷状态 passed")
-
-
 func _test_judge_early_late() -> void:
 	var chart := _make_chart([
 		{"time": 1.0, "lane": 0}, {"time": 2.0, "lane": 0},
@@ -484,6 +484,55 @@ func _test_judge_early_late() -> void:
 	j2.set_pressed_zones([])
 	j2.update(1.2)
 	eq(int(j2.early_late["perfect_late"]), 0, "hold 断开后撤销 late 计数")
+
+
+func _test_parent_lanes() -> void:
+	# 解析：静态 parent（0 起）+ parent 事件通道（0 = 不跟、i+1 = 轨道 i）
+	var chart: Dictionary = RhythmChart.parse({
+		"lanes": [
+			{"name": "Main"},
+			{"name": "Sub", "x": -60, "events": {"parent": [
+				{"start": 0, "end": 0, "ease": "linear", "from": 1, "to": 1},
+			]}},
+			{"name": "Free"},
+		],
+		"notes": [], "stage": {"lane_count": 3},
+	})["chart"]
+	var lanes: Array = chart["lanes"]
+	eq(RhythmChart.lane_parent_at(lanes[1], 0.0, 3), 0, "parent 事件 1 → 挂在轨道 0")
+	eq(RhythmChart.lane_parent_at(lanes[2], 0.0, 3), -1, "没有父线 = -1")
+
+	var cancel_lane := {
+		"parent": 0,
+		"events": {"parent": [
+			{"start": 0, "end": 0, "ease": "linear", "from": 2, "to": 2},
+			{"start": 1, "end": 1, "ease": "linear", "from": 0, "to": 0},
+		]},
+	}
+	eq(RhythmChart.lane_parent_at(cancel_lane, 0.5, 3), 1, "事件值 2 → 轨道 1")
+	eq(RhythmChart.lane_parent_at(cancel_lane, 1.5, 3), -1, "放一条 0 就取消父线")
+	eq(RhythmChart.lane_parent_at({"parent": 9}, 0.0, 3), -1, "父线越界当没有")
+
+	# 坐标系：父线转 90° 时，子线 x 沿父线横向 → 变成竖直方向
+	var rot_chart: Dictionary = RhythmChart.parse({
+		"lanes": [
+			{"name": "Main", "rotation": 90},
+			{"name": "Sub", "x": -60, "rotation": 15, "parent": 0},
+		],
+		"notes": [], "stage": {"lane_count": 2},
+	})["chart"]
+	var f := RhythmChart.lane_frame_at(rot_chart["lanes"], 1, 0.0)
+	near(f["x"], 0.0, "父线转 90°：子线横向偏移转到竖轴", 0.001)
+	near(f["y"], 60.0, "子线 x=-60 变成向上 60", 0.001)
+	near(f["rot"], 105.0, "子线角度 = 父线 + 自己（90+15）", 0.001)
+
+	# 环：A→B→A 不能卡死，成环那条当没有父线
+	var cycle: Dictionary = RhythmChart.parse({
+		"lanes": [{"name": "A", "parent": 1}, {"name": "B", "parent": 0}],
+		"notes": [], "stage": {"lane_count": 2},
+	})["chart"]
+	var cf := RhythmChart.lane_frame_at(cycle["lanes"], 0, 0.0)
+	check(cf.has("x") and cf.has("rot"), "父线成环也能算出坐标系")
 
 func _test_judge_stats() -> void:
 	var chart := _make_chart([
@@ -678,6 +727,34 @@ func _test_unlock_frames() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join("unlock.json")))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join("unlock_frames")))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
+
+
+
+
+func _test_zoom_shake_preset() -> void:
+	var preset = StoryboardSource.SHADER_PRESETS.get("zoomShake", null)
+	check(preset != null, "Godot 侧也有「放大抖动」预设")
+	if preset != null:
+		near(float(preset.get("zoom", 0.0)), 1.0, "zoom 权重 = 1")
+		near(float(preset.get("shake", 0.0)), 1.0, "shake 权重 = 1")
+	check(StoryboardSource.WEIGHT_KEYS.has("zoom"), "WEIGHT_KEYS 里有 zoom")
+	check(StoryboardSource.WEIGHT_KEYS.has("shake"), "WEIGHT_KEYS 里有 shake")
+
+	# 一条 zoomShake 在区间内应该给出 zoom + shake 两个权重
+	var scene := {
+		"shaders": [{"id": 1, "preset": "zoomShake", "start": 0.0, "end": 2.0,
+			"amount": 100.0, "ramp": 0.0, "ease": "linear"}],
+	}
+	var stack := StoryboardSource.active_shaders(scene, 1.0)
+	eq(stack.size(), 1, "生效层数 = 1")
+	if stack.size() > 0:
+		var w: Dictionary = stack[0]["weights"]
+		near(float(w.get("zoom", 0.0)), 1.0, "生效时 zoom = 1")
+		near(float(w.get("shake", 0.0)), 1.0, "生效时 shake = 1")
+		near(float(stack[0].get("punchT0", -1.0)), 0.0, "punchT0 = 该层起点（场景内时间）")
+
+	# 区间外不该生效
+	eq(StoryboardSource.active_shaders(scene, 3.0).size(), 0, "区间外不生效")
 
 
 func _find_entry(entries: Array, title: String) -> Dictionary:

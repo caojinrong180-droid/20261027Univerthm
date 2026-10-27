@@ -3,6 +3,7 @@
 
 const RC = require('../js/core.js');
 const SB = require('../js/sb_core.js');
+const CS = require('../js/chart_stage.js');
 
 let pass = 0;
 const fails = [];
@@ -23,6 +24,7 @@ function near(a, b, eps, name) {
   if (!good) fails.push(name + '  →  实际 ' + a + ' / 期望 ' + b);
   else pass++;
 }
+
 
 /* ---------------- 工具函数 ---------------- */
 
@@ -303,6 +305,23 @@ eq(SB.shaderWeights('vignette').vignette, 1, '暗角权重 1');
 eq(SB.shaderWeights('vignette').grain, undefined, '暗角不再掺颗粒');
 ok(SB.shaderWeights('grain').grain === 1, '颗粒预设');
 eq(SB.shaderWeights('stretch').stretch, 1, '四角拉伸权重 1');
+
+  // 放大抖动：zoom + shake 两个权重
+  eq(SB.shaderWeights('zoomShake').zoom, 1, '放大抖动 zoom 权重 1');
+  eq(SB.shaderWeights('zoomShake').shake, 1, '放大抖动 shake 权重 1');
+
+  // 冲击放大：层里带上「进区间的时间点」，着色器靠它做「突然放大→回弹」
+  const punchStack = SB.activeShaders({ shaders: [SB.createShader('zoomShake', { start: 4.0, end: 12.0, amount: 100, ramp: 0 })] }, 4.05);
+  eq(punchStack.length, 1, '冲击放大层生效');
+  near(punchStack[0].punchT0, 4.0, 1e-6, 'punchT0 = 该层起点（场景内时间）');
+  ok(punchStack[0].weights.zoom > 0.9, '冲击瞬间 zoom 权重接近满值');
+  ok(SB.SHADER_PRESETS.some((p) => p.id === 'zoomShake'), '预设列表里有放大抖动');
+  eq(SB.shaderPreset('zoomShake').label, '放大抖动', '标签叫放大抖动');
+  ok(SB.WEIGHT_KEYS.indexOf('zoom') >= 0, 'zoom 是合法权重键');
+  ok(SB.WEIGHT_KEYS.indexOf('shake') >= 0, 'shake 是合法权重键');
+  const wZoom = SB.combineShaderWeights({ shaders: [SB.createShader('zoomShake', { start: 0, end: 2, amount: 100 })] }, 1);
+  near(wZoom.zoom, 1, 1e-6, '放大叠进权重');
+  near(wZoom.shake, 1, 1e-6, '抖动叠进权重');
 ok(SB.SHADER_PRESETS.some((p) => p.id === 'stretch'), '预设列表里有四角拉伸');
 ok(SB.SHADER_PRESETS.some((p) => p.id === 'vignette'), '预设列表里有暗角');
 ok(SB.WEIGHT_KEYS.indexOf('stretch') >= 0, 'stretch 是合法权重键');
@@ -515,6 +534,62 @@ for (const p of SB.OUT_PRESETS) {
   l.out = { preset: p.id, dur: 0.5, ease: 'inCubic' };
   const st = SB.layerAt(l, 1.75);
   ok(st.active && isFinite(st.alpha) && isFinite(st.y), '出场预设 ' + p.id + ' 能求值');
+}
+
+/* ---------------- 父线 / 子线 ---------------- */
+
+{
+  const mk = (lanes) => ({ lanes: lanes, stage: { highway_length: 2 }, notes: [] });
+  const half = CS.halfWidth(2);
+
+  const plain = mk([{ x: 0, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "A", color: "#fff" }]);
+  const g0 = CS.laneGeom(plain, 0, 0, half, 1);
+  eq(g0.parent, -1, '普通轨道没有父线');
+  near(g0.cx, CS.STAGE_W * 0.5, 1e-6, '默认在舞台中线');
+
+  const withChild = mk([
+    { x: 0, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "P", color: "#fff" },
+    { x: 40, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "C", color: "#fff", parent: 0 },
+  ]);
+  const gc = CS.laneGeom(withChild, 1, 0, half, 1);
+  eq(gc.parent, 0, '子线记住了父线');
+  near(gc.cx, CS.STAGE_W * 0.5 + 40, 1e-6, '子线横向偏移 40');
+
+  const rotated = mk([
+    { x: 0, y: 0, rotation: 90, alpha: 100, speed: 1, length: 1, name: "P", color: "#fff" },
+    { x: 40, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "C", color: "#fff", parent: 0 },
+  ]);
+  const gr = CS.laneGeom(rotated, 1, 0, half, 1);
+  const pg = CS.laneGeom(rotated, 0, 0, half, 1);
+  near(gr.cx, pg.cx + pg.sx * 40 + pg.dx * 0, 1e-6, '子线 x 沿父线横向轴');
+  near(gr.cy, pg.cy + pg.sy * 40 + pg.dy * 0, 1e-6, '子线 y 沿父线横向轴');
+  near(gr.rotDeg, 90, 1e-6, '旋转叠加：父 90 + 子 0');
+
+  const moving = mk([
+    {
+      x: 0, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "P", color: "#fff",
+      events: { x: [{ start: 0, end: 1, from: 0, to: 100, ease: "linear" }] },
+    },
+    { x: 10, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "C", color: "#fff", parent: 0 },
+  ]);
+  const at0 = CS.laneGeom(moving, 1, 0, half, 1);
+  const at1 = CS.laneGeom(moving, 1, 1, half, 1);
+  near(at1.cx - at0.cx, 100, 0.5, '父线走 100，子线跟着走 100');
+
+  const selfLoop = mk([
+    { x: 20, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "A", color: "#fff", parent: 0 },
+  ]);
+  const gl = CS.laneGeom(selfLoop, 0, 0, half, 1);
+  eq(gl.parent, -1, '指向自己按没有父线处理');
+  near(gl.cx, CS.STAGE_W * 0.5 + 20, 1e-6, '自己指自己时仍画在原位');
+
+  const chain = mk([
+    { x: 0, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "G", color: "#fff" },
+    { x: 30, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "P", color: "#fff", parent: 0 },
+    { x: 20, y: 0, rotation: 0, alpha: 100, speed: 1, length: 1, name: "C", color: "#fff", parent: 1 },
+  ]);
+  const g2 = CS.laneGeom(chain, 2, 0, half, 1);
+  near(g2.cx, CS.STAGE_W * 0.5 + 30 + 20, 1e-6, '两级父子：30 + 20 一路加起来');
 }
 
 /* ---------------- 结果 ---------------- */

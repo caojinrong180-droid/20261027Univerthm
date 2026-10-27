@@ -236,7 +236,7 @@ const TL_LANE_W = Math.max(14, Math.min(120, TL_HALF / 4));    // 106
 const TL_NOTE_X0 = TL_NOTES_LEFT;                              // 128
 const TL_EVENT_X0 = TL_NOTES_LEFT + TL_HALF + TL_DIVIDER;      // 566
 const laneCenter = (i) => TL_NOTE_X0 + TL_LANE_W * i + TL_LANE_W / 2;
-const EV_COL_W = TL_HALF / 7;   // 7 列：6 个参数 + 判定区
+const EV_COL_W = TL_HALF / 8;   // 8 列：6 个参数 + 判定区 + 父线
 const eventColCenter = (i) => TL_EVENT_X0 + EV_COL_W * i + EV_COL_W / 2;
 const TL_BTN_W = Math.max(18, Math.min(38, (TL_HALF - 8) / 4 - 4));
 const TL_BTN_X = TL_EVENT_X0 + (TL_HALF - (4 * (TL_BTN_W + 4) - 4)) / 2;
@@ -403,13 +403,18 @@ try {
   ok(noteTotal() === 1, '拖尾端没多出音符');
   ok(statusLen().includes('00:02.000'), '尾端拉到 2.000s，实际 ' + statusLen());
 
-  // 双击 hold → flick
+  // 双击 hold → tap（flick / mine 都删掉了，只剩 tap ↔ hold）
   ptr('pointerdown', LANE1, xAt(1.0));
   ptr('pointerup', LANE1, xAt(1.0));
   canvasEl.fire('dblclick', { clientX: LANE1, clientY: xAt(1.0), button: 0 });
   ok(noteTotal() === 1, '双击没多出音符，实际 ' + noteTotal());
-  ok(countOf('flick') === 1, '双击把 hold 切成 flick，实际 ' + statusNotes());
-  ok(statusLen().includes('00:01.000'), '切成 flick 后长度归零，实际 ' + statusLen());
+  ok(countOf('tap') === 1, '双击把 hold 切成 tap，实际 ' + statusNotes());
+  ok(statusLen().includes('00:01.000'), '切成 tap 后长度归零，实际 ' + statusLen());
+  ok(statusNotes().indexOf('flick') < 0 && statusNotes().indexOf('mine') < 0, '状态栏里不再有 flick / mine');
+
+  // 再双击一次绕回 hold
+  canvasEl.fire('dblclick', { clientX: LANE1, clientY: xAt(1.0), button: 0 });
+  ok(countOf('hold') === 1, '再双击回到 hold，实际 ' + statusNotes());
 
   /* ============ 阶段 C：键盘 ============ */
 
@@ -1017,7 +1022,7 @@ try {
   ok(Number(els['ev-from'].value) === 0 && Number(els['ev-to'].value) === 0,
     '默认透明度事件头尾都是 0');
 
-  const evColW = TL_HALF / 7;
+  const evColW = TL_HALF / 8;
   const perPx = 100 / evColW;          // 透明度：一列宽 = 100
   const tailY = xAt(0.5);              // 事件尾巴在 0.5s
   const headY = xAt(0);                // 事件头在 0s
@@ -1731,6 +1736,273 @@ try {
   frame(1);
   const shown6 = canvasCtx._calls.filter((c) => c[0] === 'fillText' && String(c[1]).indexOf('Lane ') === 0).map((c) => c[1]);
   ok(shown6.length === 6, '6 条轨道全画出来，实际 ' + shown6.length);
+  /* ============ 阶段 Z：父线 / 子线（父线也是一条事件通道） ============ */
+
+  reset();
+  els['f-lanecount'].value = '4';        // 底部轨道按钮宽度按 4 轨算，selectLane 才对得准
+  els['f-lanecount'].fire('change', {});
+  frame(1);
+
+  for (let i = 0; i < 4; i++) setLaneParam(i, 2, 100, 100);
+  setLaneParam(1, 0, 60, 60);       // 轨道 2 放到 x=60
+
+  const numOf = (i) => callsOf(previewCtx, 'fillText', (c) => c[1] === String(i + 1))[0];
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - CX) < 1, '轨道 1 单独时编号在 x=' + CX + '，实际 ' + numOf(0)[2]);
+
+  // 父线默认事件是 0（= 无父线）
+  selectLane(0);
+  openLaneEvent(7);
+  ok(els['ev-prop'].textContent.indexOf('父线') >= 0, '第 8 列是父线通道：' + els['ev-prop'].textContent);
+  ok(Number(els['ev-from'].value) === 0, '默认父线值 0 = 不挂');
+
+  // 把父线设成 2 = 挂在第 2 条轨道上（值 = 序号 + 1）
+  els['ev-from'].value = '2';
+  els['ev-from'].fire('change', {});
+  els['ev-to'].value = '2';
+  els['ev-to'].fire('change', {});
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 60)) < 1,
+    '子线基准点跟着父线到 x=' + (CX + 60) + '，实际 ' + numOf(0)[2]);
+
+  // 子线自己再偏 10 / 20（相对父线坐标系）
+  setLaneParam(0, 0, 10, 10);       // x 沿父线横向
+  setLaneParam(0, 1, 20, 20);       // y 沿父线自身方向（向上）
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 70)) < 1,
+    'x=10 沿父线横向偏移 → 编号 x=' + (CX + 70) + '，实际 ' + numOf(0)[2]);
+  ok(Math.abs(numOf(0)[3] - (JUDGE - 20 + 11)) < 1,
+    'y=20 沿父线方向抬起 → 编号 y=' + (JUDGE - 9) + '，实际 ' + numOf(0)[3]);
+
+  // 父线转 90°，子线跟着转（旋转叠加）
+  setLaneParam(1, 3, 90, 90);
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 60 + 20 - 11)) < 1.5 &&
+     Math.abs(numOf(0)[3] - (JUDGE + 10)) < 1.5,
+    '父线转 90° 后子线跟着转，编号到 (' + (CX + 69) + ', ' + (JUDGE + 10) + ')，实际 (' +
+    numOf(0)[2].toFixed(1) + ', ' + numOf(0)[3].toFixed(1) + ')');
+
+  // 把父线事件设回 0 = 取消跟随
+  selectLane(0);
+  openLaneEvent(7);
+  els['ev-from'].value = '0';
+  els['ev-from'].fire('change', {});
+  els['ev-to'].value = '0';
+  els['ev-to'].fire('change', {});
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 10)) < 1,
+    '父线设回 0 后回到自己的绝对坐标 x=' + (CX + 10) + '，实际 ' + numOf(0)[2]);
+
+  // 父线可以随时间切换：0.5s 之后才挂上去
+  selectLane(0);
+  ptr('pointerdown', eventColCenter(7), xAt(0.6));
+  ptr('pointermove', eventColCenter(7), xAt(0.8));
+  ptr('pointerup', eventColCenter(7), xAt(0.8));
+  els['ev-from'].value = '2';
+  els['ev-from'].fire('change', {});
+  els['ev-to'].value = '2';
+  els['ev-to'].fire('change', {});
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (0.7 / 4) * 672);   // 0.7s：在父线事件里
+  ptr('pointerup', MINI_X, 672 - (0.7 / 4) * 672);
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 60 + 10)) < 1.5,
+    '0.7s 时父线生效，编号在 x≈' + (CX + 70) + '，实际 ' + numOf(0)[2].toFixed(1));
+
+  ptr('pointerdown', MINI_X, 672);                      // 回到 0s：还没挂
+  ptr('pointerup', MINI_X, 672);
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(Math.abs(numOf(0)[2] - (CX + 10)) < 1.5,
+    '0s 时父线还没生效，编号在 x≈' + (CX + 10) + '，实际 ' + numOf(0)[2].toFixed(1));
+
+  /* ============ 阶段 AA：重叠音符的标记与定位 ============ */
+
+  reset();
+  frame(1);
+  documentStub.getElementById('btn-dup');
+  documentStub.getElementById('st-dup');
+
+  // 先放一个音符，复制后原地粘贴 → 造出一组重叠
+  ptr('pointerdown', LANE0, xAt(1.0));
+  ptr('pointerup', LANE0, xAt(1.0));
+  ok(noteTotal() === 1, '放了 1 个音符');
+
+  ptr('pointerdown', LANE0 - 40, xAt(1.1), 0, { shiftKey: true });
+  ptr('pointermove', LANE0 + 40, xAt(0.9), 0, { shiftKey: true });
+  ptr('pointerup', LANE0 + 40, xAt(0.9), 0, { shiftKey: true });
+  key('c', { ctrlKey: true });
+
+  // 播放头挪到 1.0s 再粘贴 → 正好叠在原音符上
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (1.0 / 4) * 672);
+  ptr('pointerup', MINI_X, 672 - (1.0 / 4) * 672);
+  ok(statusTime() === '00:01.000', '播放头到 1.000s，实际 ' + statusTime());
+  key('v', { ctrlKey: true });
+  ok(noteTotal() === 2, '粘贴后 2 个音符，实际 ' + noteTotal());
+
+  // 状态栏报出重叠组数
+  frame(1);
+  ok(els['st-dup'].textContent.indexOf('重叠 1 组') >= 0,
+    '状态栏标出重叠：' + els['st-dup'].textContent);
+
+  // 画面上有粉色的虚线框
+  canvasCtx._calls.length = 0;
+  frame(1);
+  ok(callsOf(canvasCtx, 'setLineDash', (c) => Array.isArray(c[1]) && c[1][0] === 3).length > 0,
+    '重叠处画了虚线框');
+  const NOTE_H = 12;   // 时间轴里音符厚度
+  // 播放头现在就在 1.0s，音符画在判定线上 → 框的 y = 672 - 10
+  ok(callsOf(canvasCtx, 'strokeRect', (c) => Math.abs(c[2] - (672 - NOTE_H / 2 - 4)) < 2 &&
+     Math.abs(c[1] - (TL_NOTE_X0 + 1.5)) < 2).length > 0,
+    '框正好套在那一格音符上（x=' + (TL_NOTE_X0 + 1.5) + ', y=' + (672 - 10) + '）');
+
+  // 「找重叠」按钮跳过去并选中整组
+  ptr('pointerdown', MINI_X, 672 - (0.5 / 4) * 672);   // 先把播放头挪到 0.5s
+  ptr('pointerup', MINI_X, 672 - (0.5 / 4) * 672);
+  els['btn-dup'].fire('click', {});
+  ok(statusTime() === '00:01.000', '点「找重叠」跳到 1.000s，实际 ' + statusTime());
+  ok(els['st-hint'].textContent.indexOf('1/1 组重叠') >= 0,
+    '提示是第几组：' + els['st-hint'].textContent);
+  key('Delete', {});
+  ok(noteTotal() === 0, '跳过去以后 Del 一次能删掉整组，实际 ' + noteTotal());
+  frame(1);
+  ok(els['st-dup'].textContent === '', '删完重叠标记消失');
+
+  // 没有重叠时点按钮只给提示
+  els['btn-dup'].fire('click', {});
+  ok(els['st-hint'].textContent.indexOf('没有重叠') >= 0, '没重叠时提示：' + els['st-hint'].textContent);
+  /* ============ 阶段 AB：「跳到问题」按钮 ============ */
+
+  reset();
+  frame(1);
+  documentStub.getElementById('btn-issue');
+
+  // 造三种问题：1.0s 重复音符、2.0s 零长 hold、4.0s 长条压音符
+  ptr('pointerdown', LANE0, xAt(1.0));
+  ptr('pointerup', LANE0, xAt(1.0));
+  ptr('pointerdown', LANE0 - 40, xAt(1.1), 0, { shiftKey: true });
+  ptr('pointermove', LANE0 + 40, xAt(0.9), 0, { shiftKey: true });
+  ptr('pointerup', LANE0 + 40, xAt(0.9), 0, { shiftKey: true });
+  key('c', { ctrlKey: true });
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (1.0 / 4) * 672);
+  ptr('pointerup', MINI_X, 672 - (1.0 / 4) * 672);
+  key('v', { ctrlKey: true });
+  ok(noteTotal() === 2, '先造一组重复，实际 ' + noteTotal());
+
+  // 先在 5.0s 放个 tap，再用 4.0~5.6 的长条把它包起来（反过来点的话会抓到长条而不是放音符）
+  chartAudios().forEach((a) => { a.duration = 8; });
+  ptr('pointerdown', MINI_X, 672 - (5.0 / 8) * 672);   // 播放头到 5.0s
+  ptr('pointerup', MINI_X, 672 - (5.0 / 8) * 672);
+  ok(statusTime() === '00:05.000', '播放头到 5.000s，实际 ' + statusTime());
+  ptr('pointerdown', LANE1, 672);
+  ptr('pointerup', LANE1, 672);
+  ok(noteTotal() === 3, '在 5.0s 放了个 tap，实际 ' + noteTotal());
+
+  // 回到 0，右键拖一个 4.0~5.6 的长条包住它
+  ptr('pointerdown', MINI_X, 672);
+  ptr('pointerup', MINI_X, 672);
+  ptr('pointerdown', LANE1, xAt(4.0), 2);
+  ptr('pointermove', LANE1, xAt(5.6), 2);
+  ptr('pointerup', LANE1, xAt(5.6), 2);
+  ok(countOf('hold') === 1, '画了一个长条，实际 ' + statusNotes());
+  ok(noteTotal() === 4, '长条 + 被包住的 tap 都在，实际 ' + noteTotal());
+
+  // 把播放头推回 0 附近再点按钮，逐个跳
+  ptr('pointerdown', MINI_X, 672);
+  ptr('pointerup', MINI_X, 672);
+  els['btn-issue'].fire('click', {});
+  ok(statusTime() === '00:01.000', '第一次跳到 1.000s（重复音符），实际 ' + statusTime());
+  ok(els['st-hint'].textContent.indexOf('同轨同位置') >= 0,
+    '提示问题类型：' + els['st-hint'].textContent);
+  ok(els['st-hint'].textContent.indexOf('1/') >= 0, '提示是第几处：' + els['st-hint'].textContent);
+
+  els['btn-issue'].fire('click', {});
+  ok(statusTime() === '00:05.000', '第二处是长条里压的音符（5.000s），实际 ' + statusTime());
+  ok(els['st-hint'].textContent.indexOf('长条中间压了') >= 0,
+    '提示是长条压音符：' + els['st-hint'].textContent);
+  // 绕回：连续点到超过总数会回到第一处
+  let guard = 0;
+  while (guard++ < 10 && statusTime() !== '00:01.000') els['btn-issue'].fire('click', {});
+  ok(statusTime() === '00:01.000', '转一圈会绕回第一处，实际 ' + statusTime());
+
+  // 没有问题时给提示
+  reset();
+  frame(1);
+  els['btn-issue'].fire('click', {});
+  ok(els['st-hint'].textContent.indexOf('没发现问题') >= 0, '空谱面点按钮：' + els['st-hint'].textContent);
+  /* ============ 阶段 AC：打开带故事板的 zip 再导出，别把它弄丢 ============ */
+
+  reset();
+  frame(1);
+
+  // 造一个「故事板整包」：chart.json + song.mp3 + cover.png + storyboard.json + assets/bg.png
+  const sbChart = sandbox.RChart.createChart({ lane_count: 2 });
+  sbChart.meta.title = '带故事板';
+  sbChart.meta.cover = 'cover.png';
+  sbChart.audio.file = 'song.mp3';
+  sandbox.RChart.addNote(sbChart, { time: 1, lane: 0, type: 'tap' });
+  const sbJson = JSON.stringify(sandbox.RChart.serialize(sbChart), null, '\t');
+  const sbDoc = JSON.stringify({
+    format: 'rchart-storyboard', version: 1,
+    scenes: [{ id: 's1', name: '开场', layers: [], shader: [{ start: 0, end: 2, preset: 'glitch', amount: 0.6 }] }]
+  });
+  const sbZip = sandbox.RChart.zipStore([
+    { name: 'chart.json', data: new TextEncoder().encode(sbJson) },
+    { name: 'storyboard.json', data: new TextEncoder().encode(sbDoc) },
+    { name: 'song.mp3', data: new Uint8Array([1, 2, 3, 4]) },
+    { name: 'cover.png', data: new Uint8Array([137, 80, 78, 71]) },
+    { name: 'assets/bg.png', data: new Uint8Array([9, 9, 9]) }
+  ]);
+
+  els['file-chart'].fire('change', {
+    target: {
+      files: [{ name: 'with-sb.zip', arrayBuffer: () => Promise.resolve(sbZip.buffer) }],
+      value: ''
+    }
+  });
+  await new Promise((res) => setTimeout(res, 30));
+
+  ok(els['f-title'].value === '带故事板', '谱面读进来了：' + els['f-title'].value);
+  ok(els['st-hint'].textContent.indexOf('故事板') >= 0,
+    '打开时提示里带故事板：' + els['st-hint'].textContent);
+  ok(els['file-name'].textContent.indexOf('含故事板') >= 0,
+    '标题栏标出「含故事板」：' + els['file-name'].textContent);
+
+  // 再导出：storyboard.json 和 assets/ 必须还在
+  const beforeZip2 = blobCalls.length;
+  els['btn-save'].fire('click', {});
+  await new Promise((res) => setTimeout(res, 20));
+  const outZip = blobCalls[blobCalls.length - 1].parts[0];
+  const outText = Buffer.from(outZip).toString('latin1');
+  ok(outText.indexOf('storyboard.json') >= 0, '导出的 zip 里还有 storyboard.json');
+  ok(outText.indexOf('assets/bg.png') >= 0, 'assets/ 里的文件也在');
+  ok(outText.indexOf('chart.json') >= 0 && outText.indexOf('song.mp3') >= 0,
+    '谱面和音频照旧');
+
+  const back = await sandbox.RChart.zipRead(outZip);
+  const sbBack = JSON.parse(Buffer.from(back['storyboard.json']).toString('utf8'));
+  ok(sbBack.scenes[0].shader[0].preset === 'glitch',
+    'Shader 数据原样保留：' + sbBack.scenes[0].shader[0].preset);
+
+  // 打开普通 json 时不该带着上一个 zip 的残留
+  reset();
+  frame(1);
+  els['file-chart'].fire('change', {
+    target: { files: [{ name: 'plain.json', arrayBuffer: () => Promise.resolve(new TextEncoder().encode(sbJson).buffer) }], value: '' }
+  });
+  await new Promise((res) => setTimeout(res, 20));
+  els['btn-save'].fire('click', {});
+  await new Promise((res) => setTimeout(res, 20));
+  const plainZip = Buffer.from(blobCalls[blobCalls.length - 1].parts[0]).toString('latin1');
+  ok(plainZip.indexOf('storyboard.json') < 0, '换成纯 json 后不再夹带旧故事板');
   /* ---- 连续画很多帧不炸 ---- */
   for (let i = 0; i < 40; i++) frame(1);
   ok(true, '连续 40 帧绘制没抛异常');

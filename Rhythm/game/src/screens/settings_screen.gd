@@ -1,5 +1,5 @@
-﻿extends Control
-## 设置界面：音画偏移 / 流速 / 判定窗口 / 音量 / 键位 / 辅助选项。
+extends Control
+## 设置界面：音画偏移 / 音量 / 打击音 / 打击特效。
 ## 改一项就存一次（user://settings.cfg），不用点保存。
 
 var _labels := {}
@@ -78,10 +78,6 @@ func _build() -> void:
 	_add_section(box, "对音")
 	_add_stepper(box, "offset", "音画偏移", _step_offset)
 	box.add_child(UiKit.label("正数 = 谱面整体推后。耳机 / 蓝牙有延迟就慢慢加，靠听打击点调。", 11.5, Palette.DIM_2))
-	_add_section(box, "手感")
-	_add_stepper(box, "speed", "下落速度", _step_speed)
-	_add_stepper(box, "window", "判定窗口", _step_window)
-	_add_toggle(box, "autoplay", "自动演示", _toggle_autoplay)
 	_add_section(box, "声音")
 	_add_stepper(box, "music", "音乐音量", _step_music)
 	var hit_vol := UiKit.stepper("打击音音量", _step_hit_volume)
@@ -93,10 +89,6 @@ func _build() -> void:
 	_add_pair(box,
 		"hitsound", "打击音", _toggle_hit_sound,
 		"hitfx", "打击特效", _step_hit_fx)
-	_add_section(box, "界面")
-	_add_toggle(box, "layout", "键位布局", _toggle_layout)
-	_add_stepper(box, "stagey", "画面垂直偏移", _step_stage_offset)
-	box.add_child(UiKit.label("默认 -24px（在居中的基础上往上抬一点）；想严格居中就调到 0。", 11.5, Palette.DIM_2))
 
 	box.add_child(UiKit.gap(4))
 	box.add_child(UiKit.rule())
@@ -129,7 +121,7 @@ func _build_topbar() -> Control:
 	h.add_child(UiKit.label("RHYTHM", 21, Palette.ACCENT))
 	h.add_child(UiKit.chip("设置", Palette.DIM_2))
 	h.add_child(UiKit.stretch())
-	var back := UiKit.button("← 选曲", 14, "GhostButton")
+	var back := UiKit.button("← 返回", 14, "GhostButton")
 	back.pressed.connect(func(): App.back_from_settings())
 	h.add_child(back)
 	return bar
@@ -187,22 +179,10 @@ func _refresh() -> void:
 	if _settings == null:
 		return
 	_labels["offset"].text = "%+d ms" % int(round(_settings.audio_offset_ms))
-	_labels["speed"].text = "%.2f×  (判定线→顶 %.2f 秒)" % [_settings.speed_mult, _settings.visible_seconds()]
-	_labels["window"].text = "%.2f×  (%s ms)" % [
-		_settings.judge_window_scale,
-		" / ".join([
-			"%.0f" % (RhythmJudge.PERFECT_PLUS_SEC * 1000.0 * _settings.judge_window_scale),
-			"%.0f" % (RhythmJudge.PERFECT_SEC * 1000.0 * _settings.judge_window_scale),
-			"%.0f" % (RhythmJudge.GOOD_SEC * 1000.0 * _settings.judge_window_scale),
-		]),
-	]
 	_labels["music"].text = "%d %%" % int(round(_settings.music_volume * 100.0))
 	_labels["hitvol"].text = "%d %%" % int(round(_settings.hit_volume * 100.0))
 	_labels["hitsound"].text = "开" if _settings.hit_sound else "关"
 	_labels["hitfx"].text = ["关", "标准", "强"][clampi(_settings.hit_fx, 0, 2)]
-	_labels["autoplay"].text = "开启" if _settings.autoplay else "关闭"
-	_labels["layout"].text = str(AppSettings.KEY_LAYOUT_LABELS.get(_settings.key_layout, _settings.key_layout))
-	_labels["stagey"].text = "%+d px" % int(round(_settings.stage_offset_px))
 
 
 func _save() -> void:
@@ -212,16 +192,6 @@ func _save() -> void:
 
 func _step_offset(dir: int) -> void:
 	_settings.audio_offset_ms = clampf(_settings.audio_offset_ms + dir * 5.0, -250.0, 250.0)
-	_save()
-
-
-func _step_speed(dir: int) -> void:
-	_settings.speed_mult = clampf(snappedf(_settings.speed_mult + dir * 0.25, 0.25), 0.25, 4.0)
-	_save()
-
-
-func _step_window(dir: int) -> void:
-	_settings.judge_window_scale = clampf(snappedf(_settings.judge_window_scale + dir * 0.1, 0.1), 0.4, 2.5)
 	_save()
 
 
@@ -249,21 +219,6 @@ func _preview_hit_sound() -> void:
 
 func _toggle_hit_sound(_dir: int) -> void:
 	_settings.hit_sound = not _settings.hit_sound
-	_save()
-
-
-func _toggle_autoplay(_dir: int) -> void:
-	_settings.autoplay = not _settings.autoplay
-	_save()
-
-
-func _toggle_layout(_dir: int) -> void:
-	_settings.key_layout = "dfjk" if _settings.key_layout == "asdf_jkl" else "asdf_jkl"
-	_save()
-
-
-func _step_stage_offset(dir: int) -> void:
-	_settings.stage_offset_px = clampf(_settings.stage_offset_px + dir * 4.0, -400.0, 400.0)
 	_save()
 
 

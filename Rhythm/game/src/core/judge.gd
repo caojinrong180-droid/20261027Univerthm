@@ -1,4 +1,4 @@
-﻿class_name RhythmJudge
+class_name RhythmJudge
 extends RefCounted
 ## 判定引擎：按键 → 音符 → 判定 / 连击 / 分数。
 ##
@@ -6,25 +6,21 @@ extends RefCounted
 ## 规则见 docs/GAME_INTEGRATION.md 第 3 节：
 ##   - 按 |now - note.time| 取最近的那个未判定音符
 ##   - 轨道 judge_zone = none 时任意键都能打，left 只吃 ASDF，right 只吃 JKL;
-##   - 地雷不吃播放键，按到就扣分
 ##   - hold 头判命中后要一直按住到尾部，中途松开 = 断
 ##
 ## 约定：一个音符只产生一次判定（hold 的头判就是它的判定；断了会降级成 miss），
-## 地雷不计入准确率。
 
 signal note_judged(note: Dictionary, result: String, dt: float)
 signal hold_completed(note: Dictionary)
 signal hold_broken(note: Dictionary)
-signal mine_detonated(note: Dictionary, dt: float)
 
 const PERFECT_PLUS_SEC := 0.055
 const PERFECT_SEC := 0.080
-const GOOD_SEC := 0.160
-const MINE_SEC := 0.120
+const GOOD_SEC := 0.140
+const BAD_SEC := 0.220
 
-## 权重：Perfect+ / Perfect 记满，Good 记 75%，Miss 记 0
-## （没有 Bad 判定：超出 GOOD_SEC 的按键打不中，音符直接算 Miss）
-const WEIGHT := {"perfect_plus": 1.0, "perfect": 1.0, "good": 0.75, "miss": 0.0}
+## 权重：Perfect+ / Perfect 记满，Good 记 75%，Bad / Miss 记 0
+const WEIGHT := {"perfect_plus": 1.0, "perfect": 1.0, "good": 0.75, "bad": 0.0, "miss": 0.0}
 ## 满分：非 Perfect+ 部分 1,000,000；Perfect+ 单独再算 10,000，所以满 acc 上限 1,010,000
 const MAX_SCORE := 1000000.0
 const PERFECT_PLUS_BONUS := 10000.0
@@ -34,7 +30,7 @@ var notes: Array = []
 var lanes: Array = []
 var window_scale := 1.0
 
-var counts := {"perfect_plus": 0, "perfect": 0, "good": 0, "miss": 0, "mine": 0}
+var counts := {"perfect_plus": 0, "perfect": 0, "good": 0, "bad": 0, "miss": 0}
 ## Early / Late：只统计 Perfect 和 Good（dt < 0 = Early，dt > 0 = Late）
 var early_late := {"perfect_early": 0, "perfect_late": 0, "good_early": 0, "good_late": 0}
 var combo := 0
@@ -43,7 +39,6 @@ var score := 0.0
 var total_judgeable := 0
 var sum_weight := 0.0
 var judged_count := 0
-var mines_passed := 0
 
 ## 当前按住的判定区（"left" / "right"），由玩法层每帧灌进来
 var pressed_zones: Array = []
@@ -61,14 +56,13 @@ func setup(chart_: Dictionary, window_scale_: float = 1.0) -> void:
 	notes = chart.get("notes", [])
 	lanes = chart.get("lanes", [])
 	window_scale = maxf(0.1, window_scale_)
-	counts = {"perfect_plus": 0, "perfect": 0, "good": 0, "miss": 0, "mine": 0}
+	counts = {"perfect_plus": 0, "perfect": 0, "good": 0, "bad": 0, "miss": 0}
 	early_late = {"perfect_early": 0, "perfect_late": 0, "good_early": 0, "good_late": 0}
 	combo = 0
 	max_combo = 0
 	score = 0.0
 	sum_weight = 0.0
 	judged_count = 0
-	mines_passed = 0
 	total_judgeable = RhythmChart.judgeable_count(chart)
 	pressed_zones = []
 	_scan = 0
@@ -90,13 +84,13 @@ func good_window() -> float:
 	return GOOD_SEC * window_scale
 
 
-## 按键能命中的最远距离 = Good 窗口（没有 Bad 判定）；超过就算没打中
+func bad_window() -> float:
+	return BAD_SEC * window_scale
+
+
+## 按键能命中的最远距离 = Bad 窗口；超过就算没打中
 func hit_window() -> float:
-	return good_window()
-
-
-func mine_window() -> float:
-	return MINE_SEC * window_scale
+	return bad_window()
 
 
 func active_holds() -> Array:
@@ -111,10 +105,6 @@ func active_holds() -> Array:
 ## lane_hint >= 0 时只判这条轨道上的音符（自动演示用：同区相邻音符不会互相抢判）。
 ## 返回 { hit: bool, result: String, note: Dictionary 或 null, dt: float, kind: String }
 func press(zone: String, t: float, lane_hint := -1) -> Dictionary:
-	var mine = _find_mine(zone, t, lane_hint)
-	if mine != null:
-		return _detonate_mine(mine, t)
-
 	var hit = _find_note(zone, t, lane_hint)
 	if hit == null:
 		return {"hit": false, "result": "", "note": null, "dt": 0.0, "kind": "empty"}
@@ -131,7 +121,7 @@ func _find_note(zone: String, t: float, lane_hint := -1) -> Variant:
 		if float(n["time"]) > t + hit_window():
 			break
 		i += 1
-		if str(n["state"]) != "pending" or str(n["type"]) == "mine":
+		if str(n["state"]) != "pending":
 			continue
 		if lane_hint >= 0 and int(n["lane"]) != lane_hint:
 			continue
@@ -148,24 +138,6 @@ func _find_note(zone: String, t: float, lane_hint := -1) -> Variant:
 	return best
 
 
-func _find_mine(zone: String, t: float, lane_hint := -1) -> Variant:
-	var i := _scan
-	while i < notes.size():
-		var n: Dictionary = notes[i]
-		if float(n["time"]) > t + mine_window():
-			break
-		i += 1
-		if str(n["state"]) != "pending" or str(n["type"]) != "mine":
-			continue
-		if lane_hint >= 0 and int(n["lane"]) != lane_hint:
-			continue
-		var lane: Dictionary = lanes[int(n["lane"])]
-		var lz := RhythmChart.lane_zone_at(lane, t)
-		if lz != "none" and lz != zone:
-			continue
-		if absf(t - float(n["time"])) <= mine_window():
-			return n
-	return null
 
 
 func _apply_hit(note: Dictionary, t: float) -> Dictionary:
@@ -188,7 +160,9 @@ func _result_for(abs_dt: float) -> String:
 		return "perfect_plus"
 	if abs_dt <= perfect_window():
 		return "perfect"
-	return "good"
+	if abs_dt <= good_window():
+		return "good"
+	return "bad"
 
 
 func _award(note: Dictionary, result: String, dt := 0.0) -> void:
@@ -206,7 +180,9 @@ func _award(note: Dictionary, result: String, dt := 0.0) -> void:
 	counts[result] += 1
 	judged_count += 1
 	sum_weight += weight
-	if result != "miss":
+	if result == "miss" or result == "bad":
+		combo = 0                      # Bad 也断连
+	else:
 		combo += 1
 		max_combo = maxi(max_combo, combo)
 	_recompute_score()
@@ -215,7 +191,7 @@ func _award(note: Dictionary, result: String, dt := 0.0) -> void:
 func _revoke(note: Dictionary) -> void:
 	if not bool(note.get("awarded", false)):
 		return
-	var result := str(note.get("result", "miss"))
+	var result := str(note.get("result", "bad"))
 	counts[result] = maxi(0, int(counts[result]) - 1)
 	var side := str(note.get("award_side", ""))
 	if side != "":
@@ -236,33 +212,22 @@ func _recompute_score() -> void:
 	score = MAX_SCORE * (sum_weight / total) + PERFECT_PLUS_BONUS * (float(counts["perfect_plus"]) / total)
 
 
-func _detonate_mine(note: Dictionary, t: float) -> Dictionary:
-	note["state"] = "detonated"
-	counts["mine"] += 1
-	combo = 0
-	var dt := t - float(note["time"])
-	mine_detonated.emit(note, dt)
-	return {"hit": true, "result": "mine", "note": note, "dt": dt, "kind": "mine"}
 
 
 # --------------------------------------------------------------------------- #
 # 每帧推进
 # --------------------------------------------------------------------------- #
 
-## 推进判定状态：漏打 / 地雷过线 / hold 完成或断开。
+## 推进判定状态：漏打 / hold 完成或断开。
 ## pressed_zones 由玩法层传入：当前按住哪些判定区。
 func update(t: float) -> void:
-	# 1) 到期的普通音符 / 地雷（notes 按 time 升序，游标单调前进）
+	# 1) 到期的普通音符（notes 按 time 升序，游标单调前进）
 	while _scan < notes.size():
 		var n: Dictionary = notes[_scan]
 		var state := str(n["state"])
 		if state == "pending":
 			if t > float(n["time"]) + hit_window():
-				if str(n["type"]) == "mine":
-					n["state"] = "passed"
-					mines_passed += 1
-				else:
-					_register_miss(n)
+				_register_miss(n)
 				_scan += 1
 				continue
 			break
@@ -321,11 +286,7 @@ func finish(t: float) -> void:
 	for n in notes:
 		var state := str(n["state"])
 		if state == "pending":
-			if str(n["type"]) == "mine":
-				n["state"] = "passed"
-				mines_passed += 1
-			else:
-				_register_miss(n)
+			_register_miss(n)
 		elif state == "holding":
 			var end_time := RhythmChart.note_end(n)
 			n["state"] = "judged"
@@ -364,7 +325,7 @@ func is_all_perfect_plus() -> bool:
 
 
 func is_full_combo() -> bool:
-	return int(counts["miss"]) == 0 and total_judgeable > 0
+	return int(counts["miss"]) == 0 and int(counts["bad"]) == 0 and total_judgeable > 0
 
 
 func grade() -> String:

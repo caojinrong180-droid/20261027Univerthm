@@ -48,6 +48,7 @@ func apply(stack: Array, time: float) -> void:
 		var entry: Dictionary = stack[i]
 		var weights: Dictionary = entry.get("weights", {})
 		mat.set_shader_parameter("u_time", time)
+		mat.set_shader_parameter("u_punch_t0", float(entry.get("punchT0", 0.0)))
 		mat.set_shader_parameter("u_res", _res_vec())
 		for key in SBS.WEIGHT_KEYS:
 			mat.set_shader_parameter("u_" + key, float(weights.get(key, 0.0)))

@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 ## 结算界面：评级 / 分数 / 准确率 / 判定统计 / 连击 / 重试。
 
 var _result: Dictionary = {}
@@ -137,6 +137,7 @@ func _build_counts() -> Control:
 		["PERFECT+", int(counts.get("perfect_plus", 0)), Palette.judge_color("perfect_plus")],
 		["PERFECT", int(counts.get("perfect", 0)), Palette.OK],
 		["GOOD", int(counts.get("good", 0)), Palette.ACCENT],
+		["BAD", int(counts.get("bad", 0)), Palette.WARN],
 		["MISS", int(counts.get("miss", 0)), Palette.HOT],
 	]
 	for item in items:
@@ -152,18 +153,6 @@ func _build_counts() -> Control:
 		cell_box.add_child(caption)
 		row.add_child(cell)
 
-	var mine_count := int(counts.get("mine", 0))
-	if mine_count > 0:
-		var mine_cell := UiKit.panel(Palette.PANEL_2, 8, 1, Palette.MINE, Vector4(14, 8, 14, 8))
-		var mine_box := UiKit.vbox(1)
-		mine_cell.add_child(mine_box)
-		var mine_value := UiKit.mono_label(str(mine_count), 24, Palette.MINE)
-		mine_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		mine_box.add_child(mine_value)
-		var mine_caption := UiKit.label("MINE", 11, Palette.DIM_2)
-		mine_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		mine_box.add_child(mine_caption)
-		row.add_child(mine_cell)
 	return row
 
 

@@ -260,6 +260,7 @@
     { id: 'vignette', label: '暗角', weights: { vignette: 1 } },
     { id: 'grain', label: '颗粒', weights: { grain: 1, vignette: 0.3 } },
     { id: 'stretch', label: '四角拉伸', weights: { stretch: 1 } },
+    { id: 'zoomShake', label: '放大抖动', weights: { zoom: 1, shake: 1 } },
     { id: 'dream', label: '梦幻柔光', weights: { bloom: 0.7, wave: 0.22, grain: 0.12 } },
     { id: 'flash', label: '反色闪白', weights: { invert: 1, bloom: 0.4 } }
   ];
@@ -267,7 +268,7 @@
   var SHADER_MAP = {};
   for (var si = 0; si < SHADER_PRESETS.length; si++) SHADER_MAP[SHADER_PRESETS[si].id] = SHADER_PRESETS[si];
 
-  var WEIGHT_KEYS = ['bloom', 'rgb', 'scan', 'wave', 'glitch', 'heat', 'pixel', 'poster', 'grain', 'vignette', 'invert', 'stretch'];
+  var WEIGHT_KEYS = ['bloom', 'rgb', 'scan', 'wave', 'glitch', 'heat', 'pixel', 'poster', 'grain', 'vignette', 'invert', 'stretch', 'zoom', 'shake'];
 
   function isVideoAsset(name) { return VIDEO_EXT.test(String(name || '')); }
 
@@ -471,7 +472,9 @@
         label: def ? def.label : fx.preset,
         value: v,
         weights: ww,
-        instant: !!(def && def.instant)
+        instant: !!(def && def.instant),
+        // 冲击放大用：这一层在时间轴上的起点（进区间那一下触发）
+        punchT0: fx.start
       });
     }
     return out;

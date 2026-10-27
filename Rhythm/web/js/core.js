@@ -15,7 +15,7 @@
 
   var FORMAT = 'rchart';
   var VERSION = 3;
-  var NOTE_TYPES = ['tap', 'hold', 'flick', 'mine'];
+  var NOTE_TYPES = ['tap', 'hold'];
 
   /* 判定区：决定这条轨道上的音符能被哪些键打到，同时决定显示颜色 */
   var ZONES = ['none', 'left', 'right'];
@@ -122,6 +122,7 @@
   /** 参数数值范围（事件里改值时用；zone 不是普通数值参数，单独处理） */
   function clampLaneNum(key, v) {
     if (key === 'zone') return clamp(Math.round(num(v, 0)), 0, 2);
+    if (key === 'parent') return clamp(Math.round(num(v, 0)), 0, MAX_LANES);
     var f = laneNumDef(key);
     if (!f) return 0;
     return round3(clamp(num(v, f.def), f.min, f.max));
@@ -244,7 +245,7 @@
 
   var EVENT_KEYS = ['x', 'y', 'alpha', 'rotation', 'speed', 'length'];
   /** 事件区里的全部通道：6 个数值参数 + 判定区 */
-  var ALL_KEYS = EVENT_KEYS.concat(['zone']);
+  var ALL_KEYS = EVENT_KEYS.concat(['zone', 'parent']);
   var ZONE_NAMES = ['none', 'left', 'right'];
 
   function zoneIndex(z) {
@@ -373,6 +374,26 @@
     var z = zoneAt(lane, t);
     if (z === 'none') return color(lane && lane.color, DEFAULT_LANE_COLOR);
     return ZONE_COLORS[z] || ZONE_COLORS.none;
+  }
+
+  /**
+   * 父线的事件值编码：0 = 没有父线，i + 1 = 挂在第 i 条轨道上
+   * （用偏移一位是为了让 0 干净地表示「无」，不和「挂在第 0 条」撞）
+   */
+  function parentValueOf(index) {
+    return index >= 0 ? index + 1 : 0;
+  }
+
+  /** 某一刻该轨道的父线序号（-1 = 没有）；没有 parent 事件就用静态值 */
+  function parentAt(lane, t, count) {
+    var cur = eventAt(lane, 'parent', t);
+    if (!cur) return laneParentIndex(lane, count);
+    var span = cur.end - cur.start;
+    var a = span > 1e-9 ? clamp((t - cur.start) / span, 0, 1) : 1;
+    var v = cur.from + (cur.to - cur.from) * easeAt(cur.ease, a);
+    var idx = Math.round(v) - 1;
+    if (idx < 0 || idx >= count) return -1;
+    return idx;
   }
 
   /**
@@ -642,13 +663,37 @@
   /* ---------- 谱面对象 ---------- */
 
   function makeLane(name, col, zone, src) {
-    var lane = { name: name, color: col, judge_zone: zone };
+    var lane = { name: name, color: col, judge_zone: zone, parent: -1 };
     for (var i = 0; i < LANE_NUMS.length; i++) {
       var f = LANE_NUMS[i];
       lane[f.key] = clampLaneNum(f.key, src ? src[f.key] : f.def);
     }
+    lane.parent = int(src && src.parent, -1);
     lane.events = cloneEvents(src ? src.events : null);
     return lane;
+  }
+
+  /** 父线序号：越界 / 指向自己都当没有父线 */
+  function laneParentIndex(lane, count) {
+    var idx = int(lane && lane.parent, -1);
+    if (idx < 0 || idx >= count) return -1;
+    return idx;
+  }
+
+  /** 打断父线关系里的环，顺便夹到合法范围 */
+  function fixLaneParents(lanes) {
+    var n = lanes.length;
+    for (var i = 0; i < n; i++) {
+      var p = int(lanes[i].parent, -1);
+      if (p < 0 || p >= n || p === i) { lanes[i].parent = -1; continue; }
+      var cur = p;
+      var guard = 0;
+      while (cur >= 0 && guard++ < n + 2) {
+        if (cur === i) { lanes[i].parent = -1; break; }
+        cur = laneParentIndex(lanes[cur], n);
+      }
+    }
+    return lanes;
   }
 
   function makeLanes(count, existing) {
@@ -665,7 +710,7 @@
       if (!hasEvents(lane)) seedDefaultEvents(lane);
       out.push(lane);
     }
-    return out;
+    return fixLaneParents(out);
   }
 
   /** 默认事件长度（秒） */
@@ -675,16 +720,18 @@
    *  （判定区不铺：没事件时就用静态 judge_zone，铺了反而会盖住侧栏那个下拉） */
   function seedDefaultEvents(lane) {
     if (!lane.events) lane.events = emptyEvents();
-    for (var i = 0; i < EVENT_KEYS.length; i++) {
-      var k = EVENT_KEYS[i];
+    var seedKeys = EVENT_KEYS.concat(['parent']);
+    for (var i = 0; i < seedKeys.length; i++) {
+      var k = seedKeys[i];
       if ((lane.events[k] || []).length) continue;
+      var baseV = (k === 'parent') ? parentValueOf(laneParentIndex(lane, MAX_LANES)) : lane[k];
       lane.events[k].push(makeEvent({
         id: nextEventId(lane),
         start: 0,
         end: DEFAULT_EVENT_LEN,
         ease: 'linear',
-        from: lane[k],
-        to: lane[k]
+        from: baseV,
+        to: baseV
       }));
     }
     return lane;
@@ -778,7 +825,7 @@
   }
 
   function countNotes(chart) {
-    var c = { tap: 0, hold: 0, flick: 0, mine: 0, total: chart.notes.length };
+    var c = { tap: 0, hold: 0, total: chart.notes.length };
     for (var i = 0; i < chart.notes.length; i++) {
       var t = chart.notes[i].type;
       if (c[t] === undefined) c[t] = 0;
@@ -976,6 +1023,7 @@
           color: l.color,
           judge_zone: normalizeZone(l.judge_zone)
         };
+        if (int(l.parent, -1) >= 0) o.parent = int(l.parent, -1);
         for (var i = 0; i < LANE_NUMS.length; i++) {
           var k = LANE_NUMS[i].key;
           o[k] = clampLaneNum(k, l[k]);
@@ -1005,6 +1053,90 @@
   }
 
   /* ---------- 校验 ---------- */
+
+  /** 同轨道、同时间的音符分组（每组 >= 2 个才算重叠），按时间排好 */
+  function duplicateGroups(chart) {
+    var map = {};
+    var notes = (chart && chart.notes) || [];
+    var i;
+    for (i = 0; i < notes.length; i++) {
+      var n = notes[i];
+      var k = n.lane + '@' + round3(n.time);
+      if (!map[k]) map[k] = [];
+      map[k].push(n);
+    }
+    var out = [];
+    for (var key in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
+      if (map[key].length > 1) {
+        out.push({ lane: map[key][0].lane, time: map[key][0].time, notes: map[key] });
+      }
+    }
+    out.sort(function (a, b) { return a.time - b.time || a.lane - b.lane; });
+    return out;
+  }
+
+  /** 有问题的位置（按时间排好），给「跳到问题」用 */
+  function chartIssues(chart) {
+    var out = [];
+    var notes = (chart && chart.notes) || [];
+    var lanes = (chart && chart.lanes) ? chart.lanes.length : 0;
+    var i, j;
+
+    // 1. 同轨同位置的重复音符
+    var groups = duplicateGroups(chart);
+    for (i = 0; i < groups.length; i++) {
+      var ids = [];
+      for (j = 0; j < groups[i].notes.length; j++) ids.push(groups[i].notes[j].id);
+      out.push({
+        kind: 'dup', level: 'warn', time: groups[i].time, lane: groups[i].lane,
+        text: '同轨同位置有 ' + groups[i].notes.length + ' 个音符', ids: ids
+      });
+    }
+
+    // 2. 长度为 0 的 hold / 时间或轨道非法
+    for (i = 0; i < notes.length; i++) {
+      var n = notes[i];
+      if (n.type === 'hold' && !(n.duration > 0.001)) {
+        out.push({ kind: 'zero-hold', level: 'warn', time: n.time, lane: n.lane, text: 'hold 长度为 0', ids: [n.id] });
+      }
+      if (!(n.time >= 0)) {
+        out.push({ kind: 'bad-time', level: 'error', time: n.time, lane: n.lane, text: '音符时间是负的', ids: [n.id] });
+      }
+      if (n.lane < 0 || n.lane >= lanes) {
+        out.push({ kind: 'bad-lane', level: 'error', time: n.time, lane: n.lane, text: '音符轨道越界', ids: [n.id] });
+      }
+    }
+
+    // 3. hold 的时段里压了别的音符（同轨）—— 打起来会互相干扰
+    var byLane = {};
+    for (i = 0; i < notes.length; i++) {
+      if (!byLane[notes[i].lane]) byLane[notes[i].lane] = [];
+      byLane[notes[i].lane].push(notes[i]);
+    }
+    for (var lk in byLane) {
+      if (!Object.prototype.hasOwnProperty.call(byLane, lk)) continue;
+      var list = byLane[lk];
+      for (i = 0; i < list.length; i++) {
+        var h = list[i];
+        if (h.type !== 'hold' || !(h.duration > 0.001)) continue;
+        var hEnd = h.time + h.duration;
+        for (j = 0; j < list.length; j++) {
+          var o = list[j];
+          if (o === h) continue;
+          if (o.time > h.time + 0.002 && o.time < hEnd - 0.002) {
+            out.push({
+              kind: 'hold-cover', level: 'warn', time: o.time, lane: h.lane,
+              text: '长条中间压了别的音符', ids: [h.id, o.id]
+            });
+          }
+        }
+      }
+    }
+
+    out.sort(function (a, b) { return a.time - b.time || a.lane - b.lane; });
+    return out;
+  }
 
   function validate(chart) {
     var issues = [];
@@ -1074,6 +1206,10 @@
     zoneIndex: zoneIndex,
     zoneName: zoneName,
     zoneAt: zoneAt,
+    parentAt: parentAt,
+    parentValueOf: parentValueOf,
+    laneParentIndex: laneParentIndex,
+    fixLaneParents: fixLaneParents,
     displayColorAt: displayColorAt,
     holdSpeed: holdSpeed,
     makeEvent: makeEvent,
@@ -1101,6 +1237,8 @@
     normalize: normalize,
     serialize: serialize,
     validate: validate,
+    duplicateGroups: duplicateGroups,
+    chartIssues: chartIssues,
 
     noteEnd: noteEnd,
     sortNotes: sortNotes,

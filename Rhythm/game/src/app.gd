@@ -1,10 +1,12 @@
-extends Node
+﻿extends Node
 ## 全局单例（autoload 名 = App）：设置 / 谱面库 / 当前游玩会话 / 结算数据。
 ##
 ## 屏幕之间只通过这个单例传数据，不互相引用。
 
 const WARNING_SCENE := "res://scenes/warning.tscn"
-const START_SCENE := "res://scenes/start.tscn"
+const MENU_SCENE := "res://scenes/main_menu.tscn"
+const COLLECTION_SCENE := "res://scenes/collection.tscn"
+const PROFILE_SCENE := "res://scenes/profile.tscn"
 const SELECT_SCENE := "res://scenes/song_select.tscn"
 const GAMEPLAY_SCENE := "res://scenes/gameplay.tscn"
 const RESULTS_SCENE := "res://scenes/results.tscn"
@@ -27,9 +29,14 @@ var toast := ""
 ## 从哪个界面进的设置，返回时回哪（默认回选曲）
 var _settings_return := "res://scenes/song_select.tscn"
 
+## 玩家档案统计（user://profile.cfg）：游玩次数 / 最高分 / 最近一次成绩
+const STATS_PATH := "user://profile.cfg"
+var stats := {"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0}
+
 
 func _ready() -> void:
 	settings = AppSettings.load_settings()
+	load_stats()
 	refresh_library()
 
 
@@ -82,13 +89,51 @@ func retry() -> void:
 	play_entry(session["entry"], autoplay_once)
 
 
+## 归档一局成绩（自动演示不计入）
+func record_result(res: Dictionary) -> void:
+	stats["plays"] = int(stats.get("plays", 0)) + 1
+	var score := int(res.get("score", 0))
+	if score > int(stats.get("best_score", 0)):
+		stats["best_score"] = score
+		stats["best_title"] = str(res.get("title", ""))
+		stats["best_acc"] = float(res.get("accuracy", 0.0))
+	save_stats()
+
+
+func load_stats() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(STATS_PATH) != OK:
+		return
+	stats["plays"] = int(cf.get_value("stats", "plays", 0))
+	stats["best_score"] = int(cf.get_value("stats", "best_score", 0))
+	stats["best_title"] = str(cf.get_value("stats", "best_title", ""))
+	stats["best_acc"] = float(cf.get_value("stats", "best_acc", 0.0))
+
+
+func save_stats() -> void:
+	var cf := ConfigFile.new()
+	cf.set_value("stats", "plays", int(stats.get("plays", 0)))
+	cf.set_value("stats", "best_score", int(stats.get("best_score", 0)))
+	cf.set_value("stats", "best_title", str(stats.get("best_title", "")))
+	cf.set_value("stats", "best_acc", float(stats.get("best_acc", 0.0)))
+	cf.save(STATS_PATH)
+
+
 func goto_select() -> void:
 	get_tree().change_scene_to_file(SELECT_SCENE)
 
 
-## 开始界面（启动 → 警告 → 这里 → 点「开始」才进选曲主界面）
-func goto_start() -> void:
-	get_tree().change_scene_to_file(START_SCENE)
+## 主界面（启动 → 警告 → 这里 → 点「开始游戏」才进选曲）
+func goto_menu() -> void:
+	get_tree().change_scene_to_file(MENU_SCENE)
+
+
+func goto_collection() -> void:
+	get_tree().change_scene_to_file(COLLECTION_SCENE)
+
+
+func goto_profile() -> void:
+	get_tree().change_scene_to_file(PROFILE_SCENE)
 
 
 func goto_warning() -> void:

@@ -47,7 +47,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_S:
 			App.goto_settings()
 		KEY_ESCAPE:
-			App.goto_start()
+			App.goto_menu()
 
 
 # --------------------------------------------------------------------------- #

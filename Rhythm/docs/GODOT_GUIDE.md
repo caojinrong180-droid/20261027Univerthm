@@ -161,7 +161,7 @@ static func parse(raw) -> Dictionary:
             var t := maxf(0.0, float(n.get("time", 0.0)))
             var lane_i := clampi(int(n.get("lane", 0)), 0, count - 1)
             var type := str(n.get("type", "tap"))
-            if not ["tap", "hold", "flick", "mine"].has(type):
+            if not ["tap", "hold"].has(type):
                 type = "tap"
             var dur := 0.0
             if type == "hold":
@@ -261,6 +261,44 @@ static func display_color_at(lane: Dictionary, t: float) -> Color:
 
 
 # 一条轨道在 t 时刻的 6 个参数
+# 父线通道：0 = 没有父线，i + 1 = 挂在第 i 条上
+static func parent_at(lane: Dictionary, t: float, count: int) -> int:
+    var evs: Dictionary = lane.get("events", {})
+    var arr: Array = evs.get("parent", [])
+    var cur = null
+    for e in arr:
+        if float(e["start"]) <= t + 1e-9:
+            cur = e
+        else:
+            break
+    if cur == null:
+        var p := int(lane.get("parent", -1))
+        return p if (p >= 0 and p < count) else -1
+
+    var span: float = float(cur["end"]) - float(cur["start"])
+    var k01: float = 1.0 if span <= 1e-9 else clampf((t - float(cur["start"])) / span, 0.0, 1.0)
+    var v: float = float(cur["from"]) + (float(cur["to"]) - float(cur["from"])) * ease_at(str(cur["ease"]), k01)
+    var idx := roundi(v) - 1
+    return idx if (idx >= 0 and idx < count) else -1
+
+# 父子线：有 parent 时 x/y/rotation 相对父线
+static func lane_frame(lane: Dictionary, t: float, lanes: Array, size: Vector2, judge_y: float, depth: int = 0) -> Dictionary:
+    var p := lane_params_at(lane, t)
+    var px := float(p["x"])
+    var py := float(p["y"])
+    var rot := float(p["rotation"])
+    var pi := parent_at(lane, t, lanes.size())      # 父线也是事件通道，0 = 不挂
+    if pi < 0 or pi >= lanes.size() or depth > 8:
+        return {"center": Vector2(size.x / 2.0 + px, judge_y - py), "rot": rot}
+
+    var pf := lane_frame(lanes[pi], t, lanes, size, judge_y, depth + 1)
+    var prad: float = deg_to_rad(float(pf["rot"]))
+    var base: Vector2 = pf["center"]
+    return {
+        "center": base + Vector2(cos(prad), sin(prad)) * px + Vector2(sin(prad), -cos(prad)) * py,
+        "rot": float(pf["rot"]) + rot,
+    }
+
 static func lane_params_at(lane: Dictionary, t: float) -> Dictionary:
     var p := {}
     for k in KEYS:
@@ -442,17 +480,8 @@ func _draw() -> void:
                 c + side * note_half_w + dir * NOTE_TH,
                 c - side * note_half_w + dir * NOTE_TH,
             ])
-            match str(note["type"]):
-                "mine":
-                    draw_colored_polygon(q, Color("#1b1f28"))
-                    draw_polyline(PackedVector2Array([q[0], q[1], q[2], q[3], q[0]]),
-                                  Color("#ef476f"), 1.5)
-                "flick":
-                    draw_colored_polygon(q, col)
-                    draw_line(c - dir * 2.0, c + dir * 2.0, Color("#080a0e"), 1.5)
-                _:
-                    draw_colored_polygon(q, Color(col.r, col.g, col.b, 0.92))
-                    draw_line(q[0], q[1], Color(1, 1, 1, 0.55), 1.5)
+            draw_colored_polygon(q, Color(col.r, col.g, col.b, 0.92))
+            draw_line(q[0], q[1], Color(1, 1, 1, 0.55), 1.5)
 
         # --- 判定线（每条轨道自己一段）---
         if opacity > 0.001:
@@ -489,7 +518,7 @@ func _press(key: String) -> void:
     var best_dt := 999.0
 
     for note in chart["notes"]:
-        if note["judged"] or note["type"] == "mine":
+        if note["judged"]:
             continue
         var lane: Dictionary = chart["lanes"][int(note["lane"])]
         var lz := str(lane["judge_zone"])
@@ -517,13 +546,13 @@ func _press(key: String) -> void:
 
 ```gdscript
 for note in chart["notes"]:
-    if not note["judged"] and note["type"] != "mine" \
+    if not note["judged"] \
        and chart_time > float(note["time"]) + BAD_MS:
         note["judged"] = true
         note["result"] = "miss"
 ```
 
-`hold` / `flick` / `mine` 的额外规则见 [GAME_INTEGRATION.md](GAME_INTEGRATION.md) 第 3.4 节。
+`hold` 的额外规则见 [GAME_INTEGRATION.md](GAME_INTEGRATION.md) 第 3.4 节。
 
 ---
 
