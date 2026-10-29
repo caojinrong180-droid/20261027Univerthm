@@ -1,9 +1,21 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://c8rvgj5k50usl"]
 
-[ext_resource type="Script" path="res://src/screens/warning.gd" id="1_warn"]
-[ext_resource type="Script" path="res://src/ui/mono_label.gd" id="2_mono"]
+[ext_resource type="Script" uid="uid://jdqoeqbgi2j2" path="res://src/screens/warning.gd" id="1_warn"]
+[ext_resource type="Script" uid="uid://drks5d40740ay" path="res://src/ui/mono_label.gd" id="2_mono"]
+[ext_resource type="Shader" uid="uid://btccmhixtk426" path="res://shaders/warning_glitch.gdshader" id="3_glitch"]
 
-[node name="Warning" type="Control"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glitch"]
+resource_local_to_scene = true
+shader = ExtResource("3_glitch")
+shader_parameter/viewport_size = Vector2(1280, 720)
+shader_parameter/wave_center = Vector2(0.428, 0.5)
+shader_parameter/glow_color = Color(0.49, 0.16, 0.9, 1)
+shader_parameter/intensity = 1.0
+shader_parameter/motion_speed = 0.45
+shader_parameter/glitch_amount = 0.45
+shader_parameter/wave_amount = 0.7
+
+[node name="Warning" type="Control" unique_id=1340750792]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +24,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_warn")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=312176311]
+material = SubResource("ShaderMaterial_glitch")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,105 +33,106 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.0313726, 0.0392157, 0.054902, 1)
 
-[node name="TopLine" type="ColorRect" parent="."]
+[node name="TopLine" type="ColorRect" parent="." unique_id=968609983]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 2.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.298039, 0.788235, 0.941176, 0.5)
+color = Color(0.490196, 0.262745, 0.74902, 0.28)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=596709779]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -1.0
+offset_right = -1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Column" type="VBoxContainer" parent="Center"]
+[node name="Column" type="VBoxContainer" parent="Center" unique_id=889455196]
 custom_minimum_size = Vector2(660, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Tag" type="Label" parent="Center/Column"]
+[node name="Tag" type="Label" parent="Center/Column" unique_id=1361061234]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.364706, 0.4, 0.470588, 1)
 theme_override_font_sizes/font_size = 12
 text = "PHOTOSENSITIVITY WARNING"
 script = ExtResource("2_mono")
 
-[node name="GapA" type="Control" parent="Center/Column"]
+[node name="GapA" type="Control" parent="Center/Column" unique_id=1843467024]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Center/Column"]
+[node name="Title" type="Label" parent="Center/Column" unique_id=769944503]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.874510, 0.894118, 0.933333, 1)
+theme_override_colors/font_color = Color(0.87451, 0.894118, 0.933333, 1)
 theme_override_font_sizes/font_size = 34
 text = "光敏性癫痫警告"
 
-[node name="GapB" type="Control" parent="Center/Column"]
+[node name="GapB" type="Control" parent="Center/Column" unique_id=221998033]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 
-[node name="Rule" type="ColorRect" parent="Center/Column"]
+[node name="Rule" type="ColorRect" parent="Center/Column" unique_id=573216181]
 custom_minimum_size = Vector2(56, 2)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 2
-color = Color(1, 0.819608, 0.4, 0.8)
+color = Color(0.670588, 0.427451, 0.941176, 0.8)
 
-[node name="GapC" type="Control" parent="Center/Column"]
+[node name="GapC" type="Control" parent="Center/Column" unique_id=933665840]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 
-[node name="Body1" type="Label" parent="Center/Column"]
+[node name="Body1" type="Label" parent="Center/Column" unique_id=73364186]
 custom_minimum_size = Vector2(660, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.541176, 0.576471, 0.650980, 1)
+theme_override_colors/font_color = Color(0.541176, 0.576471, 0.65098, 1)
 theme_override_font_sizes/font_size = 15
 text = "本游戏包含快速闪烁的画面、强烈的色彩变化和密集的判定特效。"
 autowrap_mode = 3
 
-[node name="GapD" type="Control" parent="Center/Column"]
+[node name="GapD" type="Control" parent="Center/Column" unique_id=249898539]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="Body2" type="Label" parent="Center/Column"]
+[node name="Body2" type="Label" parent="Center/Column" unique_id=1932048911]
 custom_minimum_size = Vector2(660, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.541176, 0.576471, 0.650980, 1)
+theme_override_colors/font_color = Color(0.541176, 0.576471, 0.65098, 1)
 theme_override_font_sizes/font_size = 15
 text = "如果你或你的家人有光敏性癫痫或其他光敏病史，请在医生建议下游玩。"
 autowrap_mode = 3
 
-[node name="GapE" type="Control" parent="Center/Column"]
+[node name="GapE" type="Control" parent="Center/Column" unique_id=1940952516]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="Body3" type="Label" parent="Center/Column"]
+[node name="Body3" type="Label" parent="Center/Column" unique_id=996987989]
 custom_minimum_size = Vector2(660, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.541176, 0.576471, 0.650980, 1)
+theme_override_colors/font_color = Color(0.541176, 0.576471, 0.65098, 1)
 theme_override_font_sizes/font_size = 15
 text = "游玩过程中若出现头晕、视觉异常、肌肉抽搐等不适，请立即停止游戏并就医。"
 autowrap_mode = 3
 
-[node name="GapF" type="Control" parent="Center/Column"]
+[node name="GapF" type="Control" parent="Center/Column" unique_id=650480037]
 custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
 
-[node name="BarHolder" type="Control" parent="Center/Column"]
+[node name="BarHolder" type="Control" parent="Center/Column" unique_id=916334983]
 custom_minimum_size = Vector2(660, 2)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="BarBg" type="ColorRect" parent="Center/Column/BarHolder"]
+[node name="BarBg" type="ColorRect" parent="Center/Column/BarHolder" unique_id=1024171426]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -128,21 +142,19 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.137255, 0.160784, 0.211765, 0.9)
 
-[node name="Bar" type="ColorRect" parent="Center/Column/BarHolder"]
+[node name="Bar" type="ColorRect" parent="Center/Column/BarHolder" unique_id=598359247]
 layout_mode = 0
-offset_right = 0.0
 offset_bottom = 2.0
 mouse_filter = 2
-color = Color(0.298039, 0.788235, 0.941176, 1)
+color = Color(0.670588, 0.427451, 0.941176, 1)
 
-[node name="GapG" type="Control" parent="Center/Column"]
+[node name="GapG" type="Control" parent="Center/Column" unique_id=1107969792]
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 
-[node name="Hint" type="Label" parent="Center/Column"]
+[node name="Hint" type="Label" parent="Center/Column" unique_id=1037042093]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.364706, 0.4, 0.470588, 1)
 theme_override_font_sizes/font_size = 12
 text = "点击任意处或按任意键继续"
 horizontal_alignment = 2
-script = ExtResource("2_mono")

@@ -50,6 +50,7 @@ func _run() -> void:
 	_check_stage_geometry()
 	await _check_song_select()
 	await _check_gameplay_autoplay()
+	await _check_gameplay_timing()
 	await _check_key_input()
 	await _check_fx_rules()
 	await _check_chord_marking()
@@ -247,6 +248,56 @@ func _check_gameplay_autoplay() -> void:
 	await get_tree().process_frame
 	check(results_scene.get_child_count() > 0, "结算界面建起来了")
 	results_scene.queue_free()
+	await get_tree().process_frame
+	App.autoplay_once = false
+
+
+func _check_gameplay_timing() -> void:
+	var original_offset: float = App.settings.audio_offset_ms
+	App.settings.audio_offset_ms = 100.0
+	for offset in [-2.0, 2.0]:
+		var raw := {"audio": {"offset": offset, "volume_db": -12.0},
+			"notes": [{"time": 0.5, "lane": 0}]}
+		var stream := AudioStreamWAV.new()
+		stream.format = AudioStreamWAV.FORMAT_8_BITS
+		stream.mix_rate = 8000
+		var samples := PackedByteArray()
+		samples.resize(80000)
+		stream.data = samples
+		App.session = {"chart": RhythmChart.parse(raw)["chart"], "stream": stream}
+		App.autoplay_once = true
+		var game = _new_gameplay()
+		await get_tree().process_frame
+		var audio_end: float = stream.get_length() - offset - 0.1
+		near(game.stage.song_length, audio_end, "进度条按音频偏移换算总时长")
+		near(game._end_time, audio_end + 0.4, "结算时刻按音频偏移换算")
+		near(game.player.volume_db, linear_to_db(App.settings.music_volume) - 12.0,
+			"游戏音乐同时使用玩家音量和谱面音量")
+		game.debug_set_audio_clock(false)
+		game.debug_start_now()
+		game.debug_advance(9.5)
+		check(game.state == 1, "音频末尾之前不提前结算")
+		game.debug_advance(1.0)
+		check(game.state == 3, "音频末尾之后正常结算")
+		game.queue_free()
+		await get_tree().process_frame
+	App.settings.audio_offset_ms = original_offset
+
+	_make_session()
+	App.autoplay_once = true
+	var stalled = _new_gameplay()
+	await get_tree().process_frame
+	stalled.debug_set_audio_clock(false)
+	stalled.debug_start_now()
+	var guard := 0
+	while stalled.state != 3 and guard < 1000:
+		stalled.debug_advance(0.6)
+		guard += 1
+	check(stalled.state == 3, "卡顿时自动演示仍能完成结算")
+	eq(int(stalled.judge.counts["perfect_plus"]), stalled.judge.total_judgeable,
+		"卡顿到每帧 600ms 时自动演示仍全 Perfect+")
+	eq(int(stalled.judge.counts["miss"]), 0, "自动演示卡顿不漏打")
+	stalled.queue_free()
 	await get_tree().process_frame
 	App.autoplay_once = false
 

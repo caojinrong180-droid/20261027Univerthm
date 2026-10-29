@@ -103,12 +103,12 @@ func _ready() -> void:
 
 	_end_time = RhythmChart.chart_duration(chart) + 1.5
 	if has_audio:
-		_end_time = maxf(_end_time, _audio_length + 0.4)
+		_end_time = maxf(_end_time, _audio_length - _chart_offset() + 0.4)
 
 	# 顶部进度条按「音频长度 / 谱面长度里更长的那个」算（没音频的谱面也不会一下子走满）
 	var song_total := RhythmChart.chart_duration(chart)
 	if has_audio:
-		song_total = maxf(song_total, _audio_length)
+		song_total = maxf(song_total, _audio_length - _chart_offset())
 	stage.song_length = maxf(0.1, song_total)
 
 	_build_pause_layer()
@@ -299,16 +299,15 @@ func _autoplay_step(t: float) -> void:
 		if float(note["time"]) > t + 0.002:
 			break
 		if str(note["state"]) == "pending":
-			if float(note["time"]) >= t - 0.25:
-				var lane: Dictionary = judge.lanes[int(note["lane"])]
-				var press_t := maxf(t, float(note["time"]))
-				# 判定区可能被 zone 事件动画过，要用「按下那一刻」的生效判定区
-				var zone := RhythmChart.lane_zone_at(lane, press_t)
-				if zone == "none":
-					zone = "left"
-				var result := judge.press(zone, press_t, int(note["lane"]))
-				if bool(result.get("hit", false)):
-					_play_hit()
+			var lane: Dictionary = judge.lanes[int(note["lane"])]
+			# 自动演示按音符本身的时刻判定，避免帧率 / 卡顿改变成绩。
+			var press_t := float(note["time"])
+			var zone := RhythmChart.lane_zone_at(lane, press_t)
+			if zone == "none":
+				zone = "left"
+			var result := judge.press(zone, press_t, int(note["lane"]))
+			if bool(result.get("hit", false)):
+				_play_hit()
 
 		_auto_cursor += 1
 
@@ -409,7 +408,7 @@ func _apply_audio_settings() -> void:
 	if settings == null:
 		return
 	if player != null:
-		player.volume_db = _db(settings.music_volume)
+		player.volume_db = _db(settings.music_volume) + float(chart.get("audio", {}).get("volume_db", 0.0))
 	if hit_player != null:
 		hit_player.volume_db = _db(settings.hit_volume)
 

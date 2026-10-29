@@ -1,0 +1,18 @@
+# Codex drafts, plans, local previews and verification artifacts
+.codex-drafts/
+drafts/
+/AGENTS.md
+/.ignore/
+.planning/
+task_plan.md
+findings.md
+progress.md
+.plan-attestation
+_zoomcheck.js
+.tmp_*
+
+# Godot generated caches and local test output
+.godot/
+.tmp_appdata/
+tests/_shots/
+Thumbs.db

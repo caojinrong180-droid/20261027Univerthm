@@ -380,6 +380,11 @@ static func _resolve_media(search_dir: String, name: String) -> String:
 static func _zip_find(files: Array, name: String) -> String:
 	if name == "":
 		return ""
+	if files.has(name):
+		return name
+	for f in files:
+		if str(f).to_lower() == name.to_lower():
+			return str(f)
 	var want := name.get_file().to_lower()
 	for f in files:
 		if str(f).get_file().to_lower() == want:

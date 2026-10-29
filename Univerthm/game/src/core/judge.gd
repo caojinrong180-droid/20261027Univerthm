@@ -262,11 +262,7 @@ func _register_miss(note: Dictionary) -> void:
 
 func _break_hold(note: Dictionary) -> void:
 	_revoke(note)
-	note["state"] = "judged"
-	note["result"] = "miss"
-	counts["miss"] += 1
-	combo = 0
-	note_judged.emit(note, "miss", 0.0)
+	_register_miss(note)
 	hold_broken.emit(note)
 
 

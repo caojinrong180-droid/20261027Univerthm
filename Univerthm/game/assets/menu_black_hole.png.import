@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bsss6vy0d1w3s"
-path="res://.godot/imported/.tmp_new_Start.png-15b9ee219513945fdd76af5ae7ae344f.ctex"
+uid="uid://ck0hnma2hojv3"
+path="res://.godot/imported/menu_black_hole.png-0137b6d0d38d1d8c5ecba33595fa6482.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://.tmp_new_Start.png"
-dest_files=["res://.godot/imported/.tmp_new_Start.png-15b9ee219513945fdd76af5ae7ae344f.ctex"]
+source_file="res://assets/menu_black_hole.png"
+dest_files=["res://.godot/imported/menu_black_hole.png-0137b6d0d38d1d8c5ecba33595fa6482.ctex"]
 
 [params]
 

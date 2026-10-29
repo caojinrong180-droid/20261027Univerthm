@@ -1,4 +1,4 @@
-﻿/* 界面冒烟测试：用假 DOM 把 editor.js 真跑一遍，模拟鼠标键盘。
+/* 界面冒烟测试：用假 DOM 把 editor.js 真跑一遍，模拟鼠标键盘。
  * node web/test/ui.smoke.js
  */
 'use strict';
@@ -269,9 +269,22 @@ try {
   ok(noteTotal() === 0, '初始 0 个音符，实际 ' + noteTotal());
   ok(statusLen().includes('00:00.000'), '初始时长 0，实际 ' + statusLen());
 
-  // 每个阶段都从空谱面开始，互不干扰
+  // 每个阶段从空谱面开始；需要媒体的阶段显式重装测试媒体。
   function reset() {
+    const previousAudio = audioInstances.filter((a) => a.src === 'blob:stub').slice(-1)[0];
+    const hadCover = els['cover-img'] && els['cover-img'].src === 'blob:stub' && !els['cover-img'].hidden;
     els['btn-new'].fire('click', {});
+    if (previousAudio) {
+      els['file-audio'].fire('change', {
+        target: { files: [{ name: 'song.mp3', arrayBuffer: () => Promise.resolve(new Uint8Array([1, 2, 3, 4]).buffer) }], value: '' }
+      });
+      audioInstances[audioInstances.length - 1].duration = previousAudio.duration;
+    }
+    if (hadCover) {
+      els['file-cover'].fire('change', {
+        target: { files: [{ name: 'cover.png', arrayBuffer: () => Promise.resolve(new Uint8Array([137, 80, 78, 71]).buffer) }], value: '' }
+      });
+    }
     frame(1);
   }
 
@@ -746,7 +759,7 @@ try {
   const chartAudios = () => audioInstances.filter((a) => a.src === 'blob:stub');
   ok(chartAudios().length === 1, '音频对象建出来了');
   ok(els['audio-name'].textContent === 'song.mp3', '音频文件名显示出来了');
-  chartAudios()[0].duration = 4;
+  chartAudios().slice(-1)[0].duration = 4;
   frame(1);
 
   ptr('pointerdown', MINI_X, 336);        // 50% 处
@@ -866,9 +879,9 @@ try {
   const beforePass = hitPlays();
   key(' ', {});
   ok(els['btn-play'].textContent.includes('暂停'), '开始播放');
-  chartAudios()[0].currentTime = 0.9;
+  chartAudios().slice(-1)[0].currentTime = 0.9;
   frame(1);
-  chartAudios()[0].currentTime = 1.05;
+  chartAudios().slice(-1)[0].currentTime = 1.05;
   frame(1);
   key(' ', {});
   ok(hitPlays() === beforePass + 1, '音符过判定线响了一声，实际 +' + (hitPlays() - beforePass));
@@ -2003,6 +2016,41 @@ try {
   await new Promise((res) => setTimeout(res, 20));
   const plainZip = Buffer.from(blobCalls[blobCalls.length - 1].parts[0]).toString('latin1');
   ok(plainZip.indexOf('storyboard.json') < 0, '换成纯 json 后不再夹带旧故事板');
+
+  // 切换谱面后，旧音频、曲绘不能混进新工程。
+  ok(els['audio-name'].textContent !== 'song.mp3', '打开纯 JSON 清掉上一首的音频');
+  ok(els['cover-name'].textContent !== 'cover.png', '打开纯 JSON 清掉上一首的曲绘');
+  const plainFiles = await sandbox.RChart.zipRead(blobCalls[blobCalls.length - 1].parts[0]);
+  ok(!plainFiles['song.mp3'] && !plainFiles['cover.png'], '打开纯 JSON 后导出不夹带旧媒体');
+
+  // 无效谱面包应保留当前谱面和资源，不继续套用包内的媒体。
+  const titleBeforeBadZip = els['f-title'].value;
+  const badZip = sandbox.RChart.zipStore([
+    { name: 'chart.json', data: new TextEncoder().encode('null') },
+    { name: 'bad.mp3', data: new Uint8Array([8, 8]) },
+    { name: 'bad.png', data: new Uint8Array([9, 9]) }
+  ]);
+  const alertsBeforeBadZip = logs.filter((s) => s.startsWith('ALERT ')).length;
+  els['file-chart'].fire('change', {
+    target: { files: [{ name: 'bad.zip', arrayBuffer: () => Promise.resolve(badZip.buffer) }], value: '' }
+  });
+  await new Promise((res) => setTimeout(res, 20));
+  ok(els['f-title'].value === titleBeforeBadZip, '无效谱面包不替换当前谱面');
+  ok(els['audio-name'].textContent !== 'bad.mp3', '无效谱面包不污染当前音频');
+  ok(els['cover-name'].textContent !== 'bad.png', '无效谱面包不污染当前曲绘');
+  ok(els['st-hint'].textContent.indexOf('已打开 bad.zip') < 0, '无效谱面包不提示打开成功');
+  ok(logs.filter((s) => s.startsWith('ALERT ')).length === alertsBeforeBadZip + 1, '无效谱面包只提示一次错误');
+
+  // 新建也清空媒体，避免把上一份工程的文件带进空谱面。
+  els['file-chart'].fire('change', {
+    target: { files: [{ name: 'with-sb.zip', arrayBuffer: () => Promise.resolve(sbZip.buffer) }], value: '' }
+  });
+  await new Promise((res) => setTimeout(res, 20));
+  els['btn-new'].fire('click', {});
+  els['btn-save'].fire('click', {});
+  await new Promise((res) => setTimeout(res, 20));
+  const newFiles = await sandbox.RChart.zipRead(blobCalls[blobCalls.length - 1].parts[0]);
+  ok(Object.keys(newFiles).length === 1 && !!newFiles['chart.json'], '新建空谱面只导出 chart.json');
   /* ---- 连续画很多帧不炸 ---- */
   for (let i = 0; i < 40; i++) frame(1);
   ok(true, '连续 40 帧绘制没抛异常');

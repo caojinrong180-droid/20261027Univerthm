@@ -88,6 +88,8 @@ func _test_parse_defaults() -> void:
 	eq(str(chart["notes"][0]["type"]), "tap", "音符 type 默认 tap")
 	eq(int(chart["notes"][0]["lane"]), 0, "lane 0")
 	check(RhythmChart.parse("not a dict")["chart"] == null, "非对象 → chart = null")
+	check(RhythmChart.parse({"format": "rstory", "scenes": []})["chart"] == null,
+		"故事板不能被当作空谱面导入")
 	eq(RhythmChart.parse({"notes": [{"time": 1.0, "lane": 0, "type": "hold", "duration": 0}]})["chart"]["notes"][0]["type"], "tap", "duration<=0 的 hold → tap")
 	eq(RhythmChart.parse({"notes": [{"time": 0, "lane": 0, "type": "bogus"}]})["chart"]["notes"].size(), 0, "未知 type（flick / mine 等）→ 直接丢掉")
 
@@ -437,6 +439,23 @@ func _test_judge_hold() -> void:
 	eq(int(j2.counts["miss"]), 1, "断 hold 记 miss")
 	eq(int(j2.counts["perfect_plus"]), 0, "断 hold 撤掉 Perfect+")
 	near(j2.score, 0.0, "断 hold 退分")
+	eq(j2.judged_count, 1, "断 hold 仍算一个已判定音符")
+	near(j2.accuracy_live(), 0.0, "只有断 hold 时实时准确率为 0")
+	j2.update(3.0)
+	eq(j2.judged_count, 1, "断 hold 不重复计数")
+
+	var mixed := _make_chart([
+		{"time": 1.0, "lane": 0, "type": "hold", "duration": 1.0},
+		{"time": 1.0, "lane": 1},
+	])
+	var jm := _new_judge(mixed)
+	jm.press("left", 1.0, 0)
+	jm.press("left", 1.0, 1)
+	jm.set_pressed_zones([])
+	jm.finish(1.5)
+	eq(jm.judged_count, 2, "收尾断 hold 后已判定总数不变")
+	near(jm.accuracy_live(), 0.5, "命中一颗、断一颗的实时准确率为 50%")
+	near(jm.accuracy_live(), jm.accuracy_final(), "收尾后实时准确率和结算一致")
 
 	# 换手 / 换边：头判按左键，之后只按右键，hold 照样继续
 	var lanes4 := [{"judge_zone": "left"}, {}, {}, {}]
@@ -573,6 +592,12 @@ func _test_judge_stats() -> void:
 # --------------------------------------------------------------------------- #
 
 func _test_chart_source() -> void:
+	eq(ChartSource._zip_find(["assets/song.wav", "song.wav"], "song.wav"), "song.wav",
+		"ZIP 同名媒体优先匹配完整路径")
+	eq(ChartSource._zip_find(["other/song.wav", "music/song.wav"], "music/song.wav"), "music/song.wav",
+		"ZIP 子目录媒体使用谱面指定路径")
+	eq(ChartSource._zip_find(["wrapped/song.wav"], "song.wav"), "wrapped/song.wav",
+		"ZIP 媒体仍可按文件名兜底")
 	# 造一个临时的「文件夹谱面」再扫出来（跑完删掉，不往项目里塞谱面）
 	var dir := "user://charts/_unit_test_folder"
 	DirAccess.make_dir_recursive_absolute(dir)

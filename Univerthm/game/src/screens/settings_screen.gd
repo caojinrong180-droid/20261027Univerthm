@@ -103,6 +103,7 @@ func _set_row(key: String, text: String) -> void:
 
 func _save() -> void:
 	_settings.save()
+	App.refresh_music_volume()
 	_refresh()
 
 

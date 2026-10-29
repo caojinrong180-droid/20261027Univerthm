@@ -2499,27 +2499,14 @@
       if (/\.zip$/i.test(f.name)) {
         f.arrayBuffer().then(function (buf) {
           return RC.zipRead(new Uint8Array(buf)).then(function (files) {
-            // zipRead 给的是 { 文件名: Uint8Array }
-            var sbData = files['storyboard.json'] || null;
-            var assetsMap = {};
-            Object.keys(files).forEach(function (nm) {
-              if (nm.indexOf('assets/') === 0) assetsMap[nm.slice(7)] = files[nm];
-            });
-            if (!sbData) throw new Error('zip 里没有 storyboard.json');
-            var text = new TextDecoder().decode(sbData);
-            var raw = JSON.parse(text);
-            // assets 里存的是相对路径，按 zip 内容还原成 dataURL
-            var fixed = {};
-            var src = raw.assets || {};
-            Object.keys(src).forEach(function (k) {
-              var v = src[k];
-              if (typeof v === 'string' && v.indexOf('data:') === 0) { fixed[k] = v; return; }
-              var rel = String(v).replace(/^assets\//, '');
-              var bytes = assetsMap[rel] || assetsMap[k];
-              if (bytes && bytes.length) fixed[k] = bytesToDataUrl(bytes, k);
-            });
-            raw.assets = fixed;
-            applyLoadedDoc(raw, f.name);
+            var storyName = pickEntry(files, 'storyboard.json', /(?!)/);
+            if (!storyName) throw new Error('zip 里没有 storyboard.json');
+            if (pickEntry(files, 'chart.json', /(?!)/)) {
+              applyChartFromZip(files, f.name);
+            } else {
+              var raw = JSON.parse(new TextDecoder().decode(files[storyName]));
+              applyLoadedDoc(restoreZipAssets(raw, files, storyName), f.name);
+            }
           });
         }).catch(function (err) {
           window.alert('打开整包失败：' + (err && err.message ? err.message : err));
@@ -2746,14 +2733,40 @@
   }
 
   function setAudio(audio) {
-    if (S.audioEl) { try { S.audioEl.pause(); } catch (err) { /* 忽略 */ } }
-    S.audioBytes = audio;
-    S.audioEl = new Audio(URL.createObjectURL(new Blob([audio.bytes], { type: mimeOf(audio.name) })));
-    S.audioEl.preload = 'auto';
+    if (S.audioEl) {
+      try { S.audioEl.pause(); } catch (err) { /* 忽略 */ }
+      if (S.audioEl.src) URL.revokeObjectURL(S.audioEl.src);
+    }
+    S.audioBytes = audio || null;
+    S.audioEl = audio ? new Audio(URL.createObjectURL(new Blob([audio.bytes], { type: mimeOf(audio.name) }))) : null;
+    if (S.audioEl) S.audioEl.preload = 'auto';
     S.audioNodeMade = false;
     S.audioSrcNode = null;
     applyVolume();
     renderAudioPanel();
+  }
+
+  function clearCover() {
+    if (S.coverUrl) URL.revokeObjectURL(S.coverUrl);
+    S.coverUrl = '';
+    S.coverBytes = null;
+  }
+
+  /** 整包里的资源路径转回内存资源；两个打开入口使用同一套逻辑。 */
+  function restoreZipAssets(raw, files, storyName) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+    var fixed = {};
+    var src = raw.assets || {};
+    var prefix = storyName.slice(0, storyName.lastIndexOf('/') + 1);
+    Object.keys(src).forEach(function (name) {
+      var value = src[name];
+      if (typeof value !== 'string') return;
+      if (value.indexOf('data:') === 0) { fixed[name] = value; return; }
+      var bytes = files[prefix + value] || files[value] || files[prefix + 'assets/' + name];
+      if (bytes && bytes.length) fixed[name] = bytesToDataUrl(bytes, name);
+    });
+    raw.assets = fixed;
+    return raw;
   }
 
   function pickEntry(files, wanted, extRe) {
@@ -2778,7 +2791,11 @@
         });
       }
       var text = new TextDecoder().decode(bytes);
+      pause();
       applyChartText(text, file.name, new TextEncoder().encode(text));
+      setAudio(null);
+      clearCover();
+      finishChartImport();
     }).catch(function (err) {
       window.alert('谱面打不开：' + (err && err.message ? err.message : err));
     });
@@ -2789,37 +2806,36 @@
     if (!jsonName) throw new Error('zip 里没有 .json 谱面');
     var chartBytes = files[jsonName];
     var text = new TextDecoder().decode(chartBytes);
+    var storyName = pickEntry(files, 'storyboard.json', /(?!)/);
+    var storyRaw = storyName ? restoreZipAssets(JSON.parse(new TextDecoder().decode(files[storyName])), files, storyName) : null;
 
+    pause();
     applyChartText(text, zipName, chartBytes);
 
     var audioName = pickEntry(files, S.chart.audio && S.chart.audio.file, /\.(mp3|ogg|wav)$/i);
-    if (audioName) setAudio({ name: audioName, bytes: files[audioName] });
-    else if (S.audioEl) { S.audioEl = null; S.audioBytes = null; }
+    setAudio(audioName ? { name: audioName, bytes: files[audioName] } : null);
 
     var coverName = pickEntry(files, S.chart.meta && S.chart.meta.cover, /\.(png|jpe?g|webp|gif)$/i);
+    clearCover();
     if (coverName) {
       S.coverBytes = { name: coverName, bytes: files[coverName] };
-      if (S.coverUrl) URL.revokeObjectURL(S.coverUrl);
       S.coverUrl = URL.createObjectURL(new Blob([files[coverName]], { type: mimeOf(coverName) }));
       renderChartPanel();
     }
 
     // 整包里如果带了故事板，一起恢复
-    var storyName = pickEntry(files, 'storyboard.json', /(?!)/);
     if (storyName) {
-      var sraw = JSON.parse(new TextDecoder().decode(files[storyName]));
-      var res = SB.normalizeDoc(sraw);
+      var res = SB.normalizeDoc(storyRaw);
       res.doc.chart = SB.chartDigest(S.chart, { file: zipName, hash: S.chartHash });
-      S.doc = res.doc;
-      S.sceneId = S.doc.scenes.length ? S.doc.scenes[0].id : 0;
-      loadDocAssets();
-      syncTimes();
-      refreshAll();
-      seek(0);
+      applyLoadedDoc(res.doc, zipName);
       hint('整包里的故事板也一起读进来了');
       return;
     }
 
+    finishChartImport();
+  }
+
+  function finishChartImport() {
     S.sceneId = S.doc.scenes.length ? S.doc.scenes[0].id : 0;
     S.selKind = 'scene';
     S.selId = S.sceneId;
@@ -2830,7 +2846,7 @@
     refreshAll();
     seek(0);
     checkChartMatch();
-    hint('谱面已导入（只读）：' + (S.chart.meta.title || jsonName) + ' · ' + S.chart.notes.length + ' 个音符');
+    hint('谱面已导入（只读）：' + (S.chart.meta.title || S.chartName) + ' · ' + S.chart.notes.length + ' 个音符');
   }
 
   function applyChartText(text, name, bytes) {
@@ -2937,7 +2953,11 @@
   /** 把一份工程对象装进编辑器（json 和 zip 两条路共用） */
   function applyLoadedDoc(raw, fileName) {
     var res = SB.normalizeDoc(raw);
+    pause();
     S.doc = res.doc;
+    S.undo.length = 0;
+    S.redo.length = 0;
+    S.editOpen = false;
     S.sceneId = S.doc.scenes.length ? S.doc.scenes[0].id : 0;
     S.selKind = 'scene';
     S.selId = S.sceneId;
@@ -2947,6 +2967,7 @@
     S.view.span = clamp(S.total, 1, 60);
     syncZoomSlider();
     loadDocAssets();
+    applyVolume();
     refreshAll();
     seek(0);
     if (res.warnings.length) {

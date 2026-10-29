@@ -867,6 +867,9 @@
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       return { chart: null, warnings: ['文件内容不是 JSON 对象，打不开'] };
     }
+    if (raw.format !== undefined && raw.format !== FORMAT) {
+      return { chart: null, warnings: ['文件格式不是 rchart 谱面，打不开'] };
+    }
 
     var rawStage = (raw.stage && typeof raw.stage === 'object') ? raw.stage : {};
     var rawLanes = Array.isArray(raw.lanes) ? raw.lanes : [];
