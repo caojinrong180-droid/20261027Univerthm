@@ -105,6 +105,16 @@ func _finish_fade_in() -> void:
 	phase = Phase.PLAYING
 
 
+## 选曲试听接管声场，清除菜单声源与混响尾音，避免两首音乐叠播。
+func stop_immediately() -> void:
+	_cancel_transition()
+	if player != null:
+		player.stop()
+	if reverb != null:
+		reverb.wet = 0.0
+	phase = Phase.STOPPED
+
+
 func _begin_tail() -> void:
 	player.stop()
 	phase = Phase.TAIL

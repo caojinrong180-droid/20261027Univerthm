@@ -1,7 +1,7 @@
-[gd_scene format=3 uid="uid://smvbf7grxyti"]
+[gd_scene format=4 uid="uid://smvbf7grxyti"]
 
 [ext_resource type="Script" uid="uid://bkmoapke5bvwh" path="res://src/screens/main_menu.gd" id="1_menu"]
-[ext_resource type="Texture2D" path="res://assets/menu_deep_space.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://edyaxf484b07" path="res://assets/menu_deep_space.png" id="2_bg"]
 [ext_resource type="Texture2D" uid="uid://c6teyar88l2s1" path="res://assets/menu/Line.png" id="4_line"]
 [ext_resource type="Texture2D" uid="uid://0pyelio6wqr7" path="res://assets/menu/User_name.png" id="5_name"]
 [ext_resource type="Texture2D" uid="uid://bt7u0nwp72rvu" path="res://assets/menu/Start.png" id="6_start"]
@@ -15,12 +15,9 @@
 [ext_resource type="Shader" uid="uid://btccmhixtk426" path="res://shaders/warning_glitch.gdshader" id="14_glow"]
 [ext_resource type="Script" uid="uid://b5prk2g5lk80w" path="res://src/ui/menu_glitch.gd" id="15_glitch"]
 [ext_resource type="Shader" uid="uid://bia07vnhh4o4p" path="res://shaders/menu_local_glitch.gdshader" id="16_glitch"]
-[ext_resource type="Script" path="res://src/ui/menu_pointer_collapse.gd" id="17_pointer"]
-[ext_resource type="Shader" path="res://shaders/menu_pointer_collapse.gdshader" id="18_pointer"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_pointer"]
-resource_local_to_scene = true
-shader = ExtResource("18_pointer")
+[ext_resource type="Script" uid="uid://c7k8mwi8otr82" path="res://src/ui/menu_pointer_collapse.gd" id="17_pointer"]
+[ext_resource type="Shader" uid="uid://b5m0y24yxh53o" path="res://shaders/menu_pointer_collapse.gdshader" id="18_pointer"]
+[ext_resource type="Texture2D" uid="uid://80vkq6rd1wc3" path="res://assets/banners/stra1.png" id="19_stra"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_background"]
 resource_local_to_scene = true
@@ -46,7 +43,7 @@ shader_parameter/overlay_mode = true
 shader_parameter/reveal_progress = 0.0
 shader_parameter/reveal_feather = 0.12
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_character"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_character_outgoing"]
 resource_local_to_scene = true
 shader = ExtResource("12_motion")
 shader_parameter/motion_strength = 1.0
@@ -54,8 +51,13 @@ shader_parameter/sway = 0.005
 shader_parameter/cloth_sway = 0.026
 shader_parameter/cloth_lift = 0.009
 
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_7b55j"]
-load_path = "res://.godot/imported/Stra.png-c8e54247cb1e2b52bb201b50cfc04588.ctex"
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_character"]
+resource_local_to_scene = true
+shader = ExtResource("12_motion")
+shader_parameter/motion_strength = 1.0
+shader_parameter/sway = 0.005
+shader_parameter/cloth_sway = 0.026
+shader_parameter/cloth_lift = 0.009
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_local_glitch"]
 resource_local_to_scene = true
@@ -66,6 +68,16 @@ shader_parameter/protected_rect = Vector4(0.65, 0.1, 0.21, 0.3)
 shader_parameter/burst_phase = 1.0
 shader_parameter/burst_seed = 0.0
 shader_parameter/strength = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pointer"]
+resource_local_to_scene = true
+shader = ExtResource("18_pointer")
+shader_parameter/viewport_size = Vector2(1280, 720)
+shader_parameter/effect_bounds = Vector4(0, 0, 1280, 720)
+shader_parameter/trail_points = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/trail_count = 0
+shader_parameter/radius_px = 38.0
+shader_parameter/strength = 0.85
 
 [node name="MainMenu" type="Control" unique_id=1904465610]
 layout_mode = 3
@@ -100,6 +112,14 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="BannerOutgoing" type="TextureRect" parent="." unique_id=254522046]
+visible = false
+material = SubResource("ShaderMaterial_character_outgoing")
+layout_mode = 0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="Banner" type="TextureRect" parent="." unique_id=1469423553]
 material = SubResource("ShaderMaterial_character")
 layout_mode = 0
@@ -108,7 +128,7 @@ offset_top = 90.0
 offset_right = 1198.0
 offset_bottom = 970.0
 mouse_filter = 2
-texture = SubResource("CompressedTexture2D_7b55j")
+texture = ExtResource("19_stra")
 expand_mode = 1
 stretch_mode = 5
 
@@ -123,6 +143,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("15_glitch")
+min_interval = 1.2
+max_interval = 2.6
 
 [node name="Line" type="TextureRect" parent="." unique_id=1008318404]
 layout_mode = 0
@@ -208,6 +230,7 @@ stretch_mode = 5
 script = ExtResource("11_btn")
 
 [node name="SwitchButton" type="TextureRect" parent="." unique_id=1784153808]
+visible = false
 modulate = Color(0.58, 0.42, 0.98, 0.82)
 layout_mode = 0
 offset_left = 1022.0
@@ -224,18 +247,20 @@ script = ExtResource("11_btn")
 layout_mode = 0
 offset_left = 22.0
 offset_top = 688.0
-offset_right = 200.0
+offset_right = 82.0
 offset_bottom = 712.0
+mouse_filter = 0
+mouse_default_cursor_shape = 2
 theme_override_colors/font_color = Color(0.101961, 0.0901961, 0.141176, 0.752941)
 theme_override_colors/font_outline_color = Color(0.980392, 0.980392, 1, 0.752941)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 13
 text = "v0.0.1"
 
-[node name="PointerCapture" type="BackBufferCopy" parent="."]
+[node name="PointerCapture" type="BackBufferCopy" parent="." unique_id=204192468]
 copy_mode = 0
 
-[node name="MouseCollapse" type="ColorRect" parent="."]
+[node name="MouseCollapse" type="ColorRect" parent="." unique_id=2147127780]
 visible = false
 material = SubResource("ShaderMaterial_pointer")
 layout_mode = 1

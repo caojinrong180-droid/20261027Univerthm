@@ -306,6 +306,27 @@ static func _load_zip(entry: Dictionary, result: Dictionary) -> void:
 	z.close()
 
 
+## 试听只读取音频，避免为切歌加载曲绘、故事板与解锁视频。
+static func load_audio(entry: Dictionary) -> AudioStream:
+	var audio_name := str(entry.get("audio_file", ""))
+	if audio_name == "":
+		return null
+	if str(entry.get("kind", "")) == "zip":
+		var zip := ZIPReader.new()
+		if zip.open(str(entry.get("path", ""))) != OK:
+			return null
+		var name := _zip_find(zip.get_files(), audio_name)
+		var stream: AudioStream = null
+		if name != "":
+			stream = _make_stream(name, zip.read_file(name))
+		zip.close()
+		return stream
+	var path := _resolve_media(str(entry.get("search_dir", "")), audio_name)
+	if path == "":
+		return null
+	return _make_stream(path, FileAccess.get_file_as_bytes(path))
+
+
 ## 只读曲绘（选曲界面预览用，不重新解析整个谱面）
 static func load_cover(entry: Dictionary) -> Texture2D:
 	var kind := str(entry.get("kind", ""))

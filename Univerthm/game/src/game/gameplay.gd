@@ -8,8 +8,11 @@ extends Control
 
 enum State { COUNTDOWN, PLAYING, PAUSED, DONE, UNLOCK }
 
+signal state_changed
+
 const LEAD_IN := 2.0
 const HIT_SOUND_PATH := "res://audio/hit.wav"
+const PauseActions = preload("res://src/ui/pause_actions.gd")
 
 @onready var stage: StageView = $Stage
 @onready var post: StagePost = $Post
@@ -28,7 +31,12 @@ var judge: RhythmJudge
 var player: AudioStreamPlayer
 var hit_player: AudioStreamPlayer
 
-var state := State.COUNTDOWN
+var state := State.COUNTDOWN:
+	set(value):
+		if state == value:
+			return
+		state = value
+		state_changed.emit()
 var chart_time := 0.0
 var has_audio := false
 var autoplay := false
@@ -48,11 +56,7 @@ var _zones: Array = []
 var _auto_cursor := 0
 var _use_audio_clock := true
 var _pause_layer: Control
-var _resume_button: Button
-var _pause_stats: Label
-var _pause_hit_sound_value: Label
-var _pause_hit_volume_value: Label
-var _pause_fx_value: Label
+
 
 
 # --------------------------------------------------------------------------- #
@@ -334,13 +338,7 @@ func _pause() -> void:
 	state = State.PAUSED
 	if has_audio:
 		player.stream_paused = true
-	_pause_stats.text = "分数 %d   ·   准确率 %.2f%%   ·   连击 %d" % [
-		int(round(judge.score)), judge.accuracy_live() * 100.0, judge.max_combo,
-	]
-	_refresh_pause_audio()
-	_pause_layer.visible = true
-	if _resume_button != null:
-		_resume_button.grab_focus()
+	_pause_layer.open()
 
 
 func _resume() -> void:
@@ -349,9 +347,7 @@ func _resume() -> void:
 	state = State.PLAYING
 	if has_audio:
 		player.stream_paused = false
-	_pause_layer.visible = false
-	if _resume_button != null:
-		_resume_button.release_focus()
+	_pause_layer.close()
 
 
 func _finish() -> void:
@@ -413,38 +409,6 @@ func _apply_audio_settings() -> void:
 		hit_player.volume_db = _db(settings.hit_volume)
 
 
-## 暂停面板里的打击音 / 特效：改完立刻生效并存盘
-func _pause_step_hit_sound(_dir: int) -> void:
-	settings.hit_sound = not settings.hit_sound
-	settings.save()
-	_refresh_pause_audio()
-	if settings.hit_sound:
-		_play_hit()
-
-
-func _pause_step_hit_volume(dir: int) -> void:
-	settings.hit_volume = clampf(snappedf(settings.hit_volume + dir * 0.05, 0.05), 0.0, 1.0)
-	settings.save()
-	_apply_audio_settings()
-	_refresh_pause_audio()
-	_play_hit()
-
-
-func _pause_step_hit_fx(dir: int) -> void:
-	settings.hit_fx = wrapi(int(settings.hit_fx) + dir, 0, 3)
-	settings.save()
-	_refresh_pause_audio()
-
-
-func _refresh_pause_audio() -> void:
-	if _pause_hit_sound_value != null:
-		_pause_hit_sound_value.text = "开" if settings.hit_sound else "关"
-	if _pause_hit_volume_value != null:
-		_pause_hit_volume_value.text = "%d%%" % int(round(settings.hit_volume * 100.0))
-	if _pause_fx_value != null:
-		_pause_fx_value.text = ["关", "标准", "强"][clampi(settings.hit_fx, 0, 2)]
-
-
 func _db(linear: float) -> float:
 	return linear_to_db(clampf(linear, 0.0001, 1.0))
 
@@ -454,73 +418,23 @@ func _db(linear: float) -> float:
 # --------------------------------------------------------------------------- #
 
 func _build_pause_layer() -> void:
-	_pause_layer = Control.new()
+	_pause_layer = PauseActions.new()
 	_pause_layer.name = "PauseLayer"
-	_pause_layer.visible = false
-	_pause_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	UiKit.full_rect(_pause_layer)
 	add_child(_pause_layer)
+	_pause_layer.action_requested.connect(_on_pause_action)
 
-	var shade := ColorRect.new()
-	shade.color = Color(0.02, 0.03, 0.05, 0.74)
-	UiKit.full_rect(shade)
-	_pause_layer.add_child(shade)
 
-	var panel := UiKit.panel(Palette.PANEL, 14, 1, Palette.LINE, Vector4(28, 24, 28, 24))
-	panel.anchor_left = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -240.0
-	panel.offset_right = 240.0
-	panel.offset_top = -255.0
-	panel.offset_bottom = 255.0
-	_pause_layer.add_child(panel)
-
-	var box := UiKit.vbox(12)
-	panel.add_child(box)
-
-	var title := UiKit.label("已暂停", 26, Palette.TEXT)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-
-	_pause_stats = UiKit.mono_label("", 13, Palette.DIM)
-	_pause_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_pause_stats)
-
-	box.add_child(UiKit.gap(2))
-	box.add_child(UiKit.rule())
-
-	var sound_row := UiKit.stepper("打击音", _pause_step_hit_sound)
-	_pause_hit_sound_value = sound_row["value"]
-	box.add_child(sound_row["row"])
-
-	var volume_row := UiKit.stepper("打击音音量", _pause_step_hit_volume)
-	_pause_hit_volume_value = volume_row["value"]
-	box.add_child(volume_row["row"])
-
-	var fx_row := UiKit.stepper("打击特效", _pause_step_hit_fx)
-	_pause_fx_value = fx_row["value"]
-	box.add_child(fx_row["row"])
-
-	box.add_child(UiKit.gap(4))
-
-	_resume_button = UiKit.button("继续（Esc）", 17, "AccentButton")
-	_resume_button.pressed.connect(_resume)
-	box.add_child(_resume_button)
-
-	var retry_button := UiKit.button("重试（R）", 17)
-	retry_button.pressed.connect(func(): App.retry())
-	box.add_child(retry_button)
-
-	var select_button := UiKit.button("选曲（Q）", 17, "GhostButton")
-	select_button.pressed.connect(func(): App.goto_select())
-	box.add_child(select_button)
-
-	var hint := UiKit.label("音画偏移 / 流速 / 判定窗口在选曲界面的「设置」里", 12, Palette.DIM_2)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(hint)
+func _on_pause_action(action: int) -> void:
+	if state != State.PAUSED:
+		return
+	match action:
+		0:
+			_resume()
+		1:
+			App.retry()
+		2:
+			App.goto_select()
 
 
 # --------------------------------------------------------------------------- #
@@ -529,6 +443,10 @@ func _build_pause_layer() -> void:
 
 func is_autoplay() -> bool:
 	return autoplay
+
+
+func is_chart_playing() -> bool:
+	return state == State.PLAYING
 
 
 func get_judge() -> RhythmJudge:

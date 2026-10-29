@@ -1,6 +1,6 @@
 class_name MenuGlitch
 extends ColorRect
-## 间歇性局部图像故障。位于立绘之后、UI 之前，空闲时不绘制或复制屏幕。
+## 间歇性局部图像故障。主界面位于立绘之后、UI 之前，其它界面复用到顶层。
 
 signal burst_started(region: Rect2)
 signal burst_finished
@@ -28,7 +28,8 @@ var _art: Control
 
 func _ready() -> void:
 	_effect_material = material as ShaderMaterial
-	_art = get_node_or_null(protected_art) as Control
+	if not protected_art.is_empty():
+		_art = get_node_or_null(protected_art) as Control
 	_rng.randomize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false

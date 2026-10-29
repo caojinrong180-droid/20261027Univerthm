@@ -72,6 +72,9 @@ func _resolve() -> void:
 	var back := _find("BackButton") as Button
 	if back != null and not back.pressed.is_connected(_on_back):
 		back.pressed.connect(_on_back)
+	var accent_back := _find("AccentBackButton") as Button
+	if accent_back != null and not accent_back.pressed.is_connected(_on_back):
+		accent_back.pressed.connect(_on_back)
 	var reset := _find("ResetButton") as Button
 	if reset != null and not reset.pressed.is_connected(_reset_defaults):
 		reset.pressed.connect(_reset_defaults)
@@ -148,7 +151,7 @@ func _reset_defaults() -> void:
 # 代码搭界面（场景为空时用）
 # --------------------------------------------------------------------------- #
 
-func _make_row(row_name: String, row_title: String, handler: Callable, width := 210) -> StepperRow:
+func _make_row(row_name: String, row_title: String, handler: Callable, width := 170) -> StepperRow:
 	var row := StepperRow.new()
 	row.name = row_name
 	row.title = row_title
@@ -158,116 +161,95 @@ func _make_row(row_name: String, row_title: String, handler: Callable, width := 
 
 
 func _build() -> void:
-	var bg := ColorRect.new()
-	bg.color = Palette.BG
-	UiKit.full_rect(bg)
-	add_child(bg)
+	NeonUi.background(self)
+	var background := _find("SpaceBackground") as TextureRect
+	background.texture = load("res://assets/settings_black_hole_glitch.png")
+	NeonUi.topbar(self, "设置")
+	NeonUi.footer(self, "Esc 返回  ·  R 恢复默认  ·  ◀ ▶ 调整数值", "自动保存 · user://settings.cfg")
 
-	var column := UiKit.vbox(0)
-	UiKit.full_rect(column)
-	add_child(column)
-
-	var bar := UiKit.panel(Palette.PANEL, 0, 0, Color(0, 0, 0, 0), Vector4(22, 12, 22, 12))
-	column.add_child(bar)
-	var h := UiKit.hbox(10)
-	bar.add_child(h)
-	h.add_child(UiKit.label("RHYTHM", 21, Palette.ACCENT))
-	h.add_child(UiKit.chip("设置", Palette.DIM_2))
-	h.add_child(UiKit.stretch())
-	var back_top := UiKit.button("← 返回", 14, "GhostButton")
-	back_top.name = "BackButton"
-	h.add_child(back_top)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	column.add_child(scroll)
-
-	var margin := MarginContainer.new()
-	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left", 40)
-	margin.add_theme_constant_override("margin_right", 40)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	scroll.add_child(margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_child(center)
-
-	var panel := UiKit.panel(Palette.PANEL, 12, 1, Palette.LINE, Vector4(30, 14, 30, 14))
-	panel.custom_minimum_size = Vector2(840, 0)
-	center.add_child(panel)
-
-	var box := UiKit.vbox(2)
+	var panel := NeonUi.content(self)
+	panel.fill = Color(0.025, 0.015, 0.055, 0.84)
+	var box := UiKit.vbox(5)
 	panel.add_child(box)
+	box.add_child(NeonUi.heading("设置", "SYSTEM / CONFIG", "改动立即生效并自动保存。游戏中按 Esc 可暂停。"))
+	box.add_child(UiKit.gap(7))
+	box.add_child(NeonUi.section("对音", "CALIBRATION"))
+	var offset := _make_row("OffsetRow", "音画偏移", _step_offset)
+	box.add_child(offset)
+	_style_stepper(offset)
+	box.add_child(NeonUi.label("正数会将谱面整体推后；使用耳机或蓝牙设备时，可根据打击点逐步调整。", 12, NeonUi.MUTED))
+	box.add_child(UiKit.gap(5))
+	box.add_child(NeonUi.section("声音", "AUDIO"))
+	var music := _make_row("MusicRow", "音乐音量", _step_music)
+	box.add_child(music)
+	_style_stepper(music)
 
-	var title := UiKit.label("设置", 20, Palette.TEXT)
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	box.add_child(UiKit.label("改完立刻生效，自动保存。进了游戏后按 Esc 可以暂停。", 12, Palette.DIM_2))
-	box.add_child(UiKit.gap(4))
-
-	box.add_child(_section("对音"))
-	box.add_child(_make_row("OffsetRow", "音画偏移", _step_offset))
-	box.add_child(UiKit.label("正数 = 谱面整体推后。耳机 / 蓝牙有延迟就慢慢加，靠听打击点调。", 11.5, Palette.DIM_2))
-
-	box.add_child(_section("声音"))
-	box.add_child(_make_row("MusicRow", "音乐音量", _step_music))
-
-	var hit_vol := _make_row("HitVolumeRow", "打击音音量", _step_hit_volume)
-	box.add_child(hit_vol)
-	var preview := UiKit.button("试听", 13)
+	var hit_line := UiKit.hbox(12)
+	box.add_child(hit_line)
+	var hit_volume := _make_row("HitVolumeRow", "打击音音量", _step_hit_volume)
+	hit_volume.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hit_line.add_child(hit_volume)
+	_style_stepper(hit_volume)
+	var preview := NeonUi.button("试听", false, 15)
 	preview.name = "PreviewButton"
-	hit_vol.add_child(preview)
+	preview.custom_minimum_size = Vector2(84, 38)
+	hit_line.add_child(preview)
 
-	var pair := UiKit.hbox(18)
+	var pair := UiKit.hbox(22)
 	box.add_child(pair)
-	var sound_row := _make_row("HitSoundRow", "打击音", _toggle_hit_sound, 112)
-	sound_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pair.add_child(sound_row)
-	var fx_row := _make_row("HitFxRow", "打击特效", _step_hit_fx, 112)
-	fx_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pair.add_child(fx_row)
+	var hit_sound := _make_row("HitSoundRow", "打击音", _toggle_hit_sound, 118)
+	hit_sound.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair.add_child(hit_sound)
+	_style_stepper(hit_sound)
+	var hit_fx := _make_row("HitFxRow", "打击特效", _step_hit_fx, 118)
+	hit_fx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair.add_child(hit_fx)
+	_style_stepper(hit_fx)
 
-	box.add_child(UiKit.gap(4))
-	box.add_child(UiKit.rule())
-	box.add_child(UiKit.gap(2))
-
-	var actions := UiKit.hbox(10)
+	box.add_child(UiKit.stretch())
+	box.add_child(UiKit.rule(Color("8342cf")))
+	var actions := UiKit.hbox(12)
 	box.add_child(actions)
-	var back := UiKit.button("← 返回（Esc）", 16, "AccentButton")
+	var back := NeonUi.button("← 返回（Esc）", true, 17)
 	back.name = "AccentBackButton"
+	back.custom_minimum_size = Vector2(190, 46)
 	actions.add_child(back)
-	var reset := UiKit.button("恢复默认（R）", 15, "GhostButton")
+	var reset := NeonUi.button("恢复默认（R）", false, 15)
 	reset.name = "ResetButton"
+	reset.custom_minimum_size = Vector2(170, 46)
 	actions.add_child(reset)
 	actions.add_child(UiKit.stretch())
-	var path_label := UiKit.mono_label(ProjectSettings.globalize_path(AppSettings.PATH), 11, Palette.DIM_2)
-	path_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	path_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	actions.add_child(path_label)
-
-	var status := UiKit.panel(Palette.PANEL, 0, 0, Color(0, 0, 0, 0), Vector4(22, 7, 22, 12))
-	column.add_child(status)
-	var sh := UiKit.hbox(14)
-	status.add_child(sh)
-	sh.add_child(UiKit.label("Esc 返回  ·  R 恢复默认  ·  ◀▶ 调整数值", 12, Palette.DIM_2))
-	sh.add_child(UiKit.stretch())
-	sh.add_child(UiKit.label("存于 user://settings.cfg", 12, Palette.DIM_2))
-
-	var back2 := _find("AccentBackButton") as Button
-	if back2 != null and not back2.pressed.is_connected(_on_back):
-		back2.pressed.connect(_on_back)
+	actions.add_child(NeonUi.label("UNIVERTHM  /  CONFIGURATION", 11, NeonUi.MUTED, true))
 
 
-func _section(text: String) -> Control:
-	var box := UiKit.vbox(2)
-	box.add_child(UiKit.gap(4))
-	box.add_child(UiKit.label(text, 12, Palette.ACCENT_DIM))
-	box.add_child(UiKit.rule())
-	return box
+func _style_stepper(row: StepperRow) -> void:
+	row.custom_minimum_size.y = 38
+	row.add_theme_constant_override("separation", 10)
+	var title_label := row.get_node("Title") as Label
+	title_label.add_theme_color_override("font_color", NeonUi.LIGHT)
+	title_label.add_theme_font_size_override("font_size", 16)
+	var value_box := row.get_node("ValueBox") as PanelContainer
+	value_box.custom_minimum_size.y = 36
+	value_box.add_theme_stylebox_override("panel", UiTheme.style_box(Color(0.035, 0.025, 0.075, 0.95), 5, 1, Color("815cbb"), Vector4(8, 3, 8, 3)))
+	var value_label := row.get_node("ValueBox/Value") as Label
+	value_label.add_theme_color_override("font_color", NeonUi.LIGHT)
+	value_label.add_theme_font_size_override("font_size", 16)
+	for side in ["Prev", "Next"]:
+		var old := row.get_node(side) as Button
+		var index := old.get_index()
+		row.remove_child(old)
+		old.free()
+		var arrow := NeonUi.button("◀" if side == "Prev" else "▶", false, 14)
+		arrow.name = side
+		arrow.custom_minimum_size = Vector2(45, 36)
+		for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+			var compact := StyleBoxEmpty.new()
+			compact.content_margin_left = 5
+			compact.content_margin_right = 5
+			arrow.add_theme_stylebox_override(state, compact)
+		row.add_child(arrow)
+		row.move_child(arrow, index)
+		arrow.pressed.connect(row._on_prev if side == "Prev" else row._on_next)
 
 
 ## 导出成 .tscn 之前：给要脚本操作的节点起唯一名

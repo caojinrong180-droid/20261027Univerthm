@@ -51,7 +51,8 @@ func _process(delta: float) -> void:
 		_leave()
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## 在 GUI 控件消费点击前接收输入，让文字和空白区域都能跳过。
+func _input(event: InputEvent) -> void:
 	if _done or _elapsed < SKIP_GUARD:
 		return
 	var skip := false
