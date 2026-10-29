@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://iiblu51uqgv7"
-path="res://.godot/imported/Stra.png-c8e54247cb1e2b52bb201b50cfc04588.ctex"
+uid="uid://qy8r677ku5q8"
+path="res://.godot/imported/icon.png-487276ed1e3a0c39cad0279d744ee560.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/banners/Stra.png"
-dest_files=["res://.godot/imported/Stra.png-c8e54247cb1e2b52bb201b50cfc04588.ctex"]
+source_file="res://icon.png"
+dest_files=["res://.godot/imported/icon.png-487276ed1e3a0c39cad0279d744ee560.ctex"]
 
 [params]
 

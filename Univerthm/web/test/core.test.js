@@ -164,6 +164,8 @@ eq(RC.normalize(JSON.parse(JSON.stringify(zout))).chart.lanes.map(l => l.judge_z
 eq(RC.normalize(null).chart, null, 'null 打不开');
 eq(RC.normalize([]).chart, null, '数组打不开');
 eq(RC.normalize('x').chart, null, '字符串打不开');
+eq(RC.normalize({ format: 'rstory', scenes: [] }).chart, null, '故事板不能被当作空谱面导入');
+eq(RC.normalize({ format: 'other' }).chart, null, '不支持的文件格式不能被当作谱面');
 
 const empty = RC.normalize({});
 ok(empty.chart !== null, '空对象能读成默认谱面');

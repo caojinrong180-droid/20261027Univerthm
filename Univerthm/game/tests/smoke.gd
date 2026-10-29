@@ -48,13 +48,67 @@ func _run() -> void:
 	App.refresh_library()
 	check(true, "谱面库扫描没崩（当前 %d 个谱面）" % App.library.size())
 	_check_stage_geometry()
+	await _check_warning_input()
 	await _check_song_select()
+	await _check_song_select_return()
 	await _check_gameplay_autoplay()
+	await _check_gameplay_timing()
 	await _check_key_input()
 	await _check_fx_rules()
 	await _check_chord_marking()
 	await _check_settings()
 	print("  smoke done")
+
+
+## 走 Viewport 的真实输入分发，确保警告页控件不会吞掉「点击任意处继续」。
+func _check_warning_input() -> void:
+	for target in ["", "Center/Column/Hint", "Center/Column/Title", "Center/Column/GapF"]:
+		var warning = load("res://scenes/warning.tscn").instantiate()
+		get_tree().root.add_child(warning)
+		warning.set_process(false)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var point := Vector2(8, 8)
+		if target != "":
+			point = warning.get_node(target).get_global_rect().get_center()
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.position = point
+		click.pressed = true
+		get_viewport().push_input(click, true)
+		check(not warning._done, "警告页防误触时间内点击不跳过：%s" % target)
+		click.pressed = false
+		get_viewport().push_input(click, true)
+		warning._elapsed = warning.SKIP_GUARD
+		click.pressed = true
+		get_viewport().push_input(click, true)
+		check(warning._done, "警告页点击开始离场：%s" % target)
+		click.pressed = false
+		get_viewport().push_input(click, true)
+		warning.queue_free()
+		await get_tree().process_frame
+
+	var warning = load("res://scenes/warning.tscn").instantiate()
+	get_tree().root.add_child(warning)
+	warning.set_process(false)
+	warning._elapsed = warning.SKIP_GUARD
+	var key := InputEventKey.new()
+	key.keycode = KEY_SPACE
+	key.pressed = true
+	get_viewport().push_input(key, true)
+	check(warning._done, "警告页任意键开始离场")
+	key.pressed = false
+	get_viewport().push_input(key, true)
+	warning.queue_free()
+	await get_tree().process_frame
+
+	warning = load("res://scenes/warning.tscn").instantiate()
+	get_tree().root.add_child(warning)
+	warning.set_process(false)
+	warning._process(warning.HOLD_SEC)
+	check(warning._done, "警告页停留五秒自动开始离场")
+	warning.queue_free()
+	await get_tree().process_frame
 
 
 ## 判定特效规则：只有一圈判定环（Perfect+ / Perfect / Good 同款，颜色按判定）/ Miss 无特效 / Hold 的 Miss 半透明保留
@@ -169,6 +223,36 @@ func _check_song_select() -> void:
 	await get_tree().process_frame
 
 
+## 真切换当前场景，确保 Esc 在离开选曲前已消费，返回后长按也不会退出。
+func _check_song_select_return() -> void:
+	var runner := get_tree().current_scene
+	get_tree().current_scene = null
+	for focus_back in [false, true]:
+		App.goto_select()
+		await get_tree().scene_changed
+		var select := get_tree().current_scene
+		if focus_back:
+			select.find_child("BackButton", true, false).grab_focus()
+		var key := InputEventKey.new()
+		key.keycode = KEY_ESCAPE
+		key.pressed = true
+		get_viewport().push_input(key, true)
+		check(get_viewport().is_input_handled(), "选曲 Esc 在场景切换前消费，返回按钮焦点：%s" % focus_back)
+		await get_tree().scene_changed
+		eq(get_tree().current_scene.scene_file_path, App.MENU_SCENE, "选曲 Esc 返回主界面")
+		key.echo = true
+		get_viewport().push_input(key, true)
+		await get_tree().process_frame
+		eq(get_tree().current_scene.scene_file_path, App.MENU_SCENE, "返回后长按 Esc 保持在主界面")
+		key.echo = false
+		key.pressed = false
+		get_viewport().push_input(key, true)
+		get_tree().current_scene.queue_free()
+		get_tree().current_scene = null
+		await get_tree().process_frame
+	get_tree().current_scene = runner
+
+
 func _make_session() -> void:
 	var chart := SyntheticChart.build()
 	App.session = {
@@ -251,6 +335,56 @@ func _check_gameplay_autoplay() -> void:
 	App.autoplay_once = false
 
 
+func _check_gameplay_timing() -> void:
+	var original_offset: float = App.settings.audio_offset_ms
+	App.settings.audio_offset_ms = 100.0
+	for offset in [-2.0, 2.0]:
+		var raw := {"audio": {"offset": offset, "volume_db": -12.0},
+			"notes": [{"time": 0.5, "lane": 0}]}
+		var stream := AudioStreamWAV.new()
+		stream.format = AudioStreamWAV.FORMAT_8_BITS
+		stream.mix_rate = 8000
+		var samples := PackedByteArray()
+		samples.resize(80000)
+		stream.data = samples
+		App.session = {"chart": RhythmChart.parse(raw)["chart"], "stream": stream}
+		App.autoplay_once = true
+		var game = _new_gameplay()
+		await get_tree().process_frame
+		var audio_end: float = stream.get_length() - offset - 0.1
+		near(game.stage.song_length, audio_end, "进度条按音频偏移换算总时长")
+		near(game._end_time, audio_end + 0.4, "结算时刻按音频偏移换算")
+		near(game.player.volume_db, linear_to_db(App.settings.music_volume) - 12.0,
+			"游戏音乐同时使用玩家音量和谱面音量")
+		game.debug_set_audio_clock(false)
+		game.debug_start_now()
+		game.debug_advance(9.5)
+		check(game.state == 1, "音频末尾之前不提前结算")
+		game.debug_advance(1.0)
+		check(game.state == 3, "音频末尾之后正常结算")
+		game.queue_free()
+		await get_tree().process_frame
+	App.settings.audio_offset_ms = original_offset
+
+	_make_session()
+	App.autoplay_once = true
+	var stalled = _new_gameplay()
+	await get_tree().process_frame
+	stalled.debug_set_audio_clock(false)
+	stalled.debug_start_now()
+	var guard := 0
+	while stalled.state != 3 and guard < 1000:
+		stalled.debug_advance(0.6)
+		guard += 1
+	check(stalled.state == 3, "卡顿时自动演示仍能完成结算")
+	eq(int(stalled.judge.counts["perfect_plus"]), stalled.judge.total_judgeable,
+		"卡顿到每帧 600ms 时自动演示仍全 Perfect+")
+	eq(int(stalled.judge.counts["miss"]), 0, "自动演示卡顿不漏打")
+	stalled.queue_free()
+	await get_tree().process_frame
+	App.autoplay_once = false
+
+
 func _check_key_input() -> void:
 	_make_session()
 	App.autoplay_once = false
@@ -274,25 +408,24 @@ func _check_key_input() -> void:
 	game._on_key_up(KEY_A)
 	check(not game._zones.has("left"), "松开后判定区灭掉")
 
-	# 暂停面板里的打击音 / 特效设置
+	# 暂停只保留三个动作，暂停期间时间与原设置保持不变。
 	var original_sound: bool = App.settings.hit_sound
 	var original_volume: float = App.settings.hit_volume
 	var original_fx: int = App.settings.hit_fx
 	game._pause()
 	check(game.state == 2, "暂停面板打开")
-	game._pause_step_hit_sound(1)
-	check(App.settings.hit_sound != original_sound, "暂停面板能切打击音开关")
-	game._pause_step_hit_volume(-1)
-	check(absf(App.settings.hit_volume - maxf(0.0, original_volume - 0.05)) < 0.001, "暂停面板能调打击音音量")
-	check(absf(game.hit_player.volume_db - linear_to_db(clampf(App.settings.hit_volume, 0.0001, 1.0))) < 0.05, "音量立刻作用到播放器")
-	game._pause_step_hit_fx(-1)
-	check(int(App.settings.hit_fx) == wrapi(original_fx - 1, 0, 3), "暂停面板能切打击特效档位")
+	check(game._pause_layer.buttons.size() == 3, "暂停只包含三个动作")
+	for button in game._pause_layer.buttons:
+		check(button.text == "", "暂停按钮无文字")
+	var paused_time: float = game.chart_time
+	game.debug_advance(0.5)
+	near(game.chart_time, paused_time, "暂停不推进谱面时钟")
 	game._resume()
 	check(game.state == 1, "关掉暂停继续")
-	App.settings.hit_sound = original_sound
-	App.settings.hit_volume = original_volume
-	App.settings.hit_fx = original_fx
-	App.settings.save()
+	check(not game._pause_layer.visible, "恢复后隐藏暂停 UI")
+	check(App.settings.hit_sound == original_sound, "暂停不修改打击音")
+	near(App.settings.hit_volume, original_volume, "暂停不修改打击音量")
+	check(App.settings.hit_fx == original_fx, "暂停不修改打击特效")
 	game.queue_free()
 	await get_tree().process_frame
 

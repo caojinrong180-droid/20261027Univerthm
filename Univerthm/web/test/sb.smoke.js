@@ -8,6 +8,8 @@
  */
 'use strict';
 
+(async function runTests() {
+
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -550,6 +552,7 @@ function makeSandbox(search) {
     TextEncoder: TextEncoder,
     TextDecoder: TextDecoder,
     atob: (s) => Buffer.from(s, 'base64').toString('binary'),
+    btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
     FileReader: function () { this.readAsDataURL = function () {}; },
     Image: function () { this.width = 100; this.height = 50; },
     alert(msg) { alerts.push(msg); },
@@ -1454,6 +1457,65 @@ try {
   ok(false, '空工程 boot 抛异常：' + err.message + '\n' + (err.stack || ''));
 }
 
+/* ---- 整包从两个入口读回，资源和谱面必须都恢复 ---- */
+{
+  const imported = makeSandbox('');
+  const st = imported.app().state;
+  const sourceChart = RC.createChart({ lane_count: 1 });
+  sourceChart.meta.title = 'Bundle roundtrip';
+  sourceChart.audio.file = 'song.mp3';
+  sourceChart.meta.cover = 'cover.png';
+  RC.addNote(sourceChart, { time: 1, lane: 0 });
+  const rawChart = new TextEncoder().encode(JSON.stringify(RC.serialize(sourceChart)));
+  const sourceDoc = SB.createStoryboard(SB.chartDigest(sourceChart));
+  SB.addLayer(sourceDoc.scenes[0], 'text');
+  sourceDoc.assets['bg.png'] = 'assets/bg.png';
+  sourceDoc.assets['intro.mp4'] = 'assets/intro.mp4';
+  const bundle = RC.zipStore([
+    { name: 'chart.json', data: rawChart },
+    { name: 'storyboard.json', data: new TextEncoder().encode(JSON.stringify(SB.serializeDoc(sourceDoc))) },
+    { name: 'assets/bg.png', data: new Uint8Array([1, 2, 3]) },
+    { name: 'assets/intro.mp4', data: new Uint8Array([4, 5, 6]) },
+    { name: 'song.mp3', data: new Uint8Array([7, 8]) },
+    { name: 'cover.png', data: new Uint8Array([9, 10]) }
+  ]);
+  for (const input of ['file-chart', 'file-project']) {
+    imported.getEl(input).fire('change', {
+      target: { files: [{ name: 'roundtrip.zip', arrayBuffer: () => Promise.resolve(bundle.buffer) }], value: '' }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    ok(st.doc.assets['bg.png'] === 'data:image/png;base64,AQID', input + ' 还原图片字节');
+    ok(st.doc.assets['intro.mp4'] === 'data:video/mp4;base64,BAUG', input + ' 还原视频字节');
+    ok(st.chart && st.chart.meta.title === 'Bundle roundtrip', input + ' 同时加载整包谱面');
+    ok(st.audioBytes && st.audioBytes.name === 'song.mp3', input + ' 同时加载音乐');
+    ok(st.coverBytes && st.coverBytes.name === 'cover.png', input + ' 同时加载曲绘');
+    imported.getEl('btn-bundle').fire('click');
+    const reexported = await RC.zipRead(imported.blobs[imported.blobs.length - 1].parts[0]);
+    eq(Array.from(reexported['assets/bg.png'] || []), [1, 2, 3], input + ' 再导出不丢图片');
+    eq(Array.from(reexported['assets/intro.mp4'] || []), [4, 5, 6], input + ' 再导出不丢视频');
+  }
+
+  const fresh = makeSandbox('');
+  fresh.addBtns[0].fire('click');
+  ok(fresh.app().state.undo.length > 0, '打开整包之前有旧工程撤销记录');
+  fresh.getEl('file-project').fire('change', {
+    target: { files: [{ name: 'roundtrip.zip', arrayBuffer: () => Promise.resolve(bundle.buffer) }], value: '' }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  ok(fresh.app().state.chartRaw !== null, '从空工程打开整包也恢复原始谱面');
+  ok(fresh.app().state.undo.length === 0 && fresh.app().state.redo.length === 0, '打开整包清空旧工程撤销记录');
+
+  // 切换到不带媒体的谱面包时不能保留上一包的曲绘和音乐。
+  const mediaFree = RC.zipStore([{ name: 'chart.json', data: rawChart }]);
+  imported.getEl('file-chart').fire('change', {
+    target: { files: [{ name: 'no-media.zip', arrayBuffer: () => Promise.resolve(mediaFree.buffer) }], value: '' }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  ok(st.audioEl === null && st.audioBytes === null, '不带音频的包清空旧音乐');
+  ok(st.coverBytes === null && st.coverUrl === '', '不带曲绘的包清空旧曲绘');
+  ok(imported.alerts.length === 0, '整包导入没有报错：' + imported.alerts.join(' / '));
+}
+
 /* ==========================================================================
  * 结果
  * ======================================================================== */
@@ -1466,3 +1528,7 @@ if (fails.length) {
 } else {
   console.log('✓ 故事板渲染 + 界面冒烟 ' + pass + ' 条全部通过');
 }
+})().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

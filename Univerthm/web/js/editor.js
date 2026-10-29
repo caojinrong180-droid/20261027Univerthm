@@ -1337,9 +1337,9 @@
     $('f-pvsec').value = S.pvSec;
     $('f-lanecount').value = S.chart.lanes.length;
     $('snap').value = String(S.snapDiv);
-    $('audio-name').textContent = S.audioName || (S.chart.audio.file || '未载入');
+    $('audio-name').textContent = S.audioName || (S.chart.audio.file ? S.chart.audio.file + '（未载入）' : '未载入');
     var cn = $('cover-name');
-    if (cn) cn.textContent = S.coverFile ? S.coverFile.name : (S.chart.meta.cover || '未选择曲绘');
+    if (cn) cn.textContent = S.coverFile ? S.coverFile.name : (S.chart.meta.cover ? S.chart.meta.cover + '（未载入）' : '未选择曲绘');
     clampSelectedLane();
     syncLaneScrollUI();
     syncEventPanel();
@@ -2650,6 +2650,19 @@
   }
 
   function setChart(chart, name) {
+    pause();
+    if (S.audio) {
+      S.audio.pause();
+      if (S.audio.src) URL.revokeObjectURL(S.audio.src);
+    }
+    S.audio = null;
+    S.audioFile = null;
+    S.audioName = '';
+    $('audio-name').textContent = '未载入音频';
+    if (S.coverUrl) URL.revokeObjectURL(S.coverUrl);
+    S.coverUrl = '';
+    S.coverFile = null;
+    showCover('', '');
     dropDupCache();
     if (!name || !/\.zip$/i.test(name)) { S.extraFiles = []; S.storyboardName = ''; }
     S.chart = chart;
@@ -2731,12 +2744,12 @@
       raw = JSON.parse(text);
     } catch (err) {
       window.alert('这个文件不是合法 JSON：\n' + err.message);
-      return;
+      return false;
     }
     var res = RC.normalize(raw);
     if (!res.chart) {
       window.alert('打不开：' + res.warnings.join('；'));
-      return;
+      return false;
     }
     pause();
     setChart(res.chart, name);
@@ -2745,6 +2758,7 @@
     } else {
       setHint('已读入 ' + name);
     }
+    return true;
   }
 
   /** 在 zip 的条目里挑一个：先按文件名，再按扩展名 */
@@ -2772,7 +2786,7 @@
       var jsonName = pickEntry(files, 'chart.json', /\.json$/i);
       if (!jsonName) throw new Error('zip 里没有 .json 谱面');
 
-      loadText(new TextDecoder().decode(files[jsonName]), zipName);
+      if (!loadText(new TextDecoder().decode(files[jsonName]), zipName)) return;
 
       // 音频
       var audioName = pickEntry(files, S.chart.audio.file, /\.(mp3|ogg|wav)$/i);

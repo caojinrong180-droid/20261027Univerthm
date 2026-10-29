@@ -11,18 +11,26 @@ const SELECT_SCENE := "res://scenes/song_select.tscn"
 const GAMEPLAY_SCENE := "res://scenes/gameplay.tscn"
 const RESULTS_SCENE := "res://scenes/results.tscn"
 const SETTINGS_SCENE := "res://scenes/settings.tscn"
+const MenuMusic = preload("res://src/audio/menu_music.gd")
+const ScreenGlitch = preload("res://src/ui/screen_glitch.gd")
 
 ## 谱面扫描根目录：随游戏发布 + 用户拖进来的
 const CHART_ROOTS := ["res://charts", "user://charts"]
 
 var settings: AppSettings
+var menu_music: MenuMusic
+var screen_glitch: ScreenGlitch
 var library: Array = []
+## 选曲页往返设置 / 游玩时保留当前选择。
+var selected_chart_key := ""
 ## 一次游玩：{ entry, chart, stream, cover, warnings, errors }
 var session := {}
 ## 结算：见 gameplay.gd 的 _finish()
 var last_result := {}
 ## 「自动演示」是这一次性的，不写进设置
 var autoplay_once := false
+## 当前主角：0 = Stra，1 = Kisai。只在本次游戏运行期间保留。
+var character_index := 0
 ## 跨场景的一次性提示（选曲界面底部状态栏会显示）
 var toast := ""
 
@@ -38,6 +46,37 @@ func _ready() -> void:
 	settings = AppSettings.load_settings()
 	load_stats()
 	refresh_library()
+	menu_music = MenuMusic.new()
+	menu_music.name = "MenuMusic"
+	add_child(menu_music)
+	refresh_music_volume()
+	get_tree().scene_changed.connect(_sync_menu_music)
+	_sync_menu_music.call_deferred()
+	screen_glitch = ScreenGlitch.new()
+	screen_glitch.name = "ScreenGlitch"
+	add_child(screen_glitch)
+
+
+func refresh_music_volume() -> void:
+	if menu_music != null and settings != null:
+		menu_music.set_music_volume(settings.music_volume)
+
+
+func _sync_menu_music() -> void:
+	var scene := get_tree().current_scene
+	if scene != null:
+		_sync_menu_music_for_scene(scene.scene_file_path)
+
+
+func _sync_menu_music_for_scene(path: String) -> void:
+	match path:
+		MENU_SCENE, COLLECTION_SCENE, PROFILE_SCENE:
+			menu_music.enter_menu()
+		SETTINGS_SCENE:
+			pass # 设置往返保持声源、播放位置和淡入进度。
+		_:
+			# 主界面「开始游戏」进入选曲时即淡出；后续游玩 / 结算也不重播。
+			menu_music.fade_out()
 
 
 ## F11：全屏 / 窗口切换（全屏就是按屏幕原生分辨率渲染，最清晰）

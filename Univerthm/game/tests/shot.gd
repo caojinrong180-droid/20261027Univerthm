@@ -50,7 +50,8 @@ func _shot_warning() -> void:
 func _shot_menu() -> void:
 	var menu = load("res://scenes/main_menu.tscn").instantiate()
 	get_tree().root.add_child(menu)
-	await _wait_frames(6)
+	await menu.glow_revealed
+	await _wait_frames(2)
 	await _capture("00b_main_menu")
 	menu.queue_free()
 	await _wait_frames(2)

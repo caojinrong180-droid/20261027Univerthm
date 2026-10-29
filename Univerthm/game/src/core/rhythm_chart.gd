@@ -100,6 +100,9 @@ static func parse(raw) -> Dictionary:
 	if typeof(raw) != TYPE_DICTIONARY:
 		warnings.append("内容不是 JSON 对象，打不开")
 		return {"chart": null, "warnings": warnings}
+	if raw.has("format") and raw["format"] != "rchart":
+		warnings.append("文件格式不是 rchart 谱面，打不开")
+		return {"chart": null, "warnings": warnings}
 
 	var chart := {
 		"meta": {
