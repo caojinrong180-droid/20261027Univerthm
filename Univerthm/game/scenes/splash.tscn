@@ -1,0 +1,97 @@
+[gd_scene format=3 uid="uid://bqx8m2vr4t1nk"]
+
+[ext_resource type="Script" path="res://src/screens/splash.gd" id="1_splash"]
+[ext_resource type="Texture2D" uid="uid://c0m0xscorjuah" path="res://assets/Title.png" id="2_logo"]
+[ext_resource type="Shader" uid="uid://btccmhixtk426" path="res://shaders/warning_glitch.gdshader" id="3_glow"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_logo"]
+atlas = ExtResource("2_logo")
+region = Rect2(160, 365, 2514, 860)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glow"]
+resource_local_to_scene = true
+shader = ExtResource("3_glow")
+shader_parameter/viewport_size = Vector2(1280, 720)
+shader_parameter/wave_center = Vector2(0.5, 0.5)
+shader_parameter/glow_color = Color(0.49, 0.16, 0.9, 1)
+shader_parameter/intensity = 0.75
+shader_parameter/motion_speed = 0.4
+shader_parameter/glitch_amount = 0.3
+shader_parameter/wave_amount = 0.5
+shader_parameter/overlay_mode = true
+shader_parameter/reveal_progress = 1.0
+shader_parameter/reveal_feather = 0.12
+
+[node name="Splash" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_splash")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0235294, 0.027451, 0.0392157, 1)
+
+[node name="Glow" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_glow")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0235294, 0.027451, 0.0392157, 0.25)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Column" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 0
+mouse_filter = 2
+
+[node name="Logo" type="TextureRect" parent="Center/Column"]
+custom_minimum_size = Vector2(880, 301)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = SubResource("AtlasTexture_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Gap" type="Control" parent="Center/Column"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Hint" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.627451, 0.670588, 0.741176, 1)
+theme_override_font_sizes/font_size = 15
+text = "点击任意按键进入游戏"
+horizontal_alignment = 1

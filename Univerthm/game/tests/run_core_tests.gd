@@ -37,6 +37,9 @@ func _initialize() -> void:
 	print("== 谱面加载 ==")
 	_test_chart_source()
 
+	print("== 剧情文本 ==")
+	_test_story_source()
+
 	print("== 设置 ==")
 	_test_settings()
 
@@ -235,6 +238,23 @@ func _test_convert() -> void:
 	near(RhythmChart.hold_speed_mult(speed_lane, 2.5), 1.0, "流速 0 时回退到最近的非零流速")
 	var zero_lane: Dictionary = RhythmChart.parse({"lanes": [{"speed": 0}]})["chart"]["lanes"][0]
 	near(RhythmChart.hold_speed_mult(zero_lane, 1.0), 1.0, "全篇 0 流速时回退到 1.0×")
+
+	# 开场倒计时跑的是负时间（LEAD_IN），那时还没有任何事件开始：
+	# 必须按第一条关键帧的 from 往前外推，否则 16 条轨道会全叠在舞台正中、流速退回 1×。
+	var countdown_lane: Dictionary = RhythmChart.parse({"lanes": [{
+		"x": 0, "speed": 10, "alpha": 0,
+		"events": {
+			"x": [{"start": 0.0, "end": 0.5, "ease": "linear", "from": -45, "to": -45}],
+			"speed": [{"start": 0.0, "end": 0.5, "ease": "linear", "from": 20, "to": 20}],
+			"alpha": [{"start": 0.0, "end": 0.5, "ease": "linear", "from": 100, "to": 100}],
+		},
+	}]})["chart"]["lanes"][0]
+	var p_neg := RhythmChart.lane_params_at(countdown_lane, -1.5)
+	near(float(p_neg["x"]), -45.0, "倒计时（t<0）按第一条关键帧外推 x，而不是静态 0")
+	near(float(p_neg["speed"]), 20.0, "倒计时（t<0）按第一条关键帧外推流速，而不是静态 10")
+	near(float(p_neg["alpha"]), 100.0, "倒计时（t<0）按第一条关键帧外推 alpha")
+	var p_pos := RhythmChart.lane_params_at(countdown_lane, 1.0)
+	near(float(p_pos["x"]), -45.0, "事件结束后沿用 to（t≥0 的行为不变）")
 
 
 # --------------------------------------------------------------------------- #
@@ -680,6 +700,99 @@ func _remove_path(path: String) -> void:
 		DirAccess.remove_absolute(path)
 	elif DirAccess.dir_exists_absolute(path):
 		DirAccess.remove_absolute(path)
+
+
+# --------------------------------------------------------------------------- #
+# 剧情文本
+# --------------------------------------------------------------------------- #
+
+func _test_story_source() -> void:
+	# 排版约定：标题行 / 小标题 / 分隔线 / 空行分段
+	var info := StorySource.parse(
+		"标题：雪线之下\n# 第一章 相遇\n第一行\n第二行\n\n第二段。\n---\n【尾声】\n结束。",
+		"01_随便.txt")
+	eq(str(info["title"]), "雪线之下", "首行「标题：」当标题")
+	eq(int(info["chapters"]), 2, "小标题数量（# 与【】）")
+	eq(int(info["paragraphs"]), 3, "段落数")
+	var blocks: Array = info["blocks"]
+	eq(blocks.size(), 6, "排版块数量（2 小标题 + 3 段 + 1 分隔线）")
+	if blocks.size() >= 2:
+		eq(str(blocks[0]["kind"]), "chapter", "第一块是小标题")
+		eq(str(blocks[1]["text"]), "第一行第二行", "中文按行折行的文本直接接上")
+	eq(str(info["excerpt"]), "第一行第二行", "列表摘要取第一段")
+	eq(int(info["minutes"]), 1, "短篇阅读时长至少 1 分钟")
+
+	# 没写标题就落到文件名，开头编号自动去掉
+	eq(str(StorySource.parse("正文。", "02_第二章 回声.txt")["title"]), "第二章 回声", "标题回落到文件名")
+	eq(StorySource._title_from_file("123 - 无名.txt"), "无名", "文件名开头的编号被去掉")
+	eq(str(StorySource.parse("hello\nworld", "a.txt")["blocks"][0]["text"]), "hello world", "英文断行补一个空格")
+
+	# 一行一段：句号 / 问号结尾的行自己成段，没写完的行才接下一行
+	var one_line := StorySource.parse(
+		"便利店自动门开合，却少了那声“叮咚”。\n\n天台。星星还在。\n不对，一直都这么安静吗？\n这是硬折\n的一行没有句号", "x.txt")
+	eq(int(one_line["paragraphs"]), 4, "句号 / 问号结尾的行各自成段")
+	eq((one_line["blocks"] as Array).size(), 4, "四段四个块")
+	eq(str(one_line["blocks"][2]["text"]), "不对，一直都这么安静吗？", "短句单独成段")
+	eq(str(one_line["blocks"][3]["text"]), "这是硬折的一行没有句号", "没写完的行接到同一段")
+
+	# 编码：UTF-8 BOM / UTF-16LE（记事本的「Unicode」）/ GBK（读不了要有标记）
+	var bom := PackedByteArray([0xEF, 0xBB, 0xBF]) + "标题：甲\n正文。".to_utf8_buffer()
+	var bom_info := StorySource.parse_bytes(bom, "bom.txt")
+	eq(str(bom_info["title"]), "甲", "UTF-8 BOM 能读")
+	check(bool(bom_info["utf8_ok"]), "UTF-8 BOM 不标记编码异常")
+
+	var wide := PackedByteArray([0xFF, 0xFE])
+	var wide_text := "标题：乙\n正文。"
+	for i in wide_text.length():
+		var code := wide_text.unicode_at(i)
+		wide.append(code & 0xFF)
+		wide.append((code >> 8) & 0xFF)
+	var wide_info := StorySource.parse_bytes(wide, "wide.txt")
+	eq(str(wide_info["title"]), "乙", "UTF-16LE 能读")
+	check(bool(wide_info["utf8_ok"]), "UTF-16 不算编码异常")
+
+	check(not bool(StorySource.decode(PackedByteArray([0xC4, 0xE3, 0xBA, 0xC3, 0xA1, 0xA3]))["utf8_ok"]),
+		"GBK / ANSI 文本被标记成编码异常")
+
+	# 扫描：只收 .txt（子目录也认），并且读得回正文
+	var root := "user://剧情"
+	var sub := root.path_join("_core_test")
+	DirAccess.make_dir_recursive_absolute(sub)
+	var story_file := sub.path_join("01_临时剧情.txt")
+	var note_file := sub.path_join("说明.md")
+	var fh := FileAccess.open(story_file, FileAccess.WRITE)
+	fh.store_string("标题：临时剧情\n这里只有一行正文。")
+	fh.close()
+	fh = FileAccess.open(note_file, FileAccess.WRITE)
+	fh.store_string("# 不是剧情")
+	fh.close()
+
+	var entries := StorySource.scan([root])
+	var found := {}
+	for entry in entries:
+		if str(entry.get("file", "")) == "01_临时剧情.txt":
+			found = entry
+		elif str(entry.get("file", "")) == "说明.md":
+			check(false, "非 .txt 不该被当成剧情")
+	check(not found.is_empty(), "user:// 里的 txt 被扫到")
+	eq(str(found.get("title", "")), "临时剧情", "扫描时就读出标题")
+	eq(str(found.get("folder", "")), "_core_test", "子文件夹名记进 folder（序章 / 第一章 那种分组）")
+	check(int(found.get("chars", 0)) > 0, "扫描时就算出字数")
+	var loaded := StorySource.read_story(found)
+	check(bool(loaded.get("ok", false)), "read_story 读得到")
+	check((loaded.get("blocks", []) as Array).size() > 0, "read_story 返回正文块")
+
+	# 拖拽导入：拷进 user://剧情，读完清理
+	var imported := StorySource.import_file(ProjectSettings.globalize_path(story_file))
+	check(bool(imported.get("ok", false)), "import_file 接收 .txt")
+	check(FileAccess.file_exists(root.path_join("01_临时剧情.txt")), "导入落到 user://剧情")
+	check(not bool(StorySource.import_file(ProjectSettings.globalize_path(note_file)).get("ok", false)), "import_file 拒绝 .md")
+
+	_remove_path(root.path_join("01_临时剧情.txt"))
+	for path in [story_file, note_file]:
+		_remove_path(path)
+	_remove_path(sub)
+	check(not FileAccess.file_exists(story_file), "临时剧情已清理")
 
 
 # --------------------------------------------------------------------------- #

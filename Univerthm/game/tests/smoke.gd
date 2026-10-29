@@ -49,8 +49,11 @@ func _run() -> void:
 	check(true, "谱面库扫描没崩（当前 %d 个谱面）" % App.library.size())
 	_check_stage_geometry()
 	await _check_warning_input()
+	await _check_splash_input()
+	await _check_menu_sound()
 	await _check_song_select()
 	await _check_song_select_return()
+	await _check_collection()
 	await _check_gameplay_autoplay()
 	await _check_gameplay_timing()
 	await _check_key_input()
@@ -108,6 +111,96 @@ func _check_warning_input() -> void:
 	warning._process(warning.HOLD_SEC)
 	check(warning._done, "警告页停留五秒自动开始离场")
 	warning.queue_free()
+	await get_tree().process_frame
+
+
+## 开屏画面：画面任意处点一下、或者按任意键都进主界面；
+## F11 留给全屏、滚轮不算点击，防误触时间内不响应。
+func _check_splash_input() -> void:
+	for target in ["", "Center/Column/Logo", "Center/Column/Hint"]:
+		var splash = load("res://scenes/splash.tscn").instantiate()
+		get_tree().root.add_child(splash)
+		splash.set_process(false)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var point := Vector2(8, 8)
+		if target != "":
+			point = splash.get_node(target).get_global_rect().get_center()
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.position = point
+		click.pressed = true
+		get_viewport().push_input(click, true)
+		check(not splash._done, "开屏防误触时间内点击不进入主界面：%s" % target)
+		click.pressed = false
+		get_viewport().push_input(click, true)
+		splash._elapsed = splash.SKIP_GUARD
+		click.pressed = true
+		get_viewport().push_input(click, true)
+		check(splash._done, "开屏点击画面进入主界面：%s" % target)
+		splash.queue_free()
+		await get_tree().process_frame
+
+	var splash = load("res://scenes/splash.tscn").instantiate()
+	get_tree().root.add_child(splash)
+	splash.set_process(false)
+	splash._elapsed = splash.SKIP_GUARD
+	var key := InputEventKey.new()
+	key.keycode = KEY_SPACE
+	key.pressed = true
+	get_viewport().push_input(key, true)
+	check(splash._done, "开屏任意键进入主界面")
+	splash.queue_free()
+	await get_tree().process_frame
+
+	# F11 是全局全屏切换，不该把开屏画面带走
+	splash = load("res://scenes/splash.tscn").instantiate()
+	get_tree().root.add_child(splash)
+	splash.set_process(false)
+	splash._elapsed = splash.SKIP_GUARD
+	var f11 := InputEventKey.new()
+	f11.keycode = KEY_F11
+	f11.pressed = true
+	splash._input(f11)
+	check(not splash._done, "开屏按 F11 不进入主界面（留给全屏切换）")
+	# 滚轮也不算点击
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	splash._input(wheel)
+	check(not splash._done, "开屏滚轮不进入主界面")
+	splash.queue_free()
+	await get_tree().process_frame
+
+
+## 主界面按钮音效：鼠标移上去播 chose.wav，按下播 click.wav（别的界面不接）。
+func _check_menu_sound() -> void:
+	if App.ui_sound == null:
+		check(false, "主界面音效节点没建起来")
+		return
+	var menu = load("res://scenes/main_menu.tscn").instantiate()
+	get_tree().root.add_child(menu)
+	if menu.has_signal("entrance_finished"):
+		await menu.entrance_finished
+	await get_tree().process_frame
+	var hooked := true
+	for target in ["StartButton", "CollectionButton", "SettingButton", "ProfileButton"]:
+		var button: SpriteButton = menu.get_node(target)
+		hooked = hooked and button.mouse_entered.is_connected(App.ui_sound.play_hover) \
+			and button.pressed.is_connected(App.ui_sound.play_click)
+	check(hooked, "主界面四个按钮都接上了悬停 / 点击音效")
+	# 真的把鼠标移上去，走一遍 Viewport 的悬停判定
+	var target_button: Control = menu.get_node("CollectionButton")
+	var motion := InputEventMouseMotion.new()
+	motion.position = target_button.get_global_rect().get_center()
+	get_viewport().push_input(motion, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(App.ui_sound._hover.playing, "鼠标移到按钮上播放悬停音效（chose.wav）")
+	App.ui_sound.play_click()
+	await get_tree().process_frame
+	check(App.ui_sound._click.playing, "按下按钮播放点击音效（click.wav）")
+	menu.queue_free()
 	await get_tree().process_frame
 
 
@@ -221,6 +314,49 @@ func _check_song_select() -> void:
 		check(select._detail_title.text != "", "详情标题已填（焦点在第一行）")
 	select.queue_free()
 	await get_tree().process_frame
+
+
+## 收藏品：剧情分类是列表，user:// 里的 txt 自动收进来，点开能读到全文
+func _check_collection() -> void:
+	var story_path := "user://剧情/_smoke_story.txt"
+	DirAccess.make_dir_recursive_absolute("user://剧情")
+	var fh := FileAccess.open(story_path, FileAccess.WRITE)
+	fh.store_string("标题：冒烟剧情\n# 第一章\n正文第一段。\n\n第二段。")
+	fh.close()
+
+	var screen = load("res://scenes/collection.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(screen._find("Tab_story") != null, "收藏品有「剧情」分类")
+	var picked := {}
+	for entry in screen._stories:
+		if str(entry.get("file", "")) == "_smoke_story.txt":
+			picked = entry
+	check(not picked.is_empty(), "txt 剧情被自动收进列表")
+	screen._set_filter("story")
+	await get_tree().process_frame
+	check(screen._story_section.visible, "剧情分类显示列表")
+	check(not screen._find("CardGrid").visible, "剧情分类隐藏卡片网格")
+	eq(screen._find("StoryList").get_child_count(), screen._stories.size(), "列表行数 = 剧情数")
+	if not picked.is_empty():
+		screen._open_story(picked)
+		await get_tree().process_frame
+		check(screen._overlay.visible, "点开剧情打开预览层")
+		check(screen._story_scroll.visible and not screen._overlay_tex.visible, "阅读时显示正文、隐藏图片")
+		check(screen._story_text.get_child_count() >= 3, "正文块已生成（小标题 + 段落）")
+		eq(str(screen._overlay_title.text), "冒烟剧情", "阅读区标题 = 剧情标题")
+		eq(str(screen._overlay_kind.text), "剧情阅览 / STORY", "阅读区标签切换成剧情")
+		screen._close_preview()
+		check(not screen._overlay.visible, "关掉阅读区")
+	screen._set_filter("all")
+	await get_tree().process_frame
+	check(screen._find("CardGrid").visible, "全部分类仍显示卡片")
+	check(screen._story_section.visible, "全部分类下面也带剧情列表")
+	screen.queue_free()
+	await get_tree().process_frame
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(story_path))
+	check(not FileAccess.file_exists(story_path), "冒烟剧情已清理")
 
 
 ## 真切换当前场景，确保 Esc 在离开选曲前已消费，返回后长按也不会退出。

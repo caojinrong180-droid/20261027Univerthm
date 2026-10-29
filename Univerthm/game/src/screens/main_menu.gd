@@ -107,6 +107,7 @@ func _ready() -> void:
 
 	_apply_banner()
 	_build_exit_confirm()
+	_build_ui_sound()
 	resized.connect(_update_motion_pivots)
 	_update_motion_pivots.call_deferred()
 	_begin_entrance()
@@ -231,6 +232,21 @@ func _build_exit_confirm() -> void:
 	UiKit.full_rect(_exit_confirm)
 	add_child(_exit_confirm)
 	_exit_confirm.confirmed.connect(App.quit_game)
+
+
+## 主界面的按钮音效（只有这里有）：鼠标移上去 → chose.wav，按下 → click.wav。
+## 音效节点在 App 里（跨场景存活，点「开始游戏」换场景时点击音效不会被掐断），
+## 入场动画期间按钮的 mouse_filter 还是 IGNORE，所以刚进主界面时不会乱响。
+func _build_ui_sound() -> void:
+	if App.ui_sound == null:
+		return
+	for child in get_children():
+		if child is SpriteButton:
+			var button := child as SpriteButton
+			if not button.mouse_entered.is_connected(App.ui_sound.play_hover):
+				button.mouse_entered.connect(App.ui_sound.play_hover)
+			if not button.pressed.is_connected(App.ui_sound.play_click):
+				button.pressed.connect(App.ui_sound.play_click)
 
 
 # --------------------------------------------------------------------------- #

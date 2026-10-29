@@ -12,6 +12,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	await get_tree().process_frame
 	await _shot_warning()
+	await _shot_splash()
 	await _shot_menu()
 	await _shot_collection()
 	await _shot_profile()
@@ -44,6 +45,18 @@ func _shot_warning() -> void:
 	w._done = true            # 截图期间别自动跳去开始界面
 	await _capture("00_warning")
 	w.queue_free()
+	await _wait_frames(2)
+
+
+func _shot_splash() -> void:
+	var splash = load("res://scenes/splash.tscn").instantiate()
+	get_tree().root.add_child(splash)
+	# 等入场动画跑完：淡入 0.5 秒 + 提示文字延迟 0.75 秒 + 淡入 0.35 秒
+	await get_tree().create_timer(1.8).timeout
+	splash._done = true       # 截图期间别跳去主界面
+	await _wait_frames(2)
+	await _capture("00a_splash")
+	splash.queue_free()
 	await _wait_frames(2)
 
 

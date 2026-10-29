@@ -644,7 +644,7 @@ try {
   ok(callsOf(previewCtx, 'moveTo', (c) => Math.abs(c[1] - noteX(60)) < 0.6).length === 0,
     '流速 100（100×）时 1 秒后的音符已经飞出视野');
 
-  // 流速 0 = 停住：音符全贴在判定线上
+  // 流速 0 = 停住：音符一直钉在判定线上（看得见才打得到）
   setLaneParam(1, 4, 0, 0);
   previewCtx._calls.length = 0;
   frame(1);
@@ -1383,12 +1383,18 @@ try {
   ok(callsOf(previewCtx, 'lineTo', (c) => Math.abs(c[2] - y20Top) < 2).length > 0,
     '流速 20（4×）后长条顶到 y≈' + y20Top.toFixed(1) + '（原来是 ' + y10Top.toFixed(1) + '）');
 
-  // 流速 0：长条回退到上一个非零流速，不会缩成一条线
+  // 流速 0：长条回退到上一个非零流速，不会缩成一条线。
+  // 前提是这条长条「已经到线」—— 流速 0 时未来长条的 head 恒为 0，
+  // 所以先把播放头推到 0.6s（长条是 0.1~0.3s，已经过线）再验。
   setLaneParam(0, 4, 0, 0);
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (0.6 / 4) * 672);
+  ptr('pointerup', MINI_X, 672 - (0.6 / 4) * 672);
+  ok(statusTime() === '00:00.600', '播放头在 0.600s，实际 ' + statusTime());
   previewCtx._calls.length = 0;
   frame(1);
   const bodyTop = callsOf(previewCtx, 'lineTo', (c) => c[2] < JUDGE - 3).length;
-  ok(bodyTop > 0, '流速 0 时长条依然有高度（没缩没）');
+  ok(bodyTop > 0, '流速 0 且长条已经过线时长条依然有高度（没缩没）');
 
 
   /* ============ 阶段 S：音符也能复制粘贴 ============ */
@@ -1630,6 +1636,42 @@ try {
   frame(1);
   ok(callsOf(previewCtx, 'fill', (c) => String(c[1]).indexOf('rgba(255,255,255,0.3)') >= 0).length === 0,
     '流速变慢后长条正常消失，没有卡在判定线上');
+  /* ============ 阶段 V2：流速 0 时还没到线的长条不许凭空长出身体 ============ */
+
+  reset();
+  frame(1);
+  selectLane(0);
+  setLaneParam(0, 2, 100, 100);          // 点亮
+  setLaneParam(0, 4, 0, 0);              // 起点流速事件 0 → 0，全程停住
+
+  // 1.0s 画一个 0.4 秒的长条（1.0 ~ 1.4）
+  ptr('pointerdown', LANE0, xAt(1.0), 2);
+  ptr('pointermove', LANE0, xAt(1.4), 2);
+  ptr('pointerup', LANE0, xAt(1.4), 2);
+  ok(countOf('hold') === 1, '画了一个 1.0~1.4s 的长条，实际 ' + statusNotes());
+
+  const bodyFills = () => callsOf(previewCtx, 'fill', (c) => String(c[1]).indexOf('rgba(255,255,255,0.3)') >= 0);
+  const headFills = () => callsOf(previewCtx, 'fill', (c) => String(c[1]).indexOf('rgba(255,255,255,0.92)') >= 0);
+
+  // 播放头 0.2s：长条时刻还没到。0 速下头一直钉在判定线上（看得见才打得到），
+  // 但不能凭空长出身体。
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (0.2 / 4) * 672);
+  ptr('pointerup', MINI_X, 672 - (0.2 / 4) * 672);
+  ok(statusTime() === '00:00.200', '播放头在 0.200s，实际 ' + statusTime());
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(headFills().length > 0, '流速 0 时音符头照旧钉在判定线上（没提前消失）');
+  ok(bodyFills().length === 0, '流速 0 且长条还没到线时，预览里不画它的身体');
+
+  // 播放头 1.2s：长条已经到线 / 过线 —— 身体照旧留着，不会缩没
+  chartAudios().forEach((a) => { a.duration = 4; });
+  ptr('pointerdown', MINI_X, 672 - (1.2 / 4) * 672);
+  ptr('pointerup', MINI_X, 672 - (1.2 / 4) * 672);
+  ok(statusTime() === '00:01.200', '播放头在 1.200s，实际 ' + statusTime());
+  previewCtx._calls.length = 0;
+  frame(1);
+  ok(bodyFills().length > 0, '流速 0 但长条已经到线时，身体照旧画出来（没缩没）');
   /* ============ 阶段 W：可视秒数与预览流速解耦 ============ */
 
   reset();

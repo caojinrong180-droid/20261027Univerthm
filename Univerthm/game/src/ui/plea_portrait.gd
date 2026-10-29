@@ -1,5 +1,5 @@
 extends TextureRect
-## 暂停与退出时的求情立绘。位置由阻尼弹簧驱动，从角色对应的侧边入场。
+## 主界面退出确认时的求情立绘。位置由阻尼弹簧驱动，从角色对应的侧边入场。
 
 const STRA_PLEA := preload("res://assets/banners/stra5.png")
 const KISAI_PLEA := preload("res://assets/banners/Kisai5.png")

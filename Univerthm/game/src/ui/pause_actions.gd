@@ -1,28 +1,42 @@
 extends Control
 ## 三个动作在中心并排，采用阻尼弹簧保留滑入的惯性与回弹。
+##
+## 背景是一整块亚克力板：先把下层谱面场用 BackBufferCopy 抄一份，再由这块
+## ColorRect 磨砂、压暗、加颗粒（见 shaders/pause_acrylic.gdshader），
+## 于是图标浮在雾面玻璃上而不是按在纯黑遮罩上。
 
 signal action_requested(action: int)
+
 const Icon = preload("res://src/ui/action_icon.gd")
-const PleaPortrait = preload("res://src/ui/plea_portrait.gd")
+const ACRYLIC_SHADER = preload("res://shaders/pause_acrylic.gdshader")
+
 var buttons: Array[Button] = []
+var acrylic: ColorRect
 var _positions: Array[Vector2] = []
 var _velocities: Array[Vector2] = []
 var _elapsed := 0.0
 var _pending := -1
 var _pending_time := 0.0
-var _shade: ColorRect
-var portrait: TextureRect
+var _capture: BackBufferCopy
+var _material: ShaderMaterial
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_shade = ColorRect.new()
-	_shade.color = Color(0.012, 0.006, 0.027, 0.76)
-	UiKit.full_rect(_shade)
-	add_child(_shade)
-	portrait = PleaPortrait.new()
-	portrait.name = "PleaPortrait"
-	add_child(portrait)
+	# 复制必须在板块之前：兼容渲染器里 screen_tex 只拿得到「已经画完」的东西。
+	_capture = BackBufferCopy.new()
+	_capture.name = "ScreenCapture"
+	_capture.copy_mode = BackBufferCopy.COPY_MODE_DISABLED
+	add_child(_capture)
+	visibility_changed.connect(_sync_capture)
+	_material = ShaderMaterial.new()
+	_material.shader = ACRYLIC_SHADER
+	acrylic = ColorRect.new()
+	acrylic.name = "AcrylicBoard"
+	acrylic.material = _material
+	acrylic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.full_rect(acrylic)
+	add_child(acrylic)
 	for i in 3:
 		var button := Icon.new()
 		button.kind = i
@@ -39,10 +53,10 @@ func _ready() -> void:
 
 func open() -> void:
 	show()
-	portrait.show_plea(App.character_index)
+	_sync_capture()
 	_elapsed = 0.0
 	_pending = -1
-	_shade.modulate.a = 0.0
+	acrylic.modulate.a = 0.0
 	var width := minf(152.0, size.x * 0.2)
 	for i in 3:
 		buttons[i].size = Vector2(width, width * 0.92)
@@ -56,12 +70,16 @@ func open() -> void:
 
 
 func close() -> void:
-	portrait.hide_plea()
 	hide()
 	_pending = -1
 	for button in buttons:
 		button.release_focus()
 	set_process(false)
+
+
+## 只在板子真的露出来的时候复制屏幕，收起后彻底不碰渲染管线。
+func _sync_capture() -> void:
+	_capture.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT if visible else BackBufferCopy.COPY_MODE_DISABLED
 
 
 func _target(index: int) -> Vector2:
@@ -80,7 +98,7 @@ func _activate(index: int) -> void:
 
 func _process(delta: float) -> void:
 	_elapsed += delta
-	_shade.modulate.a = minf(1.0, _elapsed / 0.12)
+	acrylic.modulate.a = minf(1.0, _elapsed / 0.12)
 	for i in 3:
 		if _elapsed < i * 0.035:
 			continue

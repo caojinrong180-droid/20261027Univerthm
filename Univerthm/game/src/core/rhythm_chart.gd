@@ -378,6 +378,25 @@ static func display_color(lane: Dictionary) -> Color:
 	return Color(_hex_color(lane.get("color"), DEFAULT_LANE_COLOR))
 
 
+## 取「起点 ≤ t 且起点最晚」的那条事件。
+## t < 0（开场倒计时 LEAD_IN 跑的是负时间）时还没有任何事件开始，这时返回第一条事件本身：
+## 各通道都按 clamp((t - start) / span, 0, 1) 求值，所以等于用第一条关键帧的 from 往前外推。
+## 不能退回轨道的静态值 —— 谱面里 16 条轨道的静态 x 都是 0、静态流速都是 10，
+## 倒计时期间就变成「所有轨道叠在舞台正中 + 流速退回 1×」，
+## 画面上正是「开头凭空冒出几个在画面正中的 note」，而且开唱瞬间还会整体跳一下。
+## t ≥ 0 的行为不变：第一条事件开始之前仍然用静态值（run_core_tests 里锁着这条）。
+static func _event_at(arr: Array, t: float):
+	var cur = null
+	for e in arr:
+		if float(e["start"]) <= t + 1e-9:
+			cur = e
+		else:
+			break
+	if cur == null and t < 0.0 and not arr.is_empty():
+		return arr[0]
+	return cur
+
+
 ## 判定区在某时刻是哪个：有 zone 事件就按事件（数值 0/1/2 插值后取整），没有就用静态值。
 ## 和 core.js 的 zoneAt 一致。
 static func lane_zone_at(lane: Dictionary, t: float) -> String:
@@ -388,12 +407,7 @@ static func lane_zone_at(lane: Dictionary, t: float) -> String:
 	var arr = evs.get("zone", [])
 	if not (arr is Array) or arr.is_empty():
 		return static_zone
-	var cur = null
-	for e in arr:
-		if float(e["start"]) <= t + 1e-9:
-			cur = e
-		else:
-			break
+	var cur = _event_at(arr, t)
 	if cur == null:
 		return static_zone
 	var span: float = float(cur["end"]) - float(cur["start"])
@@ -425,13 +439,8 @@ static func lane_params_at(lane: Dictionary, t: float) -> Dictionary:
 		var arr = evs.get(key, [])
 		if not (arr is Array) or arr.is_empty():
 			continue
-		# 取「起点 ≤ t 且起点最晚」的那条
-		var cur = null
-		for e in arr:
-			if float(e["start"]) <= t + 1e-9:
-				cur = e
-			else:
-				break
+		# 取「起点 ≤ t 且起点最晚」的那条（t 早于第一条事件时按第一条关键帧外推）
+		var cur = _event_at(arr, t)
 		if cur == null:
 			continue
 		var span: float = float(cur["end"]) - float(cur["start"])
@@ -449,12 +458,7 @@ static func lane_parent_at(lane: Dictionary, t: float, lane_count: int) -> int:
 	if evs is Dictionary:
 		var arr = evs.get("parent", [])
 		if arr is Array and not arr.is_empty():
-			var cur = null
-			for e in arr:
-				if float(e["start"]) <= t + 1e-9:
-					cur = e
-				else:
-					break
+			var cur = _event_at(arr, t)
 			if cur != null:
 				var span: float = float(cur["end"]) - float(cur["start"])
 				var k: float = 1.0 if span <= 1e-9 else clampf((t - float(cur["start"])) / span, 0.0, 1.0)

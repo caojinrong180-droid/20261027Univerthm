@@ -1,6 +1,6 @@
 extends Control
 ## 启动画面：光敏性癫痫警告。界面节点在 scenes/warning.tscn 里（可以直接在编辑器里改字）。
-## 停留 HOLD_SEC 秒后自动进主界面；中途按任意键 / 点一下可以跳过。
+## 停留 HOLD_SEC 秒后自动进开屏画面；中途按任意键 / 点一下可以跳过。
 
 ## 自动继续时间（秒）
 const HOLD_SEC := 5.0
@@ -72,4 +72,4 @@ func _leave() -> void:
 	var fade := create_tween()
 	fade.tween_property(self, "modulate:a", 0.0, fade_out_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	fade.tween_interval(0.04)
-	fade.tween_callback(App.goto_menu)
+	fade.tween_callback(App.goto_splash)

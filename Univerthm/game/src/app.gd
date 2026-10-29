@@ -1,9 +1,10 @@
-﻿extends Node
+extends Node
 ## 全局单例（autoload 名 = App）：设置 / 谱面库 / 当前游玩会话 / 结算数据。
 ##
 ## 屏幕之间只通过这个单例传数据，不互相引用。
 
 const WARNING_SCENE := "res://scenes/warning.tscn"
+const SPLASH_SCENE := "res://scenes/splash.tscn"
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const COLLECTION_SCENE := "res://scenes/collection.tscn"
 const PROFILE_SCENE := "res://scenes/profile.tscn"
@@ -20,6 +21,8 @@ const CHART_ROOTS := ["res://charts", "user://charts"]
 var settings: AppSettings
 var menu_music: MenuMusic
 var screen_glitch: ScreenGlitch
+## 主菜单按钮音效（悬停 / 点击）；只有主界面把它接上去
+var ui_sound: UiSound
 var library: Array = []
 ## 选曲页往返设置 / 游玩时保留当前选择。
 var selected_chart_key := ""
@@ -55,6 +58,9 @@ func _ready() -> void:
 	screen_glitch = ScreenGlitch.new()
 	screen_glitch.name = "ScreenGlitch"
 	add_child(screen_glitch)
+	ui_sound = UiSound.new()
+	ui_sound.name = "UiSound"
+	add_child(ui_sound)
 
 
 func refresh_music_volume() -> void:
@@ -70,7 +76,8 @@ func _sync_menu_music() -> void:
 
 func _sync_menu_music_for_scene(path: String) -> void:
 	match path:
-		MENU_SCENE, COLLECTION_SCENE, PROFILE_SCENE:
+		# 开屏画面就开始淡入，一路连着主界面播，不会在换场景时断一下。
+		SPLASH_SCENE, MENU_SCENE, COLLECTION_SCENE, PROFILE_SCENE:
 			menu_music.enter_menu()
 		SETTINGS_SCENE:
 			pass # 设置往返保持声源、播放位置和淡入进度。
@@ -162,9 +169,14 @@ func goto_select() -> void:
 	get_tree().change_scene_to_file(SELECT_SCENE)
 
 
-## 主界面（启动 → 警告 → 这里 → 点「开始游戏」才进选曲）
+## 主界面（启动 → 警告 → 开屏 → 这里 → 点「开始游戏」才进选曲）
 func goto_menu() -> void:
 	get_tree().change_scene_to_file(MENU_SCENE)
+
+
+## 开屏画面（标题 logo + 点任意键进入游戏）
+func goto_splash() -> void:
+	get_tree().change_scene_to_file(SPLASH_SCENE)
 
 
 func goto_collection() -> void:

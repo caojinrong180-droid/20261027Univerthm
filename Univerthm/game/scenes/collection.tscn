@@ -825,7 +825,7 @@ text = "▰"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "Esc 返回  ·  点击卡片查看大图"
+text = "Esc 返回  ·  点击卡片查看大图  ·  剧情分类读 txt"
 
 [node name="Label10" type="Label" parent="StatusBar/HBoxContainer7" unique_id=981809266]
 layout_mode = 2
@@ -1124,7 +1124,7 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "角色立绘 / 谱面曲绘，自动收录"
+text = "角色立绘 / 谱面曲绘 / 剧情文本，自动收录"
 vertical_alignment = 1
 
 [node name="Overlay" type="Control" parent="." unique_id=1944527307]
@@ -1167,7 +1167,8 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 10
 
-[node name="Label33" type="Label" parent="Overlay/PreviewFrame/VBoxContainer31/HBoxContainer32" unique_id=1262190290]
+[node name="OverlayKind" type="Label" parent="Overlay/PreviewFrame/VBoxContainer31/HBoxContainer32" unique_id=1262190290]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65882355, 0.4117647, 1, 1)
 theme_override_font_sizes/font_size = 13

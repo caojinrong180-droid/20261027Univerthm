@@ -498,9 +498,14 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 		if kind == "hold":
 			dur = maxf(0.0, float(note.get("duration", 0.0)))
 		var is_hold := dur > 0.001
+		# 流速 0 时音符一直钉在判定线上（位置不再表示时间，但看得见才打得到）。
+		# 这里只挡住「未来长条凭空长出身体」那一件事 —— 见下面的 body_mul。
+		var at_line := ntime <= chart_time + 0.02
+		# 流速 0 时音符全压在判定线上、长条会缩没，所以回退到最近的非零流速；
+		# 但「已到线」是前提 —— 否则还没到的长条 head 恒为 0，会凭空长出身体。
 		var body_mul := float(info["speed"])
 		if body_mul <= 0.001:
-			body_mul = RhythmChart.hold_speed_mult(lane, chart_time)
+			body_mul = RhythmChart.hold_speed_mult(lane, chart_time) if at_line else 0.0
 		var tail := head + dur * base_pps * body_mul
 
 		if is_hold:

@@ -832,10 +832,17 @@
       var head = (nt.time - S.viewTime) * pps;
       var dur = (nt.type === 'hold') ? Math.max(0, nt.duration) : 0;
       var isHold = dur > 0.001;
+      // 流速 0：位置不再表示时间，音符就一直钉在判定线上（保持原来的表现 —— 看得见才打得到）。
+      // 这里只挡住「未来长条凭空长出身体」那一件事。
+      var atLine = nt.time <= S.viewTime + 0.02;
+
       // 长条长度必须和头用同一个流速基准，否则流速一变，
       // 头已经过线而「按旧流速算出来的尾巴」还在判定线上方 → 长条卡在那儿不消失。
-      // 流速 0 时音符全压在判定线上、长条会缩没，所以回退到最近的非零流速。
-      var bodyMul = g.speed > 0.001 ? g.speed : RC.holdSpeed(g.lane, S.viewTime);
+      // 流速 0 时音符全压在判定线上、长条会缩没，所以回退到最近的非零流速；
+      // 但「已到线」是前提 —— 否则还没到的长条 head 恒为 0，会凭空长出身体。
+      var bodyMul = g.speed > 0.001
+        ? g.speed
+        : (atLine ? RC.holdSpeed(g.lane, S.viewTime) : 0);
       var tail = head + dur * PV.pps * bodyMul;
 
       // 剔除：长条要看「尾巴」是否过线，不能按头算 —— 否则头一过判定线 40px
