@@ -152,17 +152,27 @@ func _refresh_counts() -> void:
 
 func _set_filter(key: String) -> void:
 	_filter = key
-	# 剧情是外部文件：切回这一类就重新扫一遍，刚放进去的 txt 会自己出现。
+	# 剧情是外部文件：切回这一类就重新扫一遍，刚放进来的 txt 会自己出现。
 	if key == "all" or key == "story":
-		_stories = StorySource.scan()
+		_stories = _unlocked_stories()
 		_refresh_counts()
 	_fill_cards()
 
 
 func _reload_stories() -> void:
-	_stories = StorySource.scan()
+	_stories = _unlocked_stories()
 	_refresh_counts()
 	_fill_cards()
+
+
+## 只列已搜集的剧情：没通关对应谱面掉到的那篇，收藏品页不显示。
+func _unlocked_stories() -> Array:
+	var owned := StorySource.unlocked_names()
+	var out: Array = []
+	for entry in StorySource.scan():
+		if owned.has(str(entry.get("file", ""))):
+			out.append(entry)
+	return out
 
 
 # --------------------------------------------------------------------------- #
@@ -207,12 +217,8 @@ func _fill_cards() -> void:
 
 func _fill_stories() -> void:
 	_clear_children(_story_rows)
+	# 一篇都还没搜集到时留空，不摆提示文字
 	if _stories.is_empty():
-		var hint := Neon.label("还没有剧情 · 把 .txt 放进剧情目录，或直接把文件拖进窗口。", 15, Neon.MUTED)
-		hint.custom_minimum_size.y = 64
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_story_rows.add_child(hint)
 		return
 	for i in _stories.size():
 		_story_rows.add_child(_build_story_row(_stories[i], i + 1))
@@ -305,7 +311,7 @@ func _collect() -> void:
 		if tex != null:
 			_cards.insert(cover_index, {"title": str(entry.get("title", "未命名谱面")), "subtitle": str(entry.get("difficulty", "NORMAL")), "kind": "cover", "tex": tex})
 			cover_index += 1
-	_stories = StorySource.scan()
+	_stories = _unlocked_stories()
 
 
 # --------------------------------------------------------------------------- #
@@ -331,19 +337,9 @@ func _build_story_ui() -> void:
 	count.name = "StoryCount"
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(count)
-	var folder := Neon.button("＋ 剧情目录", false, 12)
-	folder.name = "StoryFolderButton"
-	folder.custom_minimum_size = Vector2(118, 28)
-	folder.tooltip_text = "打开 user://剧情，把 .txt 放进去会自动读取"
-	folder.pressed.connect(_open_story_folder)
-	head.add_child(folder)
 	_story_rows = UiKit.vbox(8)
 	_story_rows.name = "StoryList"
 	_story_section.add_child(_story_rows)
-	var note := Neon.label("把 .txt 放进剧情目录，或直接把文件拖进窗口——切到「剧情」就会自动读进来。", 11, Neon.MUTED)
-	note.name = "StoryNote"
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_story_section.add_child(note)
 
 	# 阅读区：和图片预览共用同一个全屏 Overlay，图片 / 文本二选一显示。
 	var preview_box := _overlay_tex.get_parent()
@@ -379,7 +375,7 @@ func _build_story_ui() -> void:
 func _build() -> void:
 	Neon.background(self)
 	Neon.topbar(self, "收藏品")
-	Neon.footer(self, "Esc 返回  ·  点击卡片查看大图  ·  剧情分类读 txt", "COLLECTION / 00 ITEMS")
+	Neon.footer(self, "Esc 返回  ·  点击卡片查看大图  ·  通关掉落剧情", "COLLECTION / 00 ITEMS")
 	var panel := Neon.content(self)
 	var box := UiKit.vbox(12)
 	panel.add_child(box)
@@ -636,13 +632,8 @@ func _close_preview() -> void:
 
 
 # --------------------------------------------------------------------------- #
-# 剧情目录 / 拖拽导入
+# 拖拽导入
 # --------------------------------------------------------------------------- #
-
-func _open_story_folder() -> void:
-	DirAccess.make_dir_recursive_absolute("user://剧情")
-	OS.shell_open(ProjectSettings.globalize_path("user://剧情"))
-
 
 func _on_files_dropped(files: PackedStringArray) -> void:
 	var messages: Array = []
@@ -713,7 +704,7 @@ func _export_prepare() -> void:
 	if scroll != null:
 		scroll.hide()
 	_close_preview()
-	for key in ["BackButton", "AccentBackButton", "CardGrid", "GalleryScroll", "CountLabel", "FooterInfo", "EmptyState", "Tab_all", "Tab_banner", "Tab_cover", "Tab_story", "Overlay", "OverlayKind", "OverlayTex", "OverlayTitle", "OverlaySub", "Dim", "ClosePreview", "StorySection", "StoryList", "StoryCount", "StoryFolderButton", "StoryNote", "StoryScroll", "StoryText", "Toast"]:
+	for key in ["BackButton", "AccentBackButton", "CardGrid", "GalleryScroll", "CountLabel", "FooterInfo", "EmptyState", "Tab_all", "Tab_banner", "Tab_cover", "Tab_story", "Overlay", "OverlayKind", "OverlayTex", "OverlayTitle", "OverlaySub", "Dim", "ClosePreview", "StorySection", "StoryList", "StoryCount", "StoryScroll", "StoryText", "Toast"]:
 		var node := _find(key)
 		if node != null:
 			node.unique_name_in_owner = true

@@ -21,7 +21,7 @@ const CHART_ROOTS := ["res://charts", "user://charts"]
 var settings: AppSettings
 var menu_music: MenuMusic
 var screen_glitch: ScreenGlitch
-## 主菜单按钮音效（悬停 / 点击）；只有主界面把它接上去
+## 主菜单按钮点击音效；只有主界面把它接上去
 var ui_sound: UiSound
 var library: Array = []
 ## 选曲页往返设置 / 游玩时保留当前选择。
@@ -40,9 +40,21 @@ var toast := ""
 ## 从哪个界面进的设置，返回时回哪（默认回选曲）
 var _settings_return := "res://scenes/song_select.tscn"
 
-## 玩家档案统计（user://profile.cfg）：游玩次数 / 最高分 / 最近一次成绩
+## 玩家档案统计（user://profile.cfg）：游玩次数 / 平均分 / 平均准确率 / 最高分
+## score_total + acc_total 是累计量，平均数 = 累计 / 游玩次数；自动演示不计入。
 const STATS_PATH := "user://profile.cfg"
-var stats := {"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0}
+var stats := {
+	"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0,
+	"score_total": 0.0, "acc_total": 0.0,
+}
+## 通关过的谱面 key（自动演示不计入）。选曲列表按顺序解锁：第 1 首永远能玩，
+## 后面每首要先把前一首通关。
+var cleared: Array[String] = []
+## 已经演过解锁动画的谱面 key：解锁动画每首只演一次，再进同一首直接进倒计时。
+var unlock_seen: Array[String] = []
+## 每首曲子的最好成绩：谱面 key → { "score": int, "acc": float }（自动演示不计入）。
+## 选曲页详情里显示的那个 BEST。
+var best_records := {}
 
 
 func _ready() -> void:
@@ -102,6 +114,11 @@ func autoplay_enabled() -> bool:
 	return autoplay_once or settings.autoplay
 
 
+## 「自动演示」按钮的解锁条件：游玩过一次谱面（自动演示自己不算次数）
+func autoplay_unlocked() -> bool:
+	return int(stats.get("plays", 0)) > 0
+
+
 # --------------------------------------------------------------------------- #
 # 场景切换
 # --------------------------------------------------------------------------- #
@@ -135,15 +152,124 @@ func retry() -> void:
 	play_entry(session["entry"], autoplay_once)
 
 
-## 归档一局成绩（自动演示不计入）
+## 归档一局成绩（自动演示不计入，也不解锁下一首）
 func record_result(res: Dictionary) -> void:
 	stats["plays"] = int(stats.get("plays", 0)) + 1
 	var score := int(res.get("score", 0))
+	var accuracy := float(res.get("accuracy", 0.0))
+	# 平均分 / 平均准确率：累计量相加，显示时再除以游玩次数
+	stats["score_total"] = float(stats.get("score_total", 0.0)) + float(score)
+	stats["acc_total"] = float(stats.get("acc_total", 0.0)) + accuracy
 	if score > int(stats.get("best_score", 0)):
 		stats["best_score"] = score
 		stats["best_title"] = str(res.get("title", ""))
-		stats["best_acc"] = float(res.get("accuracy", 0.0))
+		stats["best_acc"] = accuracy
+	var entry = res.get("entry", {})
+	if entry is Dictionary:
+		var key := str(entry.get("key", ""))
+		if key != "":
+			if not cleared.has(key):
+				cleared.append(key)
+			# 每首曲子自己的最好成绩（分数更高才算刷新）
+			var old: Dictionary = best_records.get(key, {})
+			if score > int(old.get("score", -1)):
+				best_records[key] = {
+					"score": score,
+					"acc": float(res.get("accuracy", 0.0)),
+				}
 	save_stats()
+
+
+## 某首曲子的最好成绩 { score, acc }；没打过返回空字典
+func best_record(key: String) -> Dictionary:
+	var found = best_records.get(key, {})
+	return found if found is Dictionary else {}
+
+
+## 平均分；还没有任何一局（或老存档没累计值）时返回 -1，界面显示「—」
+func average_score() -> float:
+	var plays := int(stats.get("plays", 0))
+	if plays <= 0:
+		return -1.0
+	return float(stats.get("score_total", 0.0)) / float(plays)
+
+
+## 平均准确率（0~1）；没有数据返回 -1
+func average_accuracy() -> float:
+	var plays := int(stats.get("plays", 0))
+	if plays <= 0:
+		return -1.0
+	return float(stats.get("acc_total", 0.0)) / float(plays)
+
+
+## 这一首通关过没有
+func is_cleared(key: String) -> bool:
+	return cleared.has(key)
+
+
+## 这首谱面的解锁动画演过了没有（只在第一次进谱面时演）
+func has_seen_unlock(key: String) -> bool:
+	return key != "" and unlock_seen.has(key)
+
+
+## 记下「解锁动画已演过」，落盘到 user://profile.cfg。key 为空（来路不明的谱面）不记。
+func mark_unlock_seen(key: String) -> void:
+	if key == "" or unlock_seen.has(key):
+		return
+	unlock_seen.append(key)
+	save_stats()
+
+
+## 调试用：清掉已看记录，让下一次进谱面重新演解锁动画
+func forget_unlock_seen() -> void:
+	if unlock_seen.is_empty():
+		return
+	unlock_seen.clear()
+	save_stats()
+
+
+## 通关掉落：列表里第 N 首谱面掉第 N 篇剧情（按文件名自然排序），每篇只掉一次。
+## 返回 {} = 这次没有新掉落；否则 { file, title, number }，结算界面据此显示提示。
+## 只记「在谱面库里的第几首」——玩家按顺序解锁着往下打，正好一篇对应一首。
+func grant_story_drop(result: Dictionary) -> Dictionary:
+	var entry = result.get("entry", {})
+	if not (entry is Dictionary):
+		return {}
+	var key := str(entry.get("key", ""))
+	if key == "":
+		return {}
+	var index := -1
+	for i in library.size():
+		if str(library[i].get("key", "")) == key:
+			index = i
+			break
+	if index < 0:
+		return {}
+	var stories := StorySource.scan()
+	if index >= stories.size():
+		return {}
+	var story: Dictionary = stories[index]
+	var story_name := str(story.get("file", ""))
+	if not StorySource.grant_unlock(story_name):
+		return {}
+	return {
+		"file": story_name,
+		"title": str(story.get("title", story_name.get_basename())),
+		"number": index + 1,
+	}
+
+
+## 选曲列表里第 index 首能不能玩：
+## 第 1 首永远能玩，后面每首要前一首先通关；设置里开了「全部解锁」就都放行。
+func is_chart_unlocked(index: int) -> bool:
+	if settings != null and settings.unlock_all:
+		return true
+	if index <= 0:
+		return true
+	if index >= library.size():
+		return false
+	var prev: Dictionary = library[index - 1]
+	return is_cleared(str(prev.get("key", "")))
 
 
 func load_stats() -> void:
@@ -154,6 +280,34 @@ func load_stats() -> void:
 	stats["best_score"] = int(cf.get_value("stats", "best_score", 0))
 	stats["best_title"] = str(cf.get_value("stats", "best_title", ""))
 	stats["best_acc"] = float(cf.get_value("stats", "best_acc", 0.0))
+	# 老存档没有累计量：按「每局都等于最高分」补齐，免得平均数一读出来就是 0
+	# （之后的游玩会正常累加，平均值会慢慢往真实水平收敛）。
+	if cf.has_section_key("stats", "score_total"):
+		stats["score_total"] = float(cf.get_value("stats", "score_total", 0.0))
+		stats["acc_total"] = float(cf.get_value("stats", "acc_total", 0.0))
+	else:
+		stats["score_total"] = float(stats["best_score"]) * float(stats["plays"])
+		stats["acc_total"] = float(stats["best_acc"]) * float(stats["plays"])
+	cleared.clear()
+	for key in cf.get_value("progress", "cleared", PackedStringArray()):
+		var text := str(key)
+		if text != "":
+			cleared.append(text)
+	unlock_seen.clear()
+	for key in cf.get_value("progress", "unlock_seen", PackedStringArray()):
+		var seen := str(key)
+		if seen != "":
+			unlock_seen.append(seen)
+	best_records.clear()
+	var records = cf.get_value("progress", "best", {})
+	if records is Dictionary:
+		for key in records:
+			var item = records[key]
+			if item is Dictionary:
+				best_records[str(key)] = {
+					"score": int(item.get("score", 0)),
+					"acc": float(item.get("acc", 0.0)),
+				}
 
 
 func save_stats() -> void:
@@ -162,6 +316,11 @@ func save_stats() -> void:
 	cf.set_value("stats", "best_score", int(stats.get("best_score", 0)))
 	cf.set_value("stats", "best_title", str(stats.get("best_title", "")))
 	cf.set_value("stats", "best_acc", float(stats.get("best_acc", 0.0)))
+	cf.set_value("stats", "score_total", float(stats.get("score_total", 0.0)))
+	cf.set_value("stats", "acc_total", float(stats.get("acc_total", 0.0)))
+	cf.set_value("progress", "cleared", PackedStringArray(cleared))
+	cf.set_value("progress", "unlock_seen", PackedStringArray(unlock_seen))
+	cf.set_value("progress", "best", best_records)
 	cf.save(STATS_PATH)
 
 

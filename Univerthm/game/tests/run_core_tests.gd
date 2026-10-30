@@ -256,6 +256,19 @@ func _test_convert() -> void:
 	var p_pos := RhythmChart.lane_params_at(countdown_lane, 1.0)
 	near(float(p_pos["x"]), -45.0, "事件结束后沿用 to（t≥0 的行为不变）")
 
+	# 流速 0 的可见提前量：按这条轨道「最近的正常流速」算可视时长
+	# （远了不画 → 不会把 30 秒后的音符提前堆到判定线上；近了才画 → 不会晚到打中了才出现）
+	var zs_lane: Dictionary = RhythmChart.parse({"lanes": [{
+		"speed": 0,
+		"events": {"speed": [{"start": 10.0, "end": 11.0, "ease": "linear", "from": 20, "to": 20}]},
+	}]})["chart"]["lanes"][0]
+	near(RhythmChart.zero_speed_lookahead(zs_lane, 1.0, 167.5, 127.5), 167.5 / (127.5 * 4.0),
+		"0 速提前量 = 可视像素 / (基准速率 × 最近的非零流速)")
+	near(RhythmChart.zero_speed_lookahead(zs_lane, 1.0, 9999.0, 127.5), 4.0, "0 速提前量上限 4 秒")
+	eq(RhythmChart.note_visible_at(4.0, 99.0, 1.0), true, "流速非 0 时照常按位置剔除")
+	eq(RhythmChart.note_visible_at(0.0, 9.0, 1.0, 0.62), false, "0 速时超出提前量的音符不画")
+	eq(RhythmChart.note_visible_at(0.0, 1.5, 1.0, 0.62), true, "0 速时进入提前量的音符会画")
+
 
 # --------------------------------------------------------------------------- #
 # 判定区事件（zone 通道）
@@ -793,6 +806,18 @@ func _test_story_source() -> void:
 		_remove_path(path)
 	_remove_path(sub)
 	check(not FileAccess.file_exists(story_file), "临时剧情已清理")
+
+	# 搜集进度：没拿到 → 不显示；第一次拿到记一次，重复不算新的
+	var unlock_path := "user://_core_unlock_test.cfg"
+	_remove_path(unlock_path)
+	check(not StorySource.is_unlocked("01_临时剧情.txt", unlock_path), "没搜集时 is_unlocked = false")
+	check(StorySource.grant_unlock("01_临时剧情.txt", unlock_path), "第一次 grant_unlock = 新搜集")
+	check(not StorySource.grant_unlock("01_临时剧情.txt", unlock_path), "重复 grant_unlock 不再是新的")
+	check(StorySource.is_unlocked("01_临时剧情.txt", unlock_path), "搜集进度落盘了")
+	check(not StorySource.is_unlocked("别的笔记.txt", unlock_path), "别的剧情还没搜集")
+	eq(StorySource.unlocked_names(unlock_path).size(), 1, "同一篇不会记两次")
+	_remove_path(unlock_path)
+	check(not StorySource.is_unlocked("01_临时剧情.txt", unlock_path), "进度文件删掉后重新上锁")
 
 
 # --------------------------------------------------------------------------- #

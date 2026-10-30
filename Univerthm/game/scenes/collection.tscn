@@ -825,7 +825,7 @@ text = "▰"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "Esc 返回  ·  点击卡片查看大图  ·  剧情分类读 txt"
+text = "Esc 返回  ·  点击卡片查看大图  ·  通关掉落剧情"
 
 [node name="Label10" type="Label" parent="StatusBar/HBoxContainer7" unique_id=981809266]
 layout_mode = 2

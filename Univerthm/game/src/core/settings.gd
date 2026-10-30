@@ -32,6 +32,8 @@ var stage_offset_px := -24.0
 var player_name := "User"
 ## 主界面看板娘立绘序号（assets/banners/ 里的第几张）
 var banner_index := 0
+## 调试：全部解锁（跳过选曲页的逐首解锁）
+var unlock_all := false
 
 
 func save() -> void:
@@ -48,6 +50,7 @@ func save() -> void:
 	cf.set_value("ui", "stage_offset_px", stage_offset_px)
 	cf.set_value("ui", "player_name", player_name)
 	cf.set_value("ui", "banner_index", banner_index)
+	cf.set_value("debug", "unlock_all", unlock_all)
 	var err := cf.save(PATH)
 	if err != OK:
 		push_warning("设置存不下来: %s" % error_string(err))
@@ -73,6 +76,7 @@ static func load_settings() -> AppSettings:
 	var nm := str(cf.get_value("ui", "player_name", s.player_name)).strip_edges()
 	s.player_name = nm if nm != "" else "User"
 	s.banner_index = clampi(int(cf.get_value("ui", "banner_index", s.banner_index)), 0, 99)
+	s.unlock_all = bool(cf.get_value("debug", "unlock_all", s.unlock_all))
 	return s
 
 
@@ -89,6 +93,7 @@ func reset() -> void:
 	stage_offset_px = -24.0
 	player_name = "User"
 	banner_index = 0
+	unlock_all = false
 
 
 ## 毫秒 → 秒，判定时用

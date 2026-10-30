@@ -29,8 +29,43 @@
 进入选曲时由曲目试听接管声音，停止菜单音乐及混响尾音，避免两首音乐叠播。
 设置里的「音乐音量」同时控制这首背景音乐。
 
-选曲页以所选曲绘模糊铺满背景。点击或用方向键选择曲目后，按正常游玩音量的 50% 自动试听，
+进结算界面时放 `audio/result.mp3`（源文件 `sound/结算.mp3`）：0.9 秒淡入，只播一遍不循环；
+点「重试 / 选曲」先淡出 0.22 秒再换场景（换场景失败会把音量接回来）；中途按 Esc 同理。
+音量跟着设置里的「音乐音量」走。
+
+选曲页以所选曲绘模糊铺满背景。左侧列表每条只有**曲名 + 作者**（曲绘和难度只在右侧详情里显示），
+行高 `ROW_HEIGHT = 72`，选中行的框就是行本身的高度（不会再溢到下一行）。
+列表**不做任何位移动画**：切歌时行瞬间就位，只有选中底色和左侧绿条变化（以前那种往左弹一下的
+「扇形」位移被删掉了）。
+鼠标移到某一行上才有的两个效果（都带缓动，`HOVER_ANIM = 0.18` 秒、`TRANS_CUBIC / EASE_OUT`）：
+**没选中的行整行往右滑 14px、同时上下各长 3px**（底框和文字一起动，鼠标命中区不动，所以贴着左边缘
+也不会来回抖）；**已经选中的那一行不位移，原地把紫色框往右拉长 20px**。
+列表右边因此在场景里留了 26px 余量（`HeadPad` / `RulePad` / `ListPad` 三个 MarginContainer），
+底框用 `StyleBoxFlat.expand_margin_*` 往外画，不参与布局；悬停进度存在 `_row_hover_t`，
+每行一个 Tween，进出都从当前进度接着走。
+点击或用方向键选择曲目后，按正常游玩音量的 50% 自动试听，
 切歌会交叉淡化；Enter /「开始」进入游玩，离开选曲页立即停止试听。往返设置与游玩会保留所选曲目。
+
+**详情里的 BEST 行**：右侧详情在等级 / 时长下面多一行最好成绩，格式和结算界面一致
+（`BEST  00987654  ·  98.71%`，分数 8 位补零 + ACC 两位小数）；没打过就显示暗一点的「暂无记录」。
+记录按谱面 key 存进 `user://profile.cfg` 的 `[progress] best`，只有分数更高才刷新，自动演示不计入。
+
+**逐首解锁**：第 1 首永远能玩，后面每首要先把列表里的**前一首通关**（打完回到结算，自动演示不算）。
+没解锁的曲目选中时：右侧曲绘压一层暗罩 + 中间一枚纯白极简小挂锁（`src/ui/lock_icon.gd` 现画的
+圆弧锁梁 + 圆角锁体），锁下面写着具体要通关哪一首（「通关「曲名」后解锁」），
+整个页面背景同时压暗（`BackgroundDim`，0.55），**不播试听**，「开始 / 自动演示」都置灰，
+按 Enter 只弹一句提示。通关记录存 `user://profile.cfg` 的 `[progress] cleared`；
+设置里打开「全部解锁（Debug）」可以跳过这一套。
+
+**自动演示要打过一次才开**：`App.autoplay_unlocked()` = 游玩次数 > 0（自动演示自己不算）。
+没到条件时「自动演示」按钮是灰的（`font_disabled_color` + 透明 disabled 样式），鼠标移上去提示
+「游玩一次谱面解锁」；按键盘 `A` 也只会弹同样的提示，不会开演示。
+
+**神秘曲（第 3 首）**：`SECRET_INDEX = 2` 这一首在**还没打出成绩**之前，列表行、曲名、作者、
+谱师 / 曲绘、难度 / 时长全部显示 `???`，右侧曲绘是**纯黑**（`CoverMask`），连模糊背景也换成默认星空
+（不然会从背景把曲绘漏出来），**也不播试听**（放音乐同样算剧透）。
+等它第一次打完、`[progress] best` 里有记录了，就自动恢复完整信息并恢复试听。
+它同时也受逐首解锁约束，所以一开始看到的是「黑卡 + 锁」。
 暂停页只有继续、重试、返回选曲三个无文字图标，以阻尼弹簧动画滑入中央并排。
 暂停背景是一整块**亚克力板**：`BackBufferCopy` 抄下谱面场，`shaders/pause_acrylic.gdshader` 把它磨砂、去饱和、压暗，再叠磨砂颗粒与板边受光，所以背景会随当前谱面变化（不再是固定黑罩）。
 
@@ -39,7 +74,7 @@
 
 主界面默认显示 `stra1.png`。点击角色本身会在 Stra 的四张立绘之间轮换。点击左下角版本号切到 Kisai 的四张立绘，再点一次切回 Stra；两组各自从第一张开始。切换使用交叉淡化和带惯性回弹的轻微位移、缩放动画。透明空白不会触发，连续点击会依次切换。
 
-主界面的四个按钮有**界面音效**（只有主菜单有，其它界面都不放）：鼠标移上去响 `audio/chose.wav`（`-12 dB`，两次之间至少隔 80 ms，免得蹭边缘连成一串），按下响 `audio/click.wav`（`-9 dB`，回车 / 空格确认也算）。节点挂在 App 上（`src/audio/ui_sound.gd`），所以点「开始游戏」换场景时点击音效不会被掐断；音量和重触发间隔都在那个文件的顶部改。
+主界面的四个按钮有**点击音效**（只有主菜单有，其它界面都不放，悬停不发声）：按下响 `audio/click.wav`（`-9 dB`，鼠标左键和回车 / 空格确认都算）。节点挂在 App 上（`src/audio/ui_sound.gd`），所以点「开始游戏」换场景时点击音效不会被掐断；音量在那个文件的顶部改。
 
 窗口固定 **16:9**，默认开 **1920×1080**，可以随便拉伸缩放，拉伸时保持 16:9 不变形。
 **画面永远按窗口的真实像素分辨率渲染**（1280×720 / 1920×1080 / 2560×1440 都是 1:1 出图），
@@ -67,9 +102,10 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 暂停 | `Esc` `R` `Q` | 继续 / 重试 / 选曲 |
 | 结算 | `R` / `Esc` | 重试 / 选曲 |
 | 收藏品 | `点击卡片` / `点击剧情` / `Esc` | 放大预览 / 读剧情全文 / 返回主界面 |
-| | `R` / `↑ ↓` `PgUp PgDn`（阅读时） | 重新扫描剧情目录 / 剧情翻页 |
+| | `R` / `↑ ↓` `PgUp PgDn`（阅读时） | 重新扫描 res://剧情 与 user://剧情 / 剧情翻页 |
 | 个人资料 | `Enter` / `Esc` | 保存名字 / 返回主界面 |
 | 设置 | `◀ ▶` / `Esc` / `R` | 调值 / 返回上一页 / 恢复默认 |
+| 设置 · 辅助测量 | `F` / `Esc` | 跟着重音打点 / 关掉浮窗 |
 
 拖拽：把 `.zip`（制谱器导出的包）或 `.json` 拖进窗口会自动复制到 `user://charts` 并刷新（选曲页）；
 把 `.txt` 拖进窗口会复制到 `user://剧情`，收藏品页的「剧情」分类马上就能读到。
@@ -149,8 +185,13 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 | 文件夹 | `charts/曲名/` 里有 `chart.json`，音频/曲绘放同层 |
 | `xxx.json` / `xxx.rchart` | 单文件，音频去同目录 / `res://audio` / `user://audio` 找 |
 
-扫描目录：`res://charts/`（随游戏发布）和 `user://charts/`（选曲界面「谱面目录」能打开）。
+扫描目录：`res://charts/`（随游戏发布）和 `user://charts/`（把 zip / 谱面直接拖进窗口就能导入；
+谱面库为空时「＋ 导入谱面」可以打开这个目录）。
 `chart.json` 缺字段、`lane` 越界、类型不认识等容错规则全部照文档实现（`RhythmChart.parse`）。
+
+**列表顺序按文件名 / 文件夹名排序，而且是数字自然序**（`ChartSource.scan` 里的 `_natural_less`）：
+`0_1_xxx.zip → 0_2_xxx.zip → 0_3_xxx.zip`，`9_…` 排在 `10_…` 前面（不是按字符逐位比）；
+文件名完全相同时才退回按曲名、最后按 key。想调整顺序，改文件名前面的编号就行。
 
 ## 剧情
 
@@ -159,9 +200,16 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 | 位置 | 说明 |
 | --- | --- |
 | `game/剧情/` | 随游戏发布（`res://剧情`）；子文件夹也认，比如 `剧情/序章/Stra的笔记#1.txt` |
-| `user://剧情/` | 玩家自己的：收藏品页「剧情」分类右边的「＋ 剧情目录」直接打开，或者把 `.txt` 拖进窗口 |
+| `user://剧情/` | 玩家自己的：把 `.txt` 拖进窗口就会复制到这里（`%APPDATA%\Godot\app_userdata\Rhythm Game\剧情`） |
 
-- 切到「剧情」分类时（以及按 `R`）会重新扫一遍目录，刚放进去的 txt 会自己出现，不用重启
+**剧情靠通关掉落，没搜集到的不会出现在收藏品页**：
+
+- 选曲列表里**第 N 首谱面**通关 → 掉**第 N 篇**剧情（剧情按文件名自然排序），每篇只掉一次
+- 自动演示不掉；结算界面最下方会出现一条「收藏品 · Stra的笔记#1 已搜集」（`results.gd::_build_story_drop`）
+- 搜集进度存 `user://collection.cfg` 的 `[stories] unlocked`（按文件名记，改了文件名就重新上锁）；
+  删掉这个文件 = 全部重新锁上
+- 切到「剧情」分类时（以及按 `R`）会重新扫一遍目录，只把已搜集的那些列出来
+
 - 列表显示摘要 / 字数 / 预计阅读时长（350 字 / 分钟）；点开是全屏阅读区，滚轮或 `↑ ↓` / `PgUp PgDn` / `Space` 翻页，`Esc` 关闭
 - 排版约定，都可以不写：首行 `标题：xxx`；行首 `#`、`【】`、「第X章」当小标题；`---` 画分隔线；空行分段
 - **一行一段**：一行以 `。！？…"` 之类结尾就断段（中文小说的常见写法），没写完的行会接到同一段（英文硬折行也不会断）
@@ -174,7 +222,8 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 ```
 game/
   project.godot              工程设置（1280×720 虚拟分辨率 / 1920×1080 窗口，canvas_items 拉伸）
-  scenes/                    9 个场景：警告 / 开屏 / 主界面 / 收藏品 / 个人资料 / 选曲 / 游玩 / 结算 / 设置（界面都是代码搭的）
+  scenes/                    10 个场景：警告 / 开屏 / 主界面 / 收藏品 / 个人资料 / 选曲 / 游玩 / 结算 / 设置
+                             + song_row.tscn（选曲列表里每条曲目行；选曲页的界面节点也全在场景里）
   src/
     app.gd                   autoload「App」：设置 + 谱面库 + 本次游玩会话 + 结算数据
     core/
@@ -190,22 +239,24 @@ game/
       palette.gd             全部颜色（换皮先改这里）
       theme_builder.gd       Theme：字体 / 按钮 / 面板 / 滚动条 / 进度条
       ui_kit.gd              建控件的小函数（label / button / panel / chip / stepper…）
+      calibration_overlay.gd 音画偏移的「辅助测量」浮窗（节拍器 + 打点 + 取平均）
     screens/
       warning.gd             启动：光敏性癫痫警告（5 秒自动继续，任意键 / 点击可跳过）
       splash.gd              开屏：标题 logo + 「点击任意按键进入游戏」（节点都在 scenes/splash.tscn 里）
       main_menu.gd           主界面脚本：只做连线和换立绘（界面节点都在 scenes/main_menu.tscn 里，可在编辑器拖）
       collection.gd          收藏品：看板娘立绘 + 曲绘图鉴（点卡片放大）+ 剧情分类（列表 + 阅读）
-      profile.gd             个人资料：改名 + 游玩统计
-      song_select.gd         选曲：列表 + 详情 + 拖拽导入 + 空状态提示
+      profile.gd             个人资料：改名 + 游玩次数 / 平均分 / 平均准确率
+      song_select.gd         选曲：谱面行 + 背景淡入 + 试听 + 拖拽导入（界面在 scenes/song_select.tscn）
       settings_screen.gd     设置项
-      results.gd             结算
+      results.gd             结算（中段从左滑入的动效 + 结算音乐）
   audio/hit.wav              打击音（可换）
-  audio/chose.wav            主界面鼠标移到按钮上的「选中」音效
-  audio/click.wav            主界面按钮点击音效（只在主菜单接）
+  audio/click.wav            主界面按钮点击音效（只在主菜单接，悬停不发声）
+  audio/result.mp3           结算音乐（源文件在仓库根的 sound/结算.mp3）
   assets/main_bg.png         主界面背景（换成自己的科幻背景即可）
   assets/Title.png           开屏标题 logo（透明底；四周留白在 scenes/splash.tscn 里用 AtlasTexture 裁掉）
   assets/banners/*.png       看板娘立绘（主界面右下角可切换，收藏品里也会列出来；按文件名排序）
   assets/menu/*.png          主界面切图（User_name 名牌 / Start / Collection / Setting / User_profile 按钮 / change_character 切换立绘 / Line 装饰线）
+  assets/back.png            选曲页右上角的返回图标（源文件 img/bacK.png；按钮是 scenes/song_select.tscn 里的 BackButton，用 icon + expand_icon）
   src/ui/sprite_button.gd    切图按钮组件（TextureRect + 悬停上浮/不透明度变化），编辑器里可直接挂
   charts/                    ← 你的谱面放这里（现在只有 README）
   剧情/                      ← 剧情 txt 放这里（子文件夹也认，比如 剧情/序章/）
@@ -213,6 +264,7 @@ game/
     run_core_tests.gd        纯逻辑单测（headless）
     smoke.tscn / smoke.gd    界面 + 玩法冒烟（自动演示把测试谱面打通）
     realtime.tscn / realtime.gd  真实音频时钟自检（需要窗口 / 声卡）
+    calibration_check.tscn / .gd 设置页「辅助测量」浮窗自检（节拍器 / 打点 / 取平均 / 写进偏移）
     shot.tscn / shot.gd      截图脚本（开发自查用）
     fixtures/synthetic_chart.gd  测试用合成谱面（只在测试里，不写盘、不进 charts）
 ```
@@ -307,12 +359,38 @@ game/
 
 | 项 | 默认 | 说明 |
 | --- | --- | --- |
-| 音画偏移 | 0 ms | 正数 = 谱面整体推后；蓝牙耳机有延迟就调它 |
+| 音画偏移 | 0 ms | 正数 = 谱面整体推后；蓝牙耳机有延迟就调它（旁边有「辅助测量」） |
 | 音乐/打击音音量 | 85% / 60% | 打击音音量旁边有「试听」 |
 | 打击音 | 开 | 在设置页切换 |
 | 打击特效 | 强 | 关 / 标准 / 强（判定环粗细） |
+| 全部解锁（Debug） | 关 | 跳过选曲页的逐首解锁，所有曲目直接可玩 |
 
 存档：`user://settings.cfg`（Windows ≈ `%APPDATA%\Godot\app_userdata\Rhythm Game\settings.cfg`）。
+通关进度在 `user://profile.cfg` 的 `[progress] cleared`（谱面 key 列表），每首的最好成绩在同文件的
+`[progress] best`（key → `{ score, acc }`）。
+
+个人资料页只显示三格：**游玩次数 / 平均分 / 平均准确率**。
+平均数靠同文件 `[stats]` 里的 `score_total` + `acc_total` 除以 `plays` 算出来（`App.average_score()` /
+`App.average_accuracy()`，自动演示不计入）。老存档没有这两个累计字段时，`load_stats()` 会按
+「每局都等于当时的最高分」补齐一次，之后的游玩正常累加，平均值再慢慢收敛。最高分/最高分曲目仍然在
+记录（`[stats] best_*` 和 `[progress] best`），只是不再占个人资料的位置。
+
+### 辅助测量（音画偏移）
+
+「音画偏移」旁边的 `辅助测量` 打开一块**铺满屏幕的暗底 + 居中的浮窗**（不能拖动，
+`Esc` / `×` / `关闭` 关掉，开着的时候设置页的快捷键全部让路）。点中间的 `开始`：
+
+- 节拍器 100 BPM，一小节四下、**三轻一重**（第 4 拍是重音），开始后先空一小节让你跟上；
+- 重音落下时按 `F`；早按也收（等重音真正播出再结算），
+  离重音 ±300 ms 之外的按键不算，会提示「这一下不是重音」；
+- 记的是「重音播出去的时刻 → 按键」的间隔（`Time.get_ticks_usec()`），
+  包含声卡 / 蓝牙延迟和人的反应，**按晚了 = 正数**，方向跟设置页那句说明一致；
+- 打满 5 次取平均 → `应用到偏移` 直接写进音画偏移（**覆盖**原值，不留旧值）；
+  45 秒一次都没打中就自己停，不会把节拍器挂在后台。
+
+节拍音是脚本现合成的（`calibration_overlay.gd::_make_click`：正弦 + 二次 / 三次谐波、
+指数衰减、2 ms 起音、尾巴收 0），不读 `audio/*.wav`。想换音色只改
+`_build_players()` 里的两组「起始频率 / 结束频率 / 时长 / 衰减 / 音量」。
 
 ## 美化（留给你）
 
@@ -330,19 +408,32 @@ game/
   轨道和判定线在 `_draw_lane_body()` / `_draw_lane_judge()`；打击特效在 `_draw_fx()`（屏幕坐标，
   寿命和数量都在文件顶部常量里）。**公式和常量别动**，动了就跟制谱器预览对不上了
 - **菜单 / 结算 / 设置**：`src/screens/*.gd`，用 `UiKit` 拼的，间距、顺序、字号都是明码
-- **曲绘**：预渲染窗口里没有曲绘，所以游玩画面不画；选曲和结算界面会用 `meta.cover`
+- **宇宙霓虹那一套**（设置 / 收藏品 / 个人资料 / 结算）：黑洞背景 + `Univerthm` 顶栏 + 切角内容框 +
+  紫色数值 + 底部状态条，公共零件都在 `src/ui/neon_ui.gd`（`background / topbar / footer / content /
+  heading / section / panel / button`）。结算界面就是照 `NeonUi` 现搭的：`results.tscn` 只有根节点
+- **结算的进场动效**：中段（曲目 / 成绩 / 判定）包在 `SlideStage`（`clip_contents` 裁剪）→ `SlideBody`
+  （只动 `offset_left/offset_right`）→ `ScrollContainer` 三层里。进场从舞台右边界外滑回原位，
+  `TRANS_CUBIC + EASE_OUT` 先快后慢、0.55 秒；动 offset 而不是 position，窗口缩放后不会错位。
+- **曲绘**：预渲染窗口里没有曲绘，所以游玩画面不画；选曲界面会用 `meta.cover` 当背景和封面
 - **故事板**（可选）：包里带 `storyboard.json` 就自动读（`src/core/storyboard_source.gd`）
-  - **解锁动画**：进谱面前播一次（`src/game/unlock_frames.gd`），播的是谱面包里**导入的那个视频**——
+  - **解锁动画**：**每首谱面只在第一次进谱面时演一次**（`src/game/unlock_frames.gd`），演过 / 跳过的 key
+    记在 `user://profile.cfg` 的 `progress/unlock_seen`（`App.has_seen_unlock()` / `App.mark_unlock_seen()`），
+    重开（R）、重进选曲再进同一首都直接跳过它；想重新演一次就调 `App.forget_unlock_seen()`。
+    播的是谱面包里**导入的那个视频**——
     由 `tools/bake_unlock.ps1` 烘焙成 `unlock_frames/*.jpg` + `unlock_audio.ogg` + `unlock.json`
     （本机 ffmpeg 的 libtheora 编码坏的，产不出可播 ogv，所以走帧序列）；任意键 / 点击跳过；`debug_mode` / 无头模式自动跳过
   - 谱面场的**后处理 Shader** 已生效：一条 shader = 一层，逐层叠加（`shaders/story_grade.gdshader` + `src/game/stage_post.gd`，
     每层一个 ColorRect，层间插 `BackBufferCopy`），15 种预设和网页版同一套公式
   - **解锁动画 / 文字 / 图片 / 形状图层还没画**（Godot 端只做了解析，图层渲染待补）
 - **曲绘作者**：谱面 `meta.illustrator`（制谱器侧栏「曲绘画师」那栏）。选曲详情在「谱师」下面多一行
-  「曲绘 XXX」，结算界面标题下面也会显示；空串就整行不占位（老谱面不用改）
+  「曲绘 XXX」，结算界面的曲目那行也会带上；空串就整段不占位（老谱面不用改）
 
-界面是代码搭的而不是编辑器场景，好处是换皮只动少数几个文件、不用挨个场景点节点；
-想改成场景也很容易——每个 `_build()` 里的结构就是节点树。
+大部分界面是代码搭的，好处是换皮只动少数几个文件、不用挨个场景点节点；
+**选曲页已经整体搬进编辑器场景**（`scenes/song_select.tscn`：顶栏 / 章节标题 + 曲目列表 / 右侧详情 / 底栏 + 空状态，
+每条曲目行是 `scenes/song_row.tscn`），想改布局、文案、字号、颜色直接在编辑器里拖就行。
+顶栏只留 `Univerthm` 品牌字，章节名放在列表上方的大标题（`LibraryTitle`，现在是「序章丨一切的开端」，30px）。
+粗体字用 `src/ui/fonts/bold_font.tres`（SystemFont，800 字重）——场景里的 `theme_override_fonts/font` 都指向它，
+换字体只改这一个资源。其余界面想照这个样子改成场景，每个 `_build()` 里的结构就是节点树。
 
 ## 测试
 
@@ -358,6 +449,9 @@ game/
 
 # 选曲试听增益 / 快速切歌 / 无音频 / 离开清理（建议使用隔离的 APPDATA）
 & 'Godot...console.exe' --headless --path game --script res://tests/selection_audio.gd
+
+# 设置页「辅助测量」浮窗（节拍器 / 早按晚按 / 取平均 / 写进偏移；≈25 秒，跑完还原玩家的偏移）
+& 'Godot...console.exe' --headless --path game res://tests/calibration_check.tscn
 
 # 截图（要窗口，会写到 tests/_shots/，已在 .gitignore）
 & 'Godot...console.exe' --path game res://tests/shot.tscn

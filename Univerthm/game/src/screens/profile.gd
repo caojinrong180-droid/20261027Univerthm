@@ -60,15 +60,21 @@ func _resolve() -> void:
 
 
 func _refresh() -> void:
-	var best_title := str(App.stats.get("best_title", ""))
-	if best_title == "":
-		best_title = "—"
 	_set_stat("ValuePlays", str(int(App.stats.get("plays", 0))))
-	_set_stat("ValueLibrary", "%d 张" % App.library.size())
-	_set_stat("ValueBestScore", "%d" % int(App.stats.get("best_score", 0)))
-	_set_stat("ValueBestTitle", best_title)
-	_set_stat("ValueBestAcc", "%.2f%%" % (float(App.stats.get("best_acc", 0.0)) * 100.0))
-	_set_stat("ValueLast", _last_play_text())
+	_set_stat("ValueAvgScore", _average_score_text())
+	_set_stat("ValueAvgAcc", _average_acc_text())
+
+
+## 平均分：还没有游玩记录时显示「—」
+func _average_score_text() -> String:
+	var value := App.average_score()
+	return "—" if value < 0.0 else "%d" % int(round(value))
+
+
+## 平均准确率：0~1 → 百分比
+func _average_acc_text() -> String:
+	var value := App.average_accuracy()
+	return "—" if value < 0.0 else "%.2f%%" % (value * 100.0)
 
 
 ## 先找唯一名（%Name），再退回 find_child，这样代码搭的和 .tscn 都能用
@@ -88,12 +94,6 @@ func _set_stat(node_name: String, text: String) -> void:
 
 func _on_name_submitted(_text: String) -> void:
 	_save_name()
-
-
-func _last_play_text() -> String:
-	if App.last_result.is_empty():
-		return "还没有游玩记录"
-	return "%s   %d" % [str(App.last_result.get("title", "")), int(App.last_result.get("score", 0))]
 
 
 func _player_name() -> String:
@@ -192,18 +192,16 @@ func _build() -> void:
 
 	var grid := GridContainer.new()
 	grid.name = "StatsGrid"
-	grid.columns = 2
+	grid.columns = 1
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	body.add_child(grid)
+	# 只留三项：游玩次数 / 平均分 / 平均准确率（一列三张，正好铺满身份栏的高度）
 	var specs := [
 		["游玩次数", "ValuePlays", "PLAY COUNT", 30, Neon.LIGHT],
-		["谱面库", "ValueLibrary", "CHART LIBRARY", 30, Neon.PURPLE],
-		["最高分", "ValueBestScore", "BEST SCORE", 30, Neon.LIGHT],
-		["最高分曲目", "ValueBestTitle", "BEST TRACK", 20, Neon.LIGHT],
-		["最高分准确率", "ValueBestAcc", "BEST ACCURACY", 30, Neon.PURPLE],
-		["最近一局", "ValueLast", "LAST SESSION", 17, Neon.MUTED],
+		["平均分", "ValueAvgScore", "AVERAGE SCORE", 30, Neon.LIGHT],
+		["平均准确率", "ValueAvgAcc", "AVERAGE ACCURACY", 30, Neon.PURPLE],
 	]
 	for spec in specs:
 		var cell := Neon.panel(Vector4(18, 9, 18, 9))
@@ -248,7 +246,8 @@ func _resize_profile() -> void:
 	var narrow := scroll.size.x < 760
 	body.vertical = narrow
 	identity.custom_minimum_size.x = 0 if narrow else 270
-	_stat_grid.columns = 1 if scroll.size.x < 480 else 2
+	# 三张卡始终是一列（一上一下会空出半格）
+	_stat_grid.columns = 1
 	# 动态排布改变高度后刷新滚动范围。
 	scroll.update_minimum_size()
 	scroll.get_combined_minimum_size()
@@ -260,7 +259,7 @@ func _export_prepare() -> void:
 	_name_label.text = "User"
 	_avatar.player_name = "User"
 	_edit.text = ""
-	for value_name in ["ValuePlays", "ValueLibrary", "ValueBestScore", "ValueBestTitle", "ValueBestAcc", "ValueLast"]:
+	for value_name in ["ValuePlays", "ValueAvgScore", "ValueAvgAcc"]:
 		_set_stat(value_name, "—")
-	for key in ["NameLabel", "Avatar", "NameEdit", "StatsGrid", "BackButton", "SaveButton", "AccentBackButton", "SaveHint", "ProfileScroll", "ProfileBody", "IdentityPanel", "ValuePlays", "ValueLibrary", "ValueBestScore", "ValueBestTitle", "ValueBestAcc", "ValueLast"]:
+	for key in ["NameLabel", "Avatar", "NameEdit", "StatsGrid", "BackButton", "SaveButton", "AccentBackButton", "SaveHint", "ProfileScroll", "ProfileBody", "IdentityPanel", "ValuePlays", "ValueAvgScore", "ValueAvgAcc"]:
 		_find(key).unique_name_in_owner = true

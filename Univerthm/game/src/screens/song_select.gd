@@ -1,30 +1,76 @@
 extends Control
 ## 极简曲绘选曲：点击选择试听，独立确认后开始游玩。
+##
+## 界面本身在 `scenes/song_select.tscn` 里（顶部栏 / 曲库列表 / 右侧详情 / 底栏都能在
+## 编辑器里直接拖），曲目行是 `scenes/song_row.tscn`。这条脚本只管数据和动效：
+## 谱面行的增删、背景淡入、试听、拖拽导入。
+##
+## 列表刻意**没有切歌位移**：换选时行原地不动，只有高亮换人。
+## 唯一的动效是鼠标悬停：没选中的行滑出去一点、选中的行把框拉长，都带缓动。
+##
+## 界面本身在 `scenes/song_select.tscn` 里（顶部栏 / 曲库列表 / 右侧详情 / 底栏都能在
+## 编辑器里直接拖），曲目行是 `scenes/song_row.tscn`。这条脚本只管数据和动效：
+## 谱面行的增删、悬停动画、背景淡入、试听、拖拽导入。
 
 const Neon = preload("res://src/ui/neon_ui.gd")
 const Preview = preload("res://src/audio/song_preview.gd")
-const GREEN := Color("bdf49c")
-const WHITE := Color("f8f6ff")
-const MUTED := Color("c3bcd1")
-const ROW_REVEAL_DELAY := 0.6
-const ROW_SPRING := 260.0
-const ROW_DAMPING := 20.0
+const ROW_SCENE = preload("res://scenes/song_row.tscn")
+## 曲目行的框高（列表里只留标题 + 作者，行做细一点）
+const ROW_HEIGHT := 72.0
+## 悬停动画时长（秒）
+const HOVER_ANIM := 0.18
+## 悬停时没选中的行整行往右滑这么远（底框 + 文字一起滑，鼠标命中区不动）
+const HOVER_POP := 14.0
+## 悬停时没选中的行同时上下各长一点，看起来像从列表里弹出来
+const HOVER_POP_GROW := 3.0
+## 悬停时已经选中的行不位移，只把框往右拉长这么多
+const HOVER_EXTEND := 20.0
+const ROW_IDLE_BG := Color(0.02, 0.01, 0.04, 0.22)
+const ROW_HOVER_BG := Color(0.5, 0.26, 0.8, 0.16)
+const ROW_SELECTED_BG := Color(0.22, 0.09, 0.36, 0.62)
+const ROW_SELECTED_BORDER := Color(0.66, 0.43, 1, 0.5)
+## 行内容的左边距（和 scenes/song_row.tscn 里的一致）
+const ROW_CONTENT_INSET := 18.0
+## 选中的曲目没解锁时，背景压暗到什么程度
+const LOCK_BG_DIM := 0.55
+## 「神秘曲」是列表里的第几首（0 开始，2 = 第 3 首）：没成绩之前信息全遮住
+const SECRET_INDEX := 2
+## 详情里「BEST」那行的颜色：有记录 / 暂无记录
+const BEST_COLOR := Color(0.858824, 0.8, 1, 1)
+const BEST_EMPTY_COLOR := Color(0.45, 0.43, 0.52, 1)
+## 「自动演示」可用 / 未解锁时的字色
+const AUTO_READY_COLOR := Color(0.7647059, 0.7372549, 0.81960785, 1)
+const AUTO_LOCKED_COLOR := Color(0.42, 0.4, 0.48, 1)
 
 var _rows: Array = []
-var _row_slots: Array[Control] = []
-var _row_velocity: Array[float] = []
-var _row_entrance_time := 0.0
-var _row_generation := 0
+## 每个列表项解锁没有（按 App.library 的顺序，第 1 首永远解锁）
+var _row_locked: Array[bool] = []
+## 每个列表项是不是还没揭晓的「神秘曲」
+var _row_hidden: Array[bool] = []
+var _selected_locked := false
+## 选中的是不是「神秘曲」（第 3 首没成绩之前）
+var _selected_hidden := false
+var _lock_tween: Tween
 var _selected := -1
+var _hovered := -1
+## 每行的悬停动画进度（instance_id → 0.0~1.0）和在跑的 Tween
+var _row_hover_t := {}
+var _row_tweens := {}
+var _body: BoxContainer
 var _list_box: VBoxContainer
+var _empty_state: VBoxContainer
 var _list_count: Label
 var _detail_title: Label
 var _detail_artist: Label
 var _detail_illust: Label
 var _detail_meta: Label
+var _detail_best: Label
 var _cover: TextureRect
 var _cover_empty: Label
 var _cover_frame: PanelContainer
+var _lock_layer: Control
+var _lock_text: Label
+var _cover_mask: ColorRect
 var _toast: Label
 var _toast_tween: Tween
 var _play_button: Button
@@ -32,22 +78,57 @@ var _auto_button: Button
 var _cover_cache := {}
 var _background_cache := {}
 var _preview: Node
-var _preview_status: Label
 var _backgrounds: Array[TextureRect] = []
 var _background_tween: Tween
-var _body: BoxContainer
 var _list_scroll: ScrollContainer
 var _detail_scroll: ScrollContainer
 var _leaving := false
 
+@onready var _background_a: TextureRect = $BlurredCover0
+@onready var _background_b: TextureRect = $BlurredCover1
+@onready var _settings_button: Button = $TopBar/Toolbar/SettingsButton
+@onready var _back_button: Button = $TopBar/Toolbar/BackButton
+@onready var _import_button: Button = $Main/MusicBody/Library/EmptyState/ImportButton
+@onready var _background_dim: ColorRect = $BackgroundDim
+
 
 func _ready() -> void:
 	theme = UiTheme.theme()
-	_build()
+	_body = $Main/MusicBody
+	_list_scroll = $Main/MusicBody/Library/SongListScroll
+	_list_box = $Main/MusicBody/Library/SongListScroll/ListPad/SongList
+	_empty_state = $Main/MusicBody/Library/EmptyState
+	_list_count = $Main/MusicBody/Library/HeadPad/Head/ListCount
+	_detail_scroll = $Main/MusicBody/DetailScroll
+	_cover_frame = $Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame
+	_cover = _cover_frame.get_node("Art/SelectedCover")
+	_cover_empty = _cover_frame.get_node("Art/CoverEmpty")
+	_detail_title = $Main/MusicBody/DetailScroll/DetailBox/SongTitle
+	_detail_artist = $Main/MusicBody/DetailScroll/DetailBox/SongArtist
+	_detail_illust = $Main/MusicBody/DetailScroll/DetailBox/SongCredits
+	_detail_meta = $Main/MusicBody/DetailScroll/DetailBox/SongMeta
+	_detail_best = $Main/MusicBody/DetailScroll/DetailBox/SongBest
+	_play_button = $Main/MusicBody/DetailScroll/DetailBox/Actions/StartButton
+	_auto_button = $Main/MusicBody/DetailScroll/DetailBox/Actions/AutoplayButton
+	_toast = $Footer/Toast
+	_background_dim = $BackgroundDim
+	_lock_layer = _cover_frame.get_node("Art/LockLayer")
+	_lock_text = _lock_layer.get_node("LockBox/LockText")
+	_cover_mask = _cover_frame.get_node("Art/CoverMask")
+	_backgrounds.assign([_background_a, _background_b])
+
+	# 滚动条是 ScrollContainer 的内部节点，皮肤只能在运行时套
+	for scroll in [_list_scroll, _detail_scroll]:
+		Neon.style_scroll(scroll)
+	_settings_button.pressed.connect(_open_settings)
+	_back_button.pressed.connect(_back)
+	_import_button.pressed.connect(_open_chart_folder)
+	_play_button.pressed.connect(_play_selected.bind(false))
+	_auto_button.pressed.connect(_play_selected.bind(true))
+
 	_preview = Preview.new()
 	_preview.name = "SongPreview"
 	add_child(_preview)
-	_preview.status_changed.connect(_on_preview_status)
 	if App.menu_music != null:
 		App.menu_music.stop_immediately()
 	App.refresh_library()
@@ -59,67 +140,6 @@ func _ready() -> void:
 		get_window().files_dropped.connect(_on_files_dropped)
 	resized.connect(_layout)
 	_layout.call_deferred()
-	set_process(false)
-
-
-func _process(delta: float) -> void:
-	if _rows.is_empty():
-		set_process(false)
-		return
-	_row_entrance_time += minf(delta, 0.05)
-	var ready := _row_entrance_time >= ROW_REVEAL_DELAY
-	var settled := ready
-	for i in _rows.size():
-		if _row_entrance_time < minf(i, 6) * 0.045:
-			settled = false
-			continue
-		var width := _row_slots[i].size.x
-		if width <= 0.0:
-			settled = false
-			continue
-		var target := _row_target(i, width) if ready else -width * 0.5
-		var row: Button = _rows[i]
-		var x := row.position.x
-		var velocity := _row_velocity[i]
-		var remaining := minf(delta, 0.05)
-		while remaining > 0.0:
-			var step := minf(remaining, 0.008)
-			velocity += ((target - x) * ROW_SPRING - velocity * ROW_DAMPING) * step
-			x += velocity * step
-			remaining -= step
-		if absf(x - target) < 0.35 and absf(velocity) < 0.5:
-			x = target
-			velocity = 0.0
-		else:
-			settled = false
-		row.position.x = x
-		# 半露出的卡片仍露出曲名；完整滑出后内容回到原有排版。
-		row.get_node("RowContent").offset_left = 18.0 - minf(x, 0.0) * 0.7
-		_row_velocity[i] = velocity
-	if settled:
-		set_process(false)
-
-
-func _row_target(index: int, width: float) -> float:
-	var distance := absi(index - _selected)
-	if distance == 0:
-		return 0.0
-	if distance == 1:
-		return -width * 0.22
-	if distance == 2:
-		return -width * 0.36
-	return -width * 0.5
-
-
-func _begin_row_entrance(generation: int) -> void:
-	await get_tree().process_frame
-	if not is_inside_tree() or generation != _row_generation:
-		return
-	for i in _rows.size():
-		_rows[i].position.x = -_row_slots[i].size.x - 24.0
-		_row_velocity[i] = 0.0
-	_row_entrance_time = 0.0
-	set_process(not _rows.is_empty())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -148,212 +168,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_back()
 
 
-func _build() -> void:
-	var black := ColorRect.new()
-	black.color = Color("0c0715")
-	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UiKit.full_rect(black)
-	add_child(black)
-	for i in 2:
-		var background := TextureRect.new()
-		background.name = "BlurredCover%d" % i
-		background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var material := ShaderMaterial.new()
-		material.shader = preload("res://shaders/cover_blur.gdshader")
-		background.material = material
-		background.texture = preload("res://assets/menu_deep_space.png")
-		UiKit.full_rect(background)
-		add_child(background)
-		_backgrounds.append(background)
-	_backgrounds[1].modulate.a = 0.0
-
-	var top := MarginContainer.new()
-	top.name = "TopBar"
-	top.anchor_right = 1
-	top.offset_left = 48
-	top.offset_right = -48
-	top.offset_top = 24
-	top.offset_bottom = 64
-	add_child(top)
-	var toolbar := UiKit.hbox(16)
-	top.add_child(toolbar)
-	toolbar.add_child(Neon.label("Univerthm", 24, WHITE, true))
-	toolbar.add_child(Neon.label("/", 24, Neon.PURPLE, true))
-	toolbar.add_child(Neon.label("选曲", 17, WHITE, true))
-	toolbar.add_child(UiKit.stretch())
-	var settings_button := _quiet_button("设置", "音量、打击特效与偏移 · S")
-	settings_button.name = "SettingsButton"
-	settings_button.pressed.connect(_open_settings)
-	toolbar.add_child(settings_button)
-	var refresh := _quiet_button("↻", "刷新曲库 · F5")
-	refresh.name = "RefreshButton"
-	refresh.pressed.connect(_refresh_library)
-	toolbar.add_child(refresh)
-	var folder := _quiet_button("＋", "打开谱面目录，也可直接拖入谱面")
-	folder.name = "FolderButton"
-	folder.pressed.connect(_open_chart_folder)
-	toolbar.add_child(folder)
-	var back := _quiet_button("←", "返回主界面 · Esc")
-	back.name = "BackButton"
-	back.pressed.connect(_back)
-	toolbar.add_child(back)
-
-	var main := MarginContainer.new()
-	main.name = "Main"
-	UiKit.full_rect(main)
-	main.offset_left = 56
-	main.offset_right = -56
-	main.offset_top = 106
-	main.offset_bottom = -76
-	add_child(main)
-	_body = BoxContainer.new()
-	_body.name = "MusicBody"
-	_body.add_theme_constant_override("separation", 66)
-	main.add_child(_body)
-	_build_library()
-	_build_detail()
-
-	var footer := HBoxContainer.new()
-	footer.name = "Footer"
-	footer.anchor_right = 1
-	footer.anchor_top = 1
-	footer.anchor_bottom = 1
-	footer.offset_left = 56
-	footer.offset_right = -56
-	footer.offset_top = -43
-	footer.offset_bottom = -20
-	add_child(footer)
-	footer.add_child(Neon.label("↑↓ 选择   ·   Enter 开始   ·   A 自动演示", 11, MUTED))
-	footer.add_child(UiKit.stretch())
-	_toast = Neon.label("", 11, GREEN)
-	footer.add_child(_toast)
-	_preview_status = Neon.label("", 11, GREEN)
-	_preview_status.name = "PreviewStatus"
-	footer.add_child(_preview_status)
-
-
-func _quiet_button(title: String, hint: String) -> Button:
-	var button := UiKit.button(title, 16)
-	button.tooltip_text = hint
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.add_theme_color_override("font_color", MUTED)
-	button.add_theme_color_override("font_hover_color", WHITE)
-	for state in ["normal", "focus"]:
-		button.add_theme_stylebox_override(state, UiTheme.style_box(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, Vector4(12, 5, 12, 5)))
-	for state in ["hover", "pressed"]:
-		button.add_theme_stylebox_override(state, UiTheme.style_box(Color(0.6, 0.35, 0.9, 0.14), 0, 0, Color.TRANSPARENT, Vector4(12, 5, 12, 5)))
-	return button
-
-
-func _build_library() -> void:
-	var library := UiKit.vbox(20)
-	library.name = "Library"
-	library.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	library.size_flags_stretch_ratio = 0.95
-	_body.add_child(library)
-	var head := UiKit.hbox(10)
-	library.add_child(head)
-	head.add_child(Neon.label("曲库", 18, WHITE, true))
-	head.add_child(UiKit.stretch())
-	_list_count = Neon.label("", 12, MUTED)
-	head.add_child(_list_count)
-	library.add_child(UiKit.rule(Color(0.8, 0.7, 1, 0.18)))
-	_list_scroll = ScrollContainer.new()
-	_list_scroll.name = "SongListScroll"
-	_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_list_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	Neon.style_scroll(_list_scroll)
-	library.add_child(_list_scroll)
-	_list_box = UiKit.vbox(12)
-	_list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list_scroll.add_child(_list_box)
-	_list_box.resized.connect(func():
-		if _row_entrance_time >= ROW_REVEAL_DELAY and not _rows.is_empty():
-			set_process(true))
-
-
-func _build_detail() -> void:
-	_detail_scroll = ScrollContainer.new()
-	_detail_scroll.name = "DetailScroll"
-	_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_scroll.size_flags_stretch_ratio = 1.05
-	Neon.style_scroll(_detail_scroll)
-	_body.add_child(_detail_scroll)
-	var box := UiKit.vbox(9)
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_detail_scroll.add_child(box)
-	var center := CenterContainer.new()
-	box.add_child(center)
-	_cover_frame = Neon.panel(Vector4(5, 5, 5, 5))
-	_cover_frame.name = "CoverFrame"
-	_cover_frame.cut = 12
-	_cover_frame.accents = false
-	_cover_frame.edge = Color(0.8, 0.7, 1.0, 0.42)
-	_cover_frame.fill = Color(0.05, 0.025, 0.1, 0.4)
-	_cover_frame.custom_minimum_size = Vector2(250, 250)
-	center.add_child(_cover_frame)
-	var art := Control.new()
-	_cover_frame.add_child(art)
-	_cover = TextureRect.new()
-	_cover.name = "SelectedCover"
-	_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UiKit.full_rect(_cover)
-	art.add_child(_cover)
-	_cover_empty = Neon.label("♪", 70, Neon.PURPLE)
-	_cover_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_cover_empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	UiKit.full_rect(_cover_empty)
-	art.add_child(_cover_empty)
-	box.add_child(UiKit.gap(1))
-	_detail_title = Neon.label("", 32, WHITE, true)
-	_detail_title.name = "SongTitle"
-	_detail_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_title.max_lines_visible = 2
-	_detail_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(_detail_title)
-	_detail_artist = Neon.label("", 13, MUTED)
-	_detail_artist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail_artist.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(_detail_artist)
-	_detail_illust = Neon.label("", 11, MUTED)
-	_detail_illust.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail_illust.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(_detail_illust)
-	_detail_meta = Neon.label("", 14, GREEN, true)
-	_detail_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_detail_meta)
-	box.add_child(UiKit.gap(8))
-	var actions := UiKit.hbox(18)
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(actions)
-	_play_button = UiKit.button("▶  开始", 17)
-	_play_button.name = "StartButton"
-	_play_button.custom_minimum_size = Vector2(176, 46)
-	_play_button.add_theme_font_override("font", Neon.bold())
-	_play_button.add_theme_color_override("font_color", Color("160b24"))
-	_play_button.add_theme_color_override("font_hover_color", Color("160b24"))
-	_play_button.add_theme_color_override("font_pressed_color", Color("160b24"))
-	for state in ["normal", "focus"]:
-		_play_button.add_theme_stylebox_override(state, UiTheme.style_box(WHITE, 0, 0, WHITE, Vector4(22, 10, 22, 10)))
-	for state in ["hover", "pressed"]:
-		_play_button.add_theme_stylebox_override(state, UiTheme.style_box(GREEN, 0, 0, GREEN, Vector4(22, 10, 22, 10)))
-	_play_button.pressed.connect(_play_selected.bind(false))
-	actions.add_child(_play_button)
-	_auto_button = _quiet_button("自动演示", "自动演示 · A")
-	_auto_button.name = "AutoplayButton"
-	_auto_button.pressed.connect(_play_selected.bind(true))
-	actions.add_child(_auto_button)
-
-
 func _layout() -> void:
 	var narrow := size.x < 900
 	_body.vertical = narrow
@@ -377,110 +191,76 @@ func _refresh_library() -> void:
 
 
 func _refresh_list() -> void:
+	for tween in _row_tweens.values():
+		if tween is Tween and tween.is_valid():
+			tween.kill()
+	_row_tweens.clear()
+	_row_hover_t.clear()
 	for child in _list_box.get_children():
 		_list_box.remove_child(child)
 		child.queue_free()
 	_rows.clear()
-	_row_slots.clear()
-	_row_velocity.clear()
-	_row_generation += 1
-	set_process(false)
+	_row_locked.clear()
+	_row_hidden.clear()
 	_selected = -1
+	_hovered = -1
 	_list_count.text = "%d 个谱面" % App.library.size()
 	var empty := App.library.is_empty()
-	_play_button.disabled = empty
-	_auto_button.disabled = empty
+	_empty_state.visible = empty
 	if empty:
-		var hint := Neon.label("等待第一首曲子\n\n将谱面拖入窗口，开始新的旅程。", 16, MUTED)
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_list_box.add_child(hint)
-		var open := _quiet_button("＋ 导入谱面", "打开谱面目录")
-		open.pressed.connect(_open_chart_folder)
-		_list_box.add_child(open)
 		_clear_detail()
 		return
 	var selected_index := 0
 	for i in App.library.size():
 		if str(App.library[i].get("key", "")) == App.selected_chart_key:
 			selected_index = i
-		var button := _make_row(App.library[i], i)
-		var slot := Control.new()
-		slot.name = "SongSlot_%02d" % i
-		slot.custom_minimum_size.y = 100
-		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_list_box.add_child(slot)
-		UiKit.full_rect(button)
-		button.position.x = -2000.0
-		slot.add_child(button)
-		_row_slots.append(slot)
-		_rows.append(button)
-		_row_velocity.append(0.0)
+		# 行直接交给 VBox 排：宽度铺满、高度 = ROW_HEIGHT，切歌时没有位移动画。
+		var hidden := _is_hidden_song(i)
+		var row := _make_row(App.library[i], i, hidden)
+		_list_box.add_child(row)
+		_rows.append(row)
+		_row_locked.append(not App.is_chart_unlocked(i))
+		_row_hidden.append(hidden)
+	_refresh_row_styles()
 	_focus_row(selected_index)
 	_layout.call_deferred()
-	_begin_row_entrance(_row_generation)
 
 
-func _make_row(entry: Dictionary, index: int) -> Button:
-	var button := Button.new()
-	button.name = "Song_%02d" % index
-	button.custom_minimum_size.y = 100
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.focus_mode = Control.FOCUS_ALL
-	button.add_theme_stylebox_override("normal", UiTheme.style_box(Color(0.02, 0.01, 0.04, 0.22), 0, 0, Color.TRANSPARENT, Vector4.ZERO))
-	button.add_theme_stylebox_override("hover", UiTheme.style_box(Color(0.5, 0.26, 0.8, 0.16), 0, 0, Color.TRANSPARENT, Vector4.ZERO))
-	button.add_theme_stylebox_override("pressed", UiTheme.style_box(Color(0.5, 0.26, 0.8, 0.25), 0, 0, Color.TRANSPARENT, Vector4.ZERO))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.pressed.connect(_focus_row.bind(index))
-	button.focus_entered.connect(_on_row_focused.bind(entry, index))
+## 「神秘曲」：第 3 首在打出成绩之前，所有信息都是 ???、曲绘纯黑。
+## 打完第一次（有了成绩记录）就恢复正常显示。
+func _is_hidden_song(index: int) -> bool:
+	if index != SECRET_INDEX or index >= App.library.size():
+		return false
+	var record := App.best_record(str(App.library[index].get("key", "")))
+	return record.is_empty()
+
+
+## 一条曲目行：布局在 scenes/song_row.tscn 里，这里只填文字和接信号。
+func _make_row(entry: Dictionary, index: int, hidden := false) -> Button:
+	var row: Button = ROW_SCENE.instantiate()
+	row.name = "Song_%02d" % index
+	row.custom_minimum_size.y = ROW_HEIGHT
+	# 每行一个常驻底框：悬停动画直接改它的 expand_margin / 颜色，不重建资源
+	var box := UiTheme.style_box(ROW_IDLE_BG, 0, 0, Color.TRANSPARENT, Vector4.ZERO)
+	row.set_meta("row_box", box)
+	for state in ["normal", "hover", "pressed"]:
+		row.add_theme_stylebox_override(state, box)
+	row.get_node("RowContent/Texts/SongTitle").text = "???" if hidden else str(entry.get("title", "未命名谱面"))
+	row.get_node("RowContent/Texts/SongArtist").text = "???" if hidden else str(entry.get("artist", ""))
+	row.pressed.connect(_focus_row.bind(index))
+	row.focus_entered.connect(_on_row_focused.bind(entry, index))
+	row.mouse_entered.connect(_set_row_hover.bind(index, true))
+	row.mouse_exited.connect(_set_row_hover.bind(index, false))
 	# 键盘方向键只移动曲目焦点，Enter 由选曲页确认开始。
-	button.gui_input.connect(func(event):
+	row.gui_input.connect(func(event):
 		if event is InputEventKey and event.pressed and not event.echo:
 			if event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
 				_play_selected(false)
-				button.accept_event()
+				row.accept_event()
 			elif event.keycode in [KEY_UP, KEY_DOWN]:
 				_focus_row(wrapi(index + (-1 if event.keycode == KEY_UP else 1), 0, _rows.size()))
-				button.accept_event())
-	var mark := ColorRect.new()
-	mark.name = "SelectedMark"
-	mark.color = GREEN
-	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mark.anchor_bottom = 1
-	mark.offset_top = 20
-	mark.offset_bottom = -20
-	mark.offset_right = 3
-	mark.hide()
-	button.add_child(mark)
-	var content := UiKit.hbox(15)
-	content.name = "RowContent"
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UiKit.full_rect(content)
-	content.offset_left = 18
-	content.offset_right = -18
-	content.offset_top = 12
-	content.offset_bottom = -12
-	button.add_child(content)
-	var thumb := TextureRect.new()
-	thumb.texture = _cover_for(entry)
-	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	thumb.custom_minimum_size = Vector2(64, 64)
-	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(thumb)
-	var texts := UiKit.vbox(3)
-	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	content.add_child(texts)
-	var title := Neon.label(str(entry.get("title", "未命名谱面")), 17, WHITE, true)
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	texts.add_child(title)
-	var artist := Neon.label(str(entry.get("artist", "")), 11, MUTED)
-	artist.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	texts.add_child(artist)
-	texts.add_child(Neon.label("%s   /   Lv.%d" % [str(entry.get("difficulty", "NORMAL")), int(entry.get("level", 1))], 11, Neon.PURPLE))
-	return button
+				row.accept_event())
+	return row
 
 
 func _focus_row(index: int) -> void:
@@ -496,15 +276,93 @@ func _on_row_focused(entry: Dictionary, index: int) -> void:
 	if _selected == index:
 		return
 	_selected = index
-	set_process(true)
+	_selected_locked = index < _row_locked.size() and _row_locked[index]
+	_selected_hidden = index < _row_hidden.size() and _row_hidden[index]
 	App.selected_chart_key = str(entry.get("key", ""))
 	for i in _rows.size():
-		var row: Button = _rows[i]
-		row.get_node("SelectedMark").visible = i == index
-		row.add_theme_stylebox_override("normal", UiTheme.style_box(Color(0.22, 0.09, 0.36, 0.62) if i == index else Color(0.02, 0.01, 0.04, 0.22), 0, 1 if i == index else 0, Color(0.66, 0.43, 1, 0.5), Vector4.ZERO))
-	_list_scroll.ensure_control_visible(_row_slots[index])
+		_rows[i].get_node("SelectedMark").visible = i == index
+	_refresh_row_styles()
+	_list_scroll.ensure_control_visible(_rows[index])
 	_update_detail(entry)
-	_preview.select(entry)
+	if _selected_locked:
+		# 没解锁的曲子不试听
+		_preview.stop()
+	elif _selected_hidden:
+		# 还没揭晓的神秘曲也不试听（放歌名/曲子信息就等于剧透了）
+		_preview.stop()
+	else:
+		_preview.select(entry)
+
+
+## 鼠标移进 / 移出一行：只影响行的底框和内容，不改布局、不动鼠标命中区。
+func _set_row_hover(index: int, hovered: bool) -> void:
+	if hovered:
+		_hovered = index
+	elif _hovered == index:
+		_hovered = -1
+	_refresh_row_styles()
+	for i in _rows.size():
+		_animate_row_hover(_rows[i], i, 1.0 if i == _hovered else 0.0)
+
+
+## 把每行刷到它当前的悬停进度（选中状态变了就立刻换色，几何沿用当前进度）。
+func _refresh_row_styles() -> void:
+	for i in _rows.size():
+		var row: Button = _rows[i]
+		_row_visual(row, i, float(_row_hover_t.get(row.get_instance_id(), 0.0)))
+
+
+## 一行的样子：hover_t = 0 常态、1 完全悬停。
+## 没选中：整行往右滑 + 上下各长一点（底框和文字一起走，命中区不动）。
+## 选中了：不位移，只把紫框往右拉长。
+func _row_visual(row: Button, index: int, hover_t: float) -> void:
+	if not is_instance_valid(row):
+		return
+	var selected := index == _selected
+	var box: StyleBoxFlat = row.get_meta("row_box", null)
+	var content: Control = row.get_node("RowContent")
+	if box == null or content == null:
+		return
+	box.bg_color = ROW_SELECTED_BG if selected else ROW_IDLE_BG.lerp(ROW_HOVER_BG, hover_t)
+	box.set_border_width_all(1 if selected else 0)
+	box.border_color = ROW_SELECTED_BORDER if selected else Color.TRANSPARENT
+	if selected:
+		box.expand_margin_left = 0.0
+		box.expand_margin_right = HOVER_EXTEND * hover_t
+		box.expand_margin_top = 0.0
+		box.expand_margin_bottom = 0.0
+		content.offset_left = ROW_CONTENT_INSET
+	else:
+		box.expand_margin_left = -HOVER_POP * hover_t
+		box.expand_margin_right = HOVER_POP * hover_t
+		box.expand_margin_top = HOVER_POP_GROW * hover_t
+		box.expand_margin_bottom = HOVER_POP_GROW * hover_t
+		content.offset_left = ROW_CONTENT_INSET + HOVER_POP * hover_t
+
+
+## 从当前进度缓动到目标进度（进出都用 EASE_OUT，松手那一下更干脆）。
+func _animate_row_hover(row: Button, index: int, target: float) -> void:
+	var id := row.get_instance_id()
+	var from := float(_row_hover_t.get(id, 0.0))
+	var running: Tween = _row_tweens.get(id)
+	if running != null and running.is_valid():
+		running.kill()
+	_row_tweens.erase(id)
+	if is_equal_approx(from, target) or HOVER_ANIM <= 0.0:
+		_row_hover_t[id] = target
+		_row_visual(row, index, target)
+		return
+	var tween := create_tween()
+	tween.tween_method(_row_hover_step.bind(row, index), from, target, HOVER_ANIM) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_row_tweens[id] = tween
+
+
+func _row_hover_step(value: float, row: Button, index: int) -> void:
+	if not is_instance_valid(row):
+		return
+	_row_hover_t[row.get_instance_id()] = value
+	_row_visual(row, index, value)
 
 
 func _cover_for(entry: Dictionary) -> Texture2D:
@@ -515,17 +373,81 @@ func _cover_for(entry: Dictionary) -> Texture2D:
 
 
 func _update_detail(entry: Dictionary) -> void:
-	_detail_title.text = str(entry.get("title", "未命名谱面"))
-	_detail_artist.text = str(entry.get("artist", ""))
+	var hidden := _selected_hidden
 	var credits := "谱师  " + str(entry.get("charter", "—"))
 	var illust := str(entry.get("illustrator", ""))
 	if illust != "":
 		credits += "    /    曲绘  " + illust
-	_detail_illust.text = credits
-	_detail_meta.text = "%s    /    Lv.%d    /    %s" % [str(entry.get("difficulty", "NORMAL")), int(entry.get("level", 1)), _format_time(float(entry.get("duration", 0.0)))]
-	_cover.texture = _cover_for(entry)
-	_cover_empty.visible = _cover.texture == null
-	_set_background(_cover.texture)
+	if hidden:
+		# 神秘曲：曲名 / 作者 / staff / 难度 / 时长全都遮掉，曲绘纯黑
+		_detail_title.text = "???"
+		_detail_artist.text = "???"
+		_detail_illust.text = "???"
+		_detail_meta.text = "???    /    Lv.??    /    ??:??"
+	else:
+		_detail_title.text = str(entry.get("title", "未命名谱面"))
+		_detail_artist.text = str(entry.get("artist", ""))
+		_detail_illust.text = credits
+		_detail_meta.text = "%s    /    Lv.%d    /    %s" % [str(entry.get("difficulty", "NORMAL")), int(entry.get("level", 1)), _format_time(float(entry.get("duration", 0.0)))]
+	_update_best_line(str(entry.get("key", "")))
+	_cover.texture = null if hidden else _cover_for(entry)
+	_cover_empty.visible = not hidden and _cover.texture == null
+	_cover_mask.visible = hidden
+	# 神秘曲连背景也用默认星空，不能从模糊背景里把曲绘漏出来
+	_set_background(null if hidden else _cover.texture)
+	_apply_lock_visual(_selected_locked)
+
+
+## 详情里的最好成绩：分数 + ACC（和结算界面同一套格式），没打过就写「暂无记录」
+func _update_best_line(key: String) -> void:
+	var record := App.best_record(key)
+	if record.is_empty():
+		_detail_best.text = "BEST    暂无记录"
+		_detail_best.add_theme_color_override("font_color", BEST_EMPTY_COLOR)
+		return
+	_detail_best.text = "BEST    %08d    ·    %.2f%%" % [
+		int(record.get("score", 0)),
+		float(record.get("acc", 0.0)) * 100.0,
+	]
+	_detail_best.add_theme_color_override("font_color", BEST_COLOR)
+
+
+## 没解锁的曲子：右侧曲绘压一个白锁 + 整个背景压暗，开始 / 自动演示都点不动。
+## 锁下面写清楚要通关哪一首（按列表顺序，就是它的前一首）。
+func _apply_lock_visual(locked: bool) -> void:
+	_lock_layer.visible = locked
+	_refresh_action_buttons()
+	if locked:
+		var need := _unlock_requirement_title(_selected)
+		_lock_text.text = "通关「%s」后解锁" % need if need != "" else "未解锁"
+	if _background_dim != null:
+		if _lock_tween != null and _lock_tween.is_valid():
+			_lock_tween.kill()
+		var target := Color(0, 0, 0, LOCK_BG_DIM if locked else 0.0)
+		if locked:
+			_background_dim.color = target
+		else:
+			_lock_tween = create_tween()
+			_lock_tween.tween_property(_background_dim, "color", target, 0.18)
+
+
+## 解锁第 index 首要先通关哪一首（列表里的前一首）的曲名；没有就返回空串
+func _unlock_requirement_title(index: int) -> String:
+	if index <= 0 or index >= App.library.size():
+		return ""
+	return str(App.library[index - 1].get("title", ""))
+
+
+## 「开始 / 自动演示」两个按钮的可用状态：
+## 没解锁 / 空库 → 都点不动；「自动演示」还要先游玩过一次谱面。
+func _refresh_action_buttons() -> void:
+	var empty := App.library.is_empty()
+	var autoplay_ready := App.autoplay_unlocked()
+	_play_button.disabled = empty or _selected_locked
+	_auto_button.disabled = empty or _selected_locked or not autoplay_ready
+	_auto_button.tooltip_text = "自动演示 · A" if autoplay_ready else "游玩一次谱面解锁"
+	_auto_button.add_theme_color_override("font_color", AUTO_READY_COLOR if autoplay_ready else AUTO_LOCKED_COLOR)
+	_auto_button.add_theme_color_override("font_hover_color", AUTO_READY_COLOR if autoplay_ready else AUTO_LOCKED_COLOR)
 
 
 func _set_background(texture: Texture2D) -> void:
@@ -561,20 +483,20 @@ func _soft_background(texture: Texture2D) -> Texture2D:
 	return soft
 
 
-func _on_preview_status(playing: bool) -> void:
-	if is_instance_valid(_preview_status):
-		_preview_status.text = "●  试听 / 50%" if playing else ""
-
-
 func _clear_detail() -> void:
 	_preview.stop()
 	_detail_title.text = "下一段旋律，等待开启"
 	_detail_artist.text = "导入谱面后，曲绘与音乐会在这里相遇。"
 	_detail_illust.text = ""
 	_detail_meta.text = ""
+	_detail_best.text = ""
 	_cover.texture = null
+	_cover_mask.visible = false
 	_cover_empty.show()
+	_selected_locked = false
+	_selected_hidden = false
 	_set_background(null)
+	_apply_lock_visual(false)
 
 
 func _format_time(seconds: float) -> String:
@@ -584,6 +506,13 @@ func _format_time(seconds: float) -> String:
 
 func _play_selected(autoplay: bool) -> void:
 	if _leaving or _selected < 0 or _selected >= App.library.size():
+		return
+	if _selected_locked:
+		var need := _unlock_requirement_title(_selected)
+		_show_toast("先通关「%s」才能玩这首" % need if need != "" else "这首还没解锁")
+		return
+	if autoplay and not App.autoplay_unlocked():
+		_show_toast("游玩一次谱面解锁自动演示")
 		return
 	_play_entry(App.library[_selected], autoplay)
 

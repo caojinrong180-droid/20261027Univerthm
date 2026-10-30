@@ -1,4 +1,4 @@
-﻿/* 核心逻辑单元测试：node web/test/core.test.js */
+/* 核心逻辑单元测试：node web/test/core.test.js */
 'use strict';
 
 const RC = require('../js/core.js');
@@ -471,6 +471,19 @@ const hzc = RC.createChart({ lane_count: 1 });
 hzc.lanes[0].speed = 0;
 for (const k of RC.ALL_KEYS) hzc.lanes[0].events[k].length = 0;
 eq(RC.holdSpeed(hzc.lanes[0], 1), 1, '从头到尾都是 0 流速 → 退回 1.00×');
+
+/* ---------------- 流速 0 的可见提前量（zeroSpeedLookahead） ---------------- */
+
+// 按这条轨道「最近的正常流速」算可视时长：远未来音符不画、快到点的照画
+const zl = RC.createChart({ lane_count: 1 });
+const zll = zl.lanes[0];
+zll.speed = 0;
+for (const k of RC.ALL_KEYS) zll.events[k].length = 0;
+RC.addEvent(zll, 'speed', { start: 10, end: 11, from: 20, to: 20 });   // 之后会变 4×
+near(RC.zeroSpeedLookahead(zll, 1, 167.5, 127.5), 167.5 / (127.5 * 4), 1e-9,
+  '0 速提前量 = 可视像素 / (基准速率 × 最近的非零流速)');
+near(RC.zeroSpeedLookahead(zll, 1, 9999, 127.5), 4, 1e-9, '0 速提前量上限 4 秒');
+near(RC.zeroSpeedLookahead(zll, 1, 1, 127.5), 0.2, 1e-9, '0 速提前量下限 0.2 秒');
 
 /* ---------------- 父线 / 子线 ---------------- */
 

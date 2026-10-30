@@ -832,9 +832,13 @@
       var head = (nt.time - S.viewTime) * pps;
       var dur = (nt.type === 'hold') ? Math.max(0, nt.duration) : 0;
       var isHold = dur > 0.001;
-      // 流速 0：位置不再表示时间，音符就一直钉在判定线上（保持原来的表现 —— 看得见才打得到）。
-      // 这里只挡住「未来长条凭空长出身体」那一件事。
+      // 流速 0：位置不再表示时间，音符只能钉在判定线上 —— 提前量按「这条轨道本来该有的可视时长」算。
+      // 更远的音符不画（否则 30 秒后的音符会提前堆在判定线上），更近才画又会晚到打中了才出现。
       var atLine = nt.time <= S.viewTime + 0.02;
+      if (g.speed <= 0.001) {
+        var ahead = RC.zeroSpeedLookahead(g.lane, S.viewTime, g.len + 40, PV.pps);
+        if (nt.time > S.viewTime + ahead) continue;
+      }
 
       // 长条长度必须和头用同一个流速基准，否则流速一变，
       // 头已经过线而「按旧流速算出来的尾巴」还在判定线上方 → 长条卡在那儿不消失。

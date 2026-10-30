@@ -382,6 +382,9 @@ func _finish() -> void:
 		"autoplay": autoplay,
 		"length": _end_time,
 	}
+	# 通关掉落剧情（自动演示不掉）：第 N 首谱面 → 第 N 篇笔记
+	if not autoplay:
+		result["story_drop"] = App.grant_story_drop(result)
 	App.last_result = result
 	debug_run_result = result
 	if not autoplay:
@@ -495,6 +498,10 @@ func _build_unlock() -> void:
 	var entry = App.session.get("entry", {})
 	if typeof(entry) != TYPE_DICTIONARY or entry.is_empty():
 		return
+	# 解锁动画每首谱面只演一次：演过（含中途跳过）就直接进倒计时，不占第二次的进谱时间
+	var key := str(entry.get("key", ""))
+	if App.has_seen_unlock(key):
+		return
 	var data := ChartSource.load_unlock(entry)
 	if not bool(data.get("ok", false)):
 		return
@@ -507,6 +514,7 @@ func _build_unlock() -> void:
 	add_child(_unlock)
 	move_child(_unlock, stage.get_index() + 1)      # 盖在舞台上方、后处理下方
 	_unlock.finished.connect(_finish_unlock)
+	App.mark_unlock_seen(key)                       # 一开场就记下：跳过 / 中途退出也算看过
 	_unlock.start()
 
 

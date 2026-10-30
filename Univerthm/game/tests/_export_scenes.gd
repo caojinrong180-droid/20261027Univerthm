@@ -23,7 +23,10 @@ func _ready() -> void:
 		"has_cover": false, "source": "res://tests/fixtures/synthetic_chart.gd",
 		"audio": "", "chart": chart,
 	}]
-	App.stats = {"plays": 12, "best_score": 998765, "best_title": "Synthetic Test", "best_acc": 0.9843}
+	App.stats = {
+		"plays": 12, "best_score": 998765, "best_title": "Synthetic Test", "best_acc": 0.9843,
+		"score_total": 998765.0 * 12.0, "acc_total": 0.9843 * 12.0,
+	}
 	App.settings.player_name = "Player"
 	App.last_result = {
 		"title": "Synthetic Test", "artist": "unit test", "charter": "tests",

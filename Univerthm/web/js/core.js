@@ -1,4 +1,4 @@
-﻿/* =============================================================================
+/* =============================================================================
  * Rhythm 制谱器 · 核心逻辑
  * 不依赖 DOM：浏览器里挂到 window.RChart，Node 里可以 require 做单元测试。
  * 数据格式是 docs/CHART_FORMAT.md 里 rchart 的子集（只留基础字段，动效以后加）。
@@ -432,6 +432,17 @@
       }
     }
     return best > EPS ? best : 1;
+  }
+
+  /**
+   * 流速 0 的轨道上「提前多少秒把音符画出来」。
+   * 按这条轨道「最近的正常流速」算它本来该有的可视时长（4× 约 0.6s，1× 约 2.4s）：
+   * 既不会把很远的音符提前堆到判定线上，也不会晚到打中了才出现。
+   */
+  function zeroSpeedLookahead(lane, t, visiblePx, basePps) {
+    var sp = holdSpeed(lane, t);
+    if (!(sp > 0.001)) return 0.6;
+    return clamp(num(visiblePx, 0) / (num(basePps, 1) * sp), 0.2, 4);
   }
 
   function hasEvents(lane) {
@@ -1215,6 +1226,7 @@
     fixLaneParents: fixLaneParents,
     displayColorAt: displayColorAt,
     holdSpeed: holdSpeed,
+    zeroSpeedLookahead: zeroSpeedLookahead,
     makeEvent: makeEvent,
     cloneEvents: cloneEvents,
     emptyEvents: emptyEvents,

@@ -334,6 +334,26 @@ static func length_scale(p: Dictionary) -> float:
 	return clampf(float(p.get("length", 10.0)) / 10.0, 0.0, 10.0)
 
 
+## 流速 0 的轨道上「提前多少秒把音符画出来」。
+## 按这条轨道「最近的正常流速」算它本来该有的可视时长 —— 恢复正常流速后是什么观感，现在就什么观感：
+##   · 4× 轨道、标准长度：约 0.6 秒可见
+##   · 1× 轨道：约 2.4 秒
+## 这样既不会把 30 秒后的音符提前堆到判定线上（那是「凭空多出来的音符」），
+## 也不会晚到「打中了才出现」。
+static func zero_speed_lookahead(lane: Dictionary, t: float, visible_px: float, base_pps: float) -> float:
+	var sp := hold_speed_mult(lane, t)
+	if sp <= 0.001:
+		return 0.6
+	return clampf(visible_px / (base_pps * sp), 0.2, 4.0)
+
+
+## 流速 0 的轨道上，某个音符该不该画（lookahead 见 zero_speed_lookahead）。
+static func note_visible_at(speed_value: float, note_time: float, t: float, lookahead := 0.02) -> bool:
+	if speed_value > 0.001:
+		return true
+	return note_time <= t + lookahead
+
+
 ## 长条（hold）用的流速倍率。
 ## 流速为 0 时音符全压在判定线上、长条会缩成一条线，这里回退到
 ## 「时间上最近的非零流速」（先往回找，没有再往前找），和 core.js 的 holdSpeed 一致。

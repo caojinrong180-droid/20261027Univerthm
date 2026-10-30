@@ -1,11 +1,691 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://cy7n3hl78xrde"]
 
-[ext_resource type="Script" path="res://src/screens/song_select.gd" id="1_screen"]
+[ext_resource type="Script" uid="uid://splpa1tq7lh2" path="res://src/screens/song_select.gd" id="1_wux7d"]
+[ext_resource type="Shader" uid="uid://2yadg2yw7g4t" path="res://shaders/cover_blur.gdshader" id="2_bi366"]
+[ext_resource type="Texture2D" uid="uid://edyaxf484b07" path="res://assets/menu_deep_space.png" id="3_h0oli"]
+[ext_resource type="SystemFont" path="res://src/ui/fonts/bold_font.tres" id="4_vcqj4"]
+[ext_resource type="Script" uid="uid://crc3ad8rwx2mk" path="res://src/ui/neon_panel.gd" id="5_gjh0a"]
+[ext_resource type="Script" uid="uid://r2cpnu64ei44" path="res://src/ui/lock_icon.gd" id="6_lock"]
+[ext_resource type="Texture2D" uid="uid://btq0hnw30e1ra" path="res://assets/back.png" id="7_back"]
 
-[node name="SongSelect" type="Control"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nxupt"]
+shader = ExtResource("2_bi366")
+shader_parameter/blur_radius = 0.025
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_v3elv"]
+shader = ExtResource("2_bi366")
+shader_parameter/blur_radius = 0.025
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3qhab"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5sutn"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ud7ll"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w7xak"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kclg8"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2kito"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ubild"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_irdhw"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m6pkh"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5cfx6"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dma47"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_k8pre"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l8sko"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s2c8w"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ycchr"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_226lf"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_80j1u"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.8, 0.7, 1, 0.18)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qvtwx"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7hhm5"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vlk4i"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7q0va"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tk23b"]
+content_margin_left = 5.0
+content_margin_top = 5.0
+content_margin_right = 5.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m4m2v"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.972549, 0.9647059, 1, 1)
+border_color = Color(0.972549, 0.9647059, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n6506"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+border_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wrxsa"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+border_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vpo0h"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+bg_color = Color(0.972549, 0.9647059, 1, 1)
+border_color = Color(0.972549, 0.9647059, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xbeam"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_autoplay_disabled"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_01dd6"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lichh"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.6, 0.35, 0.9, 0.14)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m5p1c"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[node name="SongSelect" type="Control" unique_id=284618812]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_screen")
+script = ExtResource("1_wux7d")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=294247263]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.047058824, 0.02745098, 0.08235294, 1)
+
+[node name="BlurredCover0" type="TextureRect" parent="." unique_id=834429348]
+texture_filter = 4
+material = SubResource("ShaderMaterial_nxupt")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_h0oli")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BlurredCover1" type="TextureRect" parent="." unique_id=273131003]
+modulate = Color(1, 1, 1, 0)
+texture_filter = 4
+material = SubResource("ShaderMaterial_v3elv")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_h0oli")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackgroundDim" type="ColorRect" parent="." unique_id=198640211]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="TopBar" type="MarginContainer" parent="." unique_id=125925670]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 48.0
+offset_top = 24.0
+offset_right = -48.0
+offset_bottom = 64.0
+
+[node name="Toolbar" type="HBoxContainer" parent="TopBar" unique_id=776146977]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Logo" type="Label" parent="TopBar/Toolbar" unique_id=1589497256]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 24
+text = "Univerthm"
+
+[node name="Spacer" type="Control" parent="TopBar/Toolbar" unique_id=624536513]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="SettingsButton" type="Button" parent="TopBar/Toolbar" unique_id=965076971]
+layout_mode = 2
+tooltip_text = "音量、打击特效与偏移 · S"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_3qhab")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_5sutn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_ud7ll")
+theme_override_styles/focus = SubResource("StyleBoxFlat_w7xak")
+text = "设置"
+
+[node name="BackButton" type="Button" parent="TopBar/Toolbar" unique_id=698768091]
+custom_minimum_size = Vector2(52, 40)
+layout_mode = 2
+tooltip_text = "返回主界面 · Esc"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.78, 0.75, 0.86, 0.92)
+theme_override_colors/icon_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_l8sko")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_s2c8w")
+theme_override_styles/hover = SubResource("StyleBoxFlat_ycchr")
+theme_override_styles/focus = SubResource("StyleBoxFlat_226lf")
+icon = ExtResource("7_back")
+expand_icon = true
+
+[node name="Main" type="MarginContainer" parent="." unique_id=757284018]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = 106.0
+offset_right = -56.0
+offset_bottom = -76.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MusicBody" type="BoxContainer" parent="Main" unique_id=311317284]
+layout_mode = 2
+theme_override_constants/separation = 66
+
+[node name="Library" type="VBoxContainer" parent="Main/MusicBody" unique_id=809253305]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.95
+theme_override_constants/separation = 20
+
+[node name="HeadPad" type="MarginContainer" parent="Main/MusicBody/Library" unique_id=1226550853]
+layout_mode = 2
+theme_override_constants/margin_right = 26
+
+[node name="Head" type="HBoxContainer" parent="Main/MusicBody/Library/HeadPad" unique_id=710323215]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LibraryTitle" type="Label" parent="Main/MusicBody/Library/HeadPad/Head" unique_id=317068799]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 30
+text = "序章丨一切的开端"
+
+[node name="Spacer" type="Control" parent="Main/MusicBody/Library/HeadPad/Head" unique_id=1668873549]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ListCount" type="Label" parent="Main/MusicBody/Library/HeadPad/Head" unique_id=1339108010]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 个谱面"
+vertical_alignment = 1
+
+[node name="RulePad" type="MarginContainer" parent="Main/MusicBody/Library" unique_id=1659033666]
+layout_mode = 2
+theme_override_constants/margin_right = 26
+
+[node name="Rule" type="PanelContainer" parent="Main/MusicBody/Library/RulePad" unique_id=1843059355]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_80j1u")
+
+[node name="SongListScroll" type="ScrollContainer" parent="Main/MusicBody/Library" unique_id=1952943094]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ListPad" type="MarginContainer" parent="Main/MusicBody/Library/SongListScroll" unique_id=513225759]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 26
+
+[node name="SongList" type="VBoxContainer" parent="Main/MusicBody/Library/SongListScroll/ListPad" unique_id=96097752]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="EmptyState" type="VBoxContainer" parent="Main/MusicBody/Library" unique_id=1170245439]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="EmptyHint" type="Label" parent="Main/MusicBody/Library/EmptyState" unique_id=2081948798]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 16
+text = "等待第一首曲子
+
+将谱面拖入窗口，开始新的旅程。"
+autowrap_mode = 3
+
+[node name="ImportButton" type="Button" parent="Main/MusicBody/Library/EmptyState" unique_id=1941858390]
+layout_mode = 2
+tooltip_text = "打开谱面目录"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_qvtwx")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_7hhm5")
+theme_override_styles/hover = SubResource("StyleBoxFlat_vlk4i")
+theme_override_styles/focus = SubResource("StyleBoxFlat_7q0va")
+text = "＋ 导入谱面"
+
+[node name="DetailScroll" type="ScrollContainer" parent="Main/MusicBody" unique_id=1800101892]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.05
+horizontal_scroll_mode = 0
+
+[node name="DetailBox" type="VBoxContainer" parent="Main/MusicBody/DetailScroll" unique_id=1259759973]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 9
+alignment = 1
+
+[node name="CoverCenter" type="CenterContainer" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=1421068975]
+layout_mode = 2
+
+[node name="CoverFrame" type="PanelContainer" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter" unique_id=1805398169]
+custom_minimum_size = Vector2(252, 252)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_tk23b")
+script = ExtResource("5_gjh0a")
+fill = Color(0.05, 0.025, 0.1, 0.4)
+edge = Color(0.8, 0.7, 1, 0.42)
+cut = 12.0
+accents = false
+
+[node name="Art" type="Control" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame" unique_id=981550919]
+layout_mode = 2
+
+[node name="SelectedCover" type="TextureRect" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art" unique_id=414741672]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="CoverEmpty" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art" unique_id=1919094104]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.65882355, 0.4117647, 1, 1)
+theme_override_font_sizes/font_size = 70
+text = "♪"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CoverMask" type="ColorRect" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art"]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="LockLayer" type="Control" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art"]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LockDim" type="ColorRect" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art/LockLayer"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.012, 0.045, 0.74)
+
+[node name="LockBox" type="VBoxContainer" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art/LockLayer"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="LockIcon" type="Control" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art/LockLayer/LockBox"]
+custom_minimum_size = Vector2(42, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("6_lock")
+
+[node name="LockText" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame/Art/LockLayer/LockBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.933333, 0.9764706, 1)
+theme_override_font_sizes/font_size = 13
+text = "未解锁"
+horizontal_alignment = 1
+
+[node name="GapTop" type="Control" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=2036730492]
+custom_minimum_size = Vector2(1, 1)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SongTitle" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=17393036]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+autowrap_mode = 3
+text_overrun_behavior = 3
+max_lines_visible = 2
+
+[node name="SongArtist" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=1036155736]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="SongCredits" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=2122942288]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="SongMeta" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=1106809189]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="SongBest" type="Label" parent="Main/MusicBody/DetailScroll/DetailBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.858824, 0.8, 1, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+
+[node name="GapBottom" type="Control" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=1927905593]
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Actions" type="HBoxContainer" parent="Main/MusicBody/DetailScroll/DetailBox" unique_id=1774213636]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="StartButton" type="Button" parent="Main/MusicBody/DetailScroll/DetailBox/Actions" unique_id=834269093]
+custom_minimum_size = Vector2(176, 46)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.08627451, 0.043137256, 0.14117648, 1)
+theme_override_colors/font_pressed_color = Color(0.08627451, 0.043137256, 0.14117648, 1)
+theme_override_colors/font_hover_color = Color(0.08627451, 0.043137256, 0.14117648, 1)
+theme_override_colors/font_disabled_color = Color(0.6862745, 0.6745098, 0.7529412, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_m4m2v")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_n6506")
+theme_override_styles/hover = SubResource("StyleBoxFlat_wrxsa")
+theme_override_styles/focus = SubResource("StyleBoxFlat_vpo0h")
+text = "▶  开始"
+
+[node name="AutoplayButton" type="Button" parent="Main/MusicBody/DetailScroll/DetailBox/Actions" unique_id=944778444]
+layout_mode = 2
+tooltip_text = "自动演示 · A"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.42, 0.4, 0.48, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_xbeam")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_01dd6")
+theme_override_styles/hover = SubResource("StyleBoxFlat_lichh")
+theme_override_styles/focus = SubResource("StyleBoxFlat_m5p1c")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_autoplay_disabled")
+text = "自动演示"
+
+[node name="Footer" type="HBoxContainer" parent="." unique_id=1662101171]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = -43.0
+offset_right = -56.0
+offset_bottom = -20.0
+
+[node name="FooterHint" type="Label" parent="Footer" unique_id=1034480601]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 11
+text = "↑↓ 选择   ·   Enter 开始   ·   A 自动演示"
+
+[node name="Spacer" type="Control" parent="Footer" unique_id=106435125]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Toast" type="Label" parent="Footer" unique_id=1458681008]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="Label" type="Label" parent="." unique_id=2055867095]
+layout_mode = 0
+offset_left = 1024.0
+offset_top = 690.0
+offset_right = 1268.0
+offset_bottom = 713.0
+text = "tips:谱师燃尽了，只有Expert难度"

@@ -1,0 +1,80 @@
+[gd_scene format=3]
+
+[ext_resource type="SystemFont" path="res://src/ui/fonts/bold_font.tres" id="1_bold"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.02, 0.01, 0.04, 0.22)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.5, 0.26, 0.8, 0.16)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.5, 0.26, 0.8, 0.25)
+border_color = Color(1, 1, 1, 0)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_focus"]
+
+[node name="SongRow" type="Button"]
+custom_minimum_size = Vector2(0, 72)
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_focus")
+
+[node name="SelectedMark" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+anchor_bottom = 1.0
+offset_top = 14.0
+offset_right = 3.0
+offset_bottom = -14.0
+mouse_filter = 2
+color = Color(0.7411765, 0.95686275, 0.6117647, 1)
+
+[node name="RowContent" type="HBoxContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 10.0
+offset_right = -18.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="Texts" type="VBoxContainer" parent="RowContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 3
+
+[node name="SongTitle" type="Label" parent="RowContent/Texts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("1_bold")
+theme_override_font_sizes/font_size = 17
+text_overrun_behavior = 3
+
+[node name="SongArtist" type="Label" parent="RowContent/Texts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_font_sizes/font_size = 11
+text_overrun_behavior = 3

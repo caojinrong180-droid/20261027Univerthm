@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cia20622wga5x"]
 
-[ext_resource type="Script" path="res://src/screens/settings_screen.gd" id="1_screen"]
-[ext_resource type="Texture2D" path="res://assets/settings_black_hole_glitch.png" id="2_es4n0"]
-[ext_resource type="Script" path="res://src/ui/neon_panel.gd" id="3_gis3k"]
-[ext_resource type="Script" path="res://src/ui/neon_button.gd" id="4_83j8s"]
-[ext_resource type="Script" path="res://src/ui/stepper_row.gd" id="5_gjs24"]
+[ext_resource type="Script" uid="uid://d2hjifd68omw4" path="res://src/screens/settings_screen.gd" id="1_screen"]
+[ext_resource type="Texture2D" uid="uid://gqfwnttjto" path="res://assets/settings_black_hole_glitch.png" id="2_es4n0"]
+[ext_resource type="Script" uid="uid://crc3ad8rwx2mk" path="res://src/ui/neon_panel.gd" id="3_gis3k"]
+[ext_resource type="Script" uid="uid://dt536kukmb3s1" path="res://src/ui/neon_button.gd" id="4_83j8s"]
+[ext_resource type="Script" uid="uid://c3y0llq8w1inh" path="res://src/ui/stepper_row.gd" id="5_gjs24"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_am25x"]
 content_margin_left = 20.0
@@ -489,6 +489,8 @@ content_margin_top = 6.0
 content_margin_right = 20.0
 content_margin_bottom = 6.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_es4n0"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2iuh5"]
 content_margin_left = 26.0
 content_margin_top = 5.0
@@ -563,6 +565,8 @@ content_margin_right = 5.0
 content_margin_left = 5.0
 content_margin_right = 5.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gis3k"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_sv5j0"]
 content_margin_left = 5.0
 content_margin_right = 5.0
@@ -582,6 +586,8 @@ content_margin_right = 5.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hf2v3"]
 content_margin_left = 5.0
 content_margin_right = 5.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_83j8s"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5dswf"]
 content_margin_left = 18.0
@@ -633,6 +639,8 @@ content_margin_right = 5.0
 content_margin_left = 5.0
 content_margin_right = 5.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gjs24"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1fw1a"]
 content_margin_left = 5.0
 content_margin_right = 5.0
@@ -652,6 +660,8 @@ content_margin_right = 5.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_n0g8m"]
 content_margin_left = 5.0
 content_margin_right = 5.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_am25x"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t1puf"]
 content_margin_left = 8.0
@@ -689,6 +699,8 @@ content_margin_right = 5.0
 content_margin_left = 5.0
 content_margin_right = 5.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_4ppmf"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_g27wa"]
 content_margin_left = 5.0
 content_margin_right = 5.0
@@ -708,6 +720,8 @@ content_margin_right = 5.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6myxa"]
 content_margin_left = 5.0
 content_margin_right = 5.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_uhhto"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ajjou"]
 content_margin_left = 20.0
@@ -738,6 +752,8 @@ content_margin_left = 20.0
 content_margin_top = 6.0
 content_margin_right = 20.0
 content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1g033"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_q6okv"]
 content_margin_left = 8.0
@@ -775,6 +791,8 @@ content_margin_right = 5.0
 content_margin_left = 5.0
 content_margin_right = 5.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_01roj"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vwhd4"]
 content_margin_left = 5.0
 content_margin_right = 5.0
@@ -794,6 +812,8 @@ content_margin_right = 5.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j2e0j"]
 content_margin_left = 5.0
 content_margin_right = 5.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_wqwn7"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6e0q8"]
 content_margin_left = 8.0
@@ -831,6 +851,8 @@ content_margin_right = 5.0
 content_margin_left = 5.0
 content_margin_right = 5.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_oe2nd"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_dkota"]
 content_margin_left = 5.0
 content_margin_right = 5.0
@@ -850,6 +872,8 @@ content_margin_right = 5.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_taw3u"]
 content_margin_left = 5.0
 content_margin_right = 5.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_7kvyq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wuu8l"]
 content_margin_left = 0.0
@@ -889,6 +913,8 @@ content_margin_top = 6.0
 content_margin_right = 20.0
 content_margin_bottom = 6.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ql1j0"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_41atg"]
 content_margin_left = 20.0
 content_margin_top = 6.0
@@ -918,6 +944,8 @@ content_margin_left = 20.0
 content_margin_top = 6.0
 content_margin_right = 20.0
 content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6dbjw"]
 
 [node name="Settings" type="Control" unique_id=549811970]
 layout_mode = 3
@@ -1018,6 +1046,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_es4n0")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1160,7 +1189,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.9607843, 0.9411765, 1, 1)
 theme_override_fonts/font = SubResource("SystemFont_to4p8")
 theme_override_font_sizes/font_size = 16
-text = "对音"
+text = "延迟"
 
 [node name="PanelContainer26" type="PanelContainer" parent="ContentPanel/VBoxContainer13/HBoxContainer28" unique_id=830196522]
 custom_minimum_size = Vector2(0, 1)
@@ -1232,6 +1261,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_gis3k")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1264,6 +1294,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_83j8s")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1370,6 +1401,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_gjs24")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1402,6 +1434,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_am25x")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1470,6 +1503,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_4ppmf")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1502,6 +1536,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_uhhto")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1535,6 +1570,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_1g033")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1603,6 +1639,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_01roj")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1635,6 +1672,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_wqwn7")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1699,6 +1737,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_oe2nd")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1731,6 +1770,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_7kvyq")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
@@ -1779,6 +1819,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_ql1j0")
 script = ExtResource("3_gis3k")
 fill = Color(0.32941177, 0.08627451, 0.77254903, 1)
 edge = Color(0.8039216, 0.6784314, 1, 1)
@@ -1813,6 +1854,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_6dbjw")
 script = ExtResource("3_gis3k")
 fill = Color(0.025, 0.02, 0.055, 0.92)
 edge = Color(0.45882353, 0.3764706, 0.5568628, 1)

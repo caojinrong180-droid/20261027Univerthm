@@ -54,11 +54,13 @@ func _run() -> void:
 	await _check_song_select()
 	await _check_song_select_return()
 	await _check_collection()
+	await _check_result_story_drop()
 	await _check_gameplay_autoplay()
 	await _check_gameplay_timing()
 	await _check_key_input()
 	await _check_fx_rules()
 	await _check_chord_marking()
+	await _check_unlock_once()
 	await _check_settings()
 	print("  smoke done")
 
@@ -173,7 +175,7 @@ func _check_splash_input() -> void:
 	await get_tree().process_frame
 
 
-## 主界面按钮音效：鼠标移上去播 chose.wav，按下播 click.wav（别的界面不接）。
+## 主界面按钮点击音效：按下播 click.wav（别的界面不接；悬停不发声）。
 func _check_menu_sound() -> void:
 	if App.ui_sound == null:
 		check(false, "主界面音效节点没建起来")
@@ -186,17 +188,9 @@ func _check_menu_sound() -> void:
 	var hooked := true
 	for target in ["StartButton", "CollectionButton", "SettingButton", "ProfileButton"]:
 		var button: SpriteButton = menu.get_node(target)
-		hooked = hooked and button.mouse_entered.is_connected(App.ui_sound.play_hover) \
-			and button.pressed.is_connected(App.ui_sound.play_click)
-	check(hooked, "主界面四个按钮都接上了悬停 / 点击音效")
-	# 真的把鼠标移上去，走一遍 Viewport 的悬停判定
-	var target_button: Control = menu.get_node("CollectionButton")
-	var motion := InputEventMouseMotion.new()
-	motion.position = target_button.get_global_rect().get_center()
-	get_viewport().push_input(motion, true)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	check(App.ui_sound._hover.playing, "鼠标移到按钮上播放悬停音效（chose.wav）")
+		hooked = hooked and button.pressed.is_connected(App.ui_sound.play_click)
+	check(hooked, "主界面四个按钮都接上了点击音效")
+	check(not App.ui_sound.has_method("play_hover"), "悬停音已经拿掉了")
 	App.ui_sound.play_click()
 	await get_tree().process_frame
 	check(App.ui_sound._click.playing, "按下按钮播放点击音效（click.wav）")
@@ -316,8 +310,10 @@ func _check_song_select() -> void:
 	await get_tree().process_frame
 
 
-## 收藏品：剧情分类是列表，user:// 里的 txt 自动收进来，点开能读到全文
+## 收藏品：剧情分类是列表，只有「已搜集」的才显示，点开能读到全文
 func _check_collection() -> void:
+	# 这个测试会真的写搜集进度，跑完要把玩家的 user://collection.cfg 原样放回去
+	var unlock_backup := _backup_file(StorySource.UNLOCK_PATH)
 	var story_path := "user://剧情/_smoke_story.txt"
 	DirAccess.make_dir_recursive_absolute("user://剧情")
 	var fh := FileAccess.open(story_path, FileAccess.WRITE)
@@ -329,16 +325,36 @@ func _check_collection() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	check(screen._find("Tab_story") != null, "收藏品有「剧情」分类")
+	check(not _lists_story(screen, "_smoke_story.txt"), "没搜集到的剧情不显示")
+
+	# 掉落：第 1 首谱面 → 第 1 篇；已经搜集过就不重复掉
+	check(StorySource.grant_unlock("_smoke_story.txt"), "掉落记为已搜集")
+	check(not StorySource.grant_unlock("_smoke_story.txt"), "重复掉落不再是新的")
+	screen._set_filter("story")
+	await get_tree().process_frame
+	check(_lists_story(screen, "_smoke_story.txt"), "搜集后出现在剧情列表")
+	check(screen._story_section.visible, "剧情分类显示列表")
+	check(not screen._find("CardGrid").visible, "剧情分类隐藏卡片网格")
+	eq(screen._find("StoryList").get_child_count(), screen._stories.size(), "列表行数 = 已搜集剧情数")
+
+	if not App.library.is_empty():
+		var stories := StorySource.scan()
+		var drop := App.grant_story_drop({"entry": {"key": str(App.library[0].get("key", ""))}})
+		if stories.is_empty():
+			check(drop.is_empty(), "没有剧情文件时不掉落")
+		elif drop.is_empty():
+			check(StorySource.is_unlocked(str(stories[0].get("file", ""))),
+				"已经搜集过第 1 篇就不再掉")
+		else:
+			eq(str(drop.get("title", "")), str(stories[0].get("title", "")),
+				"第 1 首谱面掉第 1 篇剧情")
+			eq(int(drop.get("number", 0)), 1, "掉落编号 = 谱面序号")
+		check(not _find_story_file("_smoke_story.txt").is_empty(), "临时剧情仍在盘上")
+
 	var picked := {}
 	for entry in screen._stories:
 		if str(entry.get("file", "")) == "_smoke_story.txt":
 			picked = entry
-	check(not picked.is_empty(), "txt 剧情被自动收进列表")
-	screen._set_filter("story")
-	await get_tree().process_frame
-	check(screen._story_section.visible, "剧情分类显示列表")
-	check(not screen._find("CardGrid").visible, "剧情分类隐藏卡片网格")
-	eq(screen._find("StoryList").get_child_count(), screen._stories.size(), "列表行数 = 剧情数")
 	if not picked.is_empty():
 		screen._open_story(picked)
 		await get_tree().process_frame
@@ -355,8 +371,87 @@ func _check_collection() -> void:
 	check(screen._story_section.visible, "全部分类下面也带剧情列表")
 	screen.queue_free()
 	await get_tree().process_frame
+
+	# 收拾现场：临时剧情 + 搜集进度
+	_restore_file(StorySource.UNLOCK_PATH, unlock_backup)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(story_path))
 	check(not FileAccess.file_exists(story_path), "冒烟剧情已清理")
+	check(not await _lists_story_after_reload("_smoke_story.txt"), "清理后剧情重新上锁")
+
+
+## 结算最下方：有新掉落时显示「收藏品 · xxx 已搜集」
+func _check_result_story_drop() -> void:
+	var original: Dictionary = App.last_result
+	var base := {
+		"title": "Synthetic Test", "artist": "unit test", "charter": "tests",
+		"difficulty": "NORMAL", "level": 5, "score": 1000000, "accuracy": 1.0,
+		"grade": "S", "max_combo": 32, "counts": {}, "total": 32, "note_count": 32,
+		"early_late": {}, "fc": true, "ap": true, "ap_plus": true,
+		"autoplay": false, "length": 20.0, "entry": {},
+	}
+	App.last_result = base.duplicate()
+	App.last_result["story_drop"] = {"file": "Stra的笔记#1.txt", "title": "Stra的笔记#1", "number": 1}
+	var results = load("res://scenes/results.tscn").instantiate()
+	get_tree().root.add_child(results)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var drop_text := results.find_child("StoryDropText", true, false) as Label
+	check(drop_text != null, "结算最下方有掉落提示")
+	if drop_text != null:
+		eq(drop_text.text, "收藏品 · Stra的笔记#1 已搜集", "掉落提示文案")
+	results.queue_free()
+	await get_tree().process_frame
+
+	# 没有新掉落就整条不占位
+	App.last_result = base.duplicate()
+	results = load("res://scenes/results.tscn").instantiate()
+	get_tree().root.add_child(results)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(results.find_child("StoryDrop", true, false) == null, "没有新掉落时不显示提示条")
+	results.queue_free()
+	await get_tree().process_frame
+	App.last_result = original
+
+
+func _lists_story(screen: Node, file_name: String) -> bool:
+	for entry in screen._stories:
+		if str(entry.get("file", "")) == file_name:
+			return true
+	return false
+
+
+## 换个新的收藏品页（重扫后）这颗临时剧情还在不在列表里
+func _lists_story_after_reload(file_name: String) -> bool:
+	var screen = load("res://scenes/collection.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await get_tree().process_frame
+	var listed := _lists_story(screen, file_name)
+	screen.queue_free()
+	return listed
+
+
+func _find_story_file(file_name: String) -> Dictionary:
+	for entry in StorySource.scan():
+		if str(entry.get("file", "")) == file_name:
+			return entry
+	return {}
+
+
+func _backup_file(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"exists": false, "bytes": PackedByteArray()}
+	return {"exists": true, "bytes": FileAccess.get_file_as_bytes(path)}
+
+
+func _restore_file(path: String, backup: Dictionary) -> void:
+	if bool(backup.get("exists", false)):
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		if f != null:
+			f.store_buffer(backup.get("bytes", PackedByteArray()))
+			f.close()
+	elif FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 ## 真切换当前场景，确保 Esc 在离开选曲前已消费，返回后长按也不会退出。
@@ -603,6 +698,23 @@ func _check_chord_marking() -> void:
 	eq(int(notes[4].get("chord", 0)), 0, "单独音符没有多押标记")
 	stage.free()
 	await get_tree().process_frame
+
+
+## 解锁动画每首谱面只演一次：记录落盘在 user://profile.cfg 的 progress/unlock_seen
+func _check_unlock_once() -> void:
+	# 这个测试会写玩家档案，跑完把 user://profile.cfg 原样放回去
+	var backup := _backup_file(App.STATS_PATH)
+	var key := "test:unlock_once"
+	check(not App.has_seen_unlock(key), "没演过解锁动画时 has_seen_unlock = false")
+	check(not App.has_seen_unlock(""), "没有 key 的谱面不记已看")
+	App.mark_unlock_seen(key)
+	check(App.has_seen_unlock(key), "演过一次后 has_seen_unlock = true")
+	App.load_stats()
+	check(App.has_seen_unlock(key), "已看记录写进了 profile.cfg")
+	App.forget_unlock_seen()
+	check(not App.has_seen_unlock(key), "forget_unlock_seen 后又能再演一次")
+	_restore_file(App.STATS_PATH, backup)
+	App.load_stats()
 
 
 func _check_settings() -> void:

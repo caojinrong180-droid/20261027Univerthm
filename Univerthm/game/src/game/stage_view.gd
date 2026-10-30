@@ -45,6 +45,11 @@ const MAX_FX := 48
 const CHORD_EPS := 0.02
 ## 多押外圈发光色（Phigros 那种偏冷的蓝）
 const CHORD_GLOW := Color("#57c8ff")
+## 多押蓝光：往外扩多少（舞台单位）+ 叠几层。
+## 是「横向和厚度方向一起均匀加宽」的实心柔光，音符本体只有 2*NOTE_TH = 4 单位厚，
+## 所以别调大：>3.5 就会糊成一坨胖蓝块；<1.5 又细得只剩一道描边。
+const CHORD_GLOW_SPREAD := 2.0
+const CHORD_GLOW_LAYERS := 5
 
 var chart: Dictionary = {}
 var judge: RhythmJudge = null
@@ -104,6 +109,10 @@ func setup(chart_: Dictionary, judge_: RhythmJudge, settings_: AppSettings, cove
 	_hold_lookback = minf(_hold_lookback, 60.0)     # 再离谱的谱面也不用扫更远
 
 	_mark_chords()
+
+	# 一行版本标记：换构建排查「改了没生效」时看这里
+	print("[StageView] v=2026-10-30d  chord-glow=soft spread=%.2f layers=%d  note-th=%.1f" % [
+		CHORD_GLOW_SPREAD, CHORD_GLOW_LAYERS, NOTE_TH])
 
 	if judge != null:
 		judge.note_judged.connect(_on_note_judged)
@@ -452,11 +461,18 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 	var lane: Dictionary = info["lane"]
 	var lane_len := float(info["len"])
 	var col: Color = info["color"]
-	var pps := base_pps * float(info["speed"])
+	var speed_now := float(info["speed"])
+	var pps := base_pps * speed_now
+	var visible_px := lane_len + 40.0
+	# 流速 0：位置不再表示时间，音符只能钉在判定线上 → 用「这条轨道本来该有的可视时长」当提前量，
+	# 既不会把很远的音符提前堆上来，也不会晚到打中了才出现。见 RhythmChart.zero_speed_lookahead()。
+	var lookahead := RhythmChart.zero_speed_lookahead(lane, chart_time, visible_px, base_pps)
 
 	var max_time := INF
 	if pps > 0.0001:
-		max_time = chart_time + (lane_len + 40.0) / pps
+		max_time = chart_time + visible_px / pps
+	else:
+		max_time = chart_time + lookahead
 	# 起点要往前多回看 _hold_lookback：不然长条还在画面上、它的头早就进了「4 秒前」的剔除区
 	var start_index := _lower_bound(notes, chart_time - _hold_lookback)
 
@@ -498,11 +514,12 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 		if kind == "hold":
 			dur = maxf(0.0, float(note.get("duration", 0.0)))
 		var is_hold := dur > 0.001
-		# 流速 0 时音符一直钉在判定线上（位置不再表示时间，但看得见才打得到）。
-		# 这里只挡住「未来长条凭空长出身体」那一件事 —— 见下面的 body_mul。
+		# 流速 0：位置不再表示时间，音符只能钉在判定线上 —— 超出「本来该有的可视时长」的远未来音符不画
+		# （不然 30 秒后的音符会提前堆在判定线上，看着就是一坨「凭空多出来的音符」）。
+		if not RhythmChart.note_visible_at(speed_now, ntime, chart_time, lookahead):
+			continue
+		# 未来长条不画身体：head 恒为 0 时也不许从判定线往上长出一截。
 		var at_line := ntime <= chart_time + 0.02
-		# 流速 0 时音符全压在判定线上、长条会缩没，所以回退到最近的非零流速；
-		# 但「已到线」是前提 —— 否则还没到的长条 head 恒为 0，会凭空长出身体。
 		var body_mul := float(info["speed"])
 		if body_mul <= 0.001:
 			body_mul = RhythmChart.hold_speed_mult(lane, chart_time) if at_line else 0.0
@@ -535,22 +552,24 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 				_draw_hold_body(info, d0, d1, note_half_w, 0.0 if cut else NOTE_RADIUS,
 					head_cap, tint, alpha_mul, 0.0 if cut else 1.0)
 
-		# 音符头不许越过判定线：贴线时把下半截裁掉，不探到线下面去
+		# 音符头不许越过判定线：贴线时把整块往上抬，而不是把下半截压扁。
+		# （以前是裁掉下半截 → 0 速轨道上钉在判定线上的音符只剩一半厚，看起来像「note 变细了」）
 		var head_bottom := maxf(0.0, head_d - NOTE_TH)
-		var head_top := head_d + NOTE_TH
-		var head_h := maxf(0.5, head_top - head_bottom)
+		var head_top := head_bottom + NOTE_TH * 2.0
+		var head_h := head_top - head_bottom
 		var head_r := minf(NOTE_RADIUS, minf(note_half_w, head_h * 0.5))
 		var head_pts := _lane_shape(info, (head_bottom + head_top) * 0.5,
 			note_half_w * 2.0, head_h, head_r)
 		draw_colored_polygon(head_pts, Palette.alpha(tint, 0.92 * alpha_mul))
 
 
-## 多押提示：音符外圈一层**柔和的蓝光**（由外到内叠几层低透明度圆角块，没有硬描边）
+## 多押提示：音符外圈一层**柔和的实心蓝光**（由外到内叠几层低透明度圆角块，没有硬描边）。
+## 薄厚由顶部两个常量控制：CHORD_GLOW_SPREAD（外扩多少）+ CHORD_GLOW_LAYERS（叠几层）。
 func _draw_chord_glow(info: Dictionary, d: float, half_w: float) -> void:
 	var pulse := 0.9 + 0.1 * sin(chart_time * 7.0)
-	for i in 6:
-		var k := float(i) / 5.0                     # 0 = 最外 / 1 = 最内
-		var grow := 6.0 * (1.0 - k) + 0.4
+	for i in CHORD_GLOW_LAYERS:
+		var k := float(i) / float(CHORD_GLOW_LAYERS - 1)   # 0 = 最外 / 1 = 最内
+		var grow := CHORD_GLOW_SPREAD * (1.0 - k) + 0.3
 		var a := (0.030 + 0.055 * k) * pulse
 		draw_colored_polygon(
 			_lane_shape(info, d, (half_w + grow) * 2.0, (NOTE_TH + grow) * 2.0, NOTE_RADIUS + grow),

@@ -353,6 +353,46 @@ static func _title_from_file(file: String) -> String:
 
 
 # --------------------------------------------------------------------------- #
+# 搜集进度（user://collection.cfg）—— 没搜集到的剧情在收藏品页不显示
+# --------------------------------------------------------------------------- #
+
+const UNLOCK_PATH := "user://collection.cfg"
+const UNLOCK_SECTION := "stories"
+
+
+## 已搜集的剧情：按文件名记（不含目录，res:// 和 user:// 里同名算同一篇）
+static func unlocked_names(path := UNLOCK_PATH) -> PackedStringArray:
+	var cf := ConfigFile.new()
+	if cf.load(path) != OK:
+		return PackedStringArray()
+	var names = cf.get_value(UNLOCK_SECTION, "unlocked", [])
+	if not (names is Array or names is PackedStringArray):
+		return PackedStringArray()
+	return PackedStringArray(names)
+
+
+static func is_unlocked(story_name: String, path := UNLOCK_PATH) -> bool:
+	return story_name != "" and unlocked_names(path).has(story_name)
+
+
+## 记一篇为已搜集；返回 true = 这次是新拿到的（结算界面据此显示掉落提示）
+static func grant_unlock(story_name: String, path := UNLOCK_PATH) -> bool:
+	if story_name == "":
+		return false
+	var names := unlocked_names(path)
+	if names.has(story_name):
+		return false
+	var list: Array = []
+	for name in names:
+		list.append(str(name))
+	list.append(story_name)
+	var cf := ConfigFile.new()
+	cf.load(path)
+	cf.set_value(UNLOCK_SECTION, "unlocked", PackedStringArray(list))
+	return cf.save(path) == OK
+
+
+# --------------------------------------------------------------------------- #
 # 导入 / 路径
 # --------------------------------------------------------------------------- #
 

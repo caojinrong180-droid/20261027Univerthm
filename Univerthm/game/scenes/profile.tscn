@@ -1065,7 +1065,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
-columns = 2
+columns = 1
 
 [node name="PlaysPanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=274903947]
 custom_minimum_size = Vector2(180, 82)
@@ -1114,54 +1114,7 @@ text = "—"
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="LibraryPanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=879880927]
-custom_minimum_size = Vector2(180, 82)
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "—"
-theme_override_styles/panel = SubResource("StyleBoxEmpty_2mfnn")
-script = ExtResource("3_7cwr7")
-fill = Color(0.025, 0.018, 0.05, 0.82)
-edge = Color(0.34901962, 0.2509804, 0.42745098, 1)
-cut = 12.0
-
-[node name="VBoxContainer120" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel" unique_id=1629994329]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="HBoxContainer121" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel/VBoxContainer120" unique_id=104893620]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Label122" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel/VBoxContainer120/HBoxContainer121" unique_id=100916451]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_font_sizes/font_size = 12
-text = "谱面库"
-
-[node name="Control123" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel/VBoxContainer120/HBoxContainer121" unique_id=787891813]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="Label124" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel/VBoxContainer120/HBoxContainer121" unique_id=1939050858]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.53333336, 0.4627451, 0.6156863, 1)
-theme_override_font_sizes/font_size = 8
-text = "CHART LIBRARY"
-
-[node name="ValueLibrary" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LibraryPanel/VBoxContainer120" unique_id=1813230979]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.65882355, 0.4117647, 1, 1)
-theme_override_fonts/font = SubResource("SystemFont_v6i80")
-theme_override_font_sizes/font_size = 30
-text = "—"
-vertical_alignment = 1
-text_overrun_behavior = 3
-
-[node name="BestScorePanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=486511347]
+[node name="AvgScorePanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=486511347]
 custom_minimum_size = Vector2(180, 82)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -1172,32 +1125,32 @@ fill = Color(0.025, 0.018, 0.05, 0.82)
 edge = Color(0.34901962, 0.2509804, 0.42745098, 1)
 cut = 12.0
 
-[node name="VBoxContainer125" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel" unique_id=1180799502]
+[node name="VBoxContainer125" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel" unique_id=1180799502]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="HBoxContainer126" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel/VBoxContainer125" unique_id=1618219401]
+[node name="HBoxContainer126" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel/VBoxContainer125" unique_id=1618219401]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Label127" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel/VBoxContainer125/HBoxContainer126" unique_id=1589142016]
+[node name="Label127" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel/VBoxContainer125/HBoxContainer126" unique_id=1589142016]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "最高分"
+text = "平均分"
 
-[node name="Control128" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel/VBoxContainer125/HBoxContainer126" unique_id=715791893]
+[node name="Control128" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel/VBoxContainer125/HBoxContainer126" unique_id=715791893]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Label129" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel/VBoxContainer125/HBoxContainer126" unique_id=41831933]
+[node name="Label129" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel/VBoxContainer125/HBoxContainer126" unique_id=41831933]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.53333336, 0.4627451, 0.6156863, 1)
 theme_override_font_sizes/font_size = 8
-text = "BEST SCORE"
+text = "AVERAGE SCORE"
 
-[node name="ValueBestScore" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestScorePanel/VBoxContainer125" unique_id=1741718494]
+[node name="ValueAvgScore" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgScorePanel/VBoxContainer125" unique_id=1741718494]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -1208,54 +1161,7 @@ text = "—"
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="BestTitlePanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=2013967255]
-custom_minimum_size = Vector2(180, 82)
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "—"
-theme_override_styles/panel = SubResource("StyleBoxEmpty_x2ph6")
-script = ExtResource("3_7cwr7")
-fill = Color(0.025, 0.018, 0.05, 0.82)
-edge = Color(0.34901962, 0.2509804, 0.42745098, 1)
-cut = 12.0
-
-[node name="VBoxContainer130" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel" unique_id=620421682]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="HBoxContainer131" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel/VBoxContainer130" unique_id=203745514]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Label132" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel/VBoxContainer130/HBoxContainer131" unique_id=1804513291]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_font_sizes/font_size = 12
-text = "最高分曲目"
-
-[node name="Control133" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel/VBoxContainer130/HBoxContainer131" unique_id=2094628273]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="Label134" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel/VBoxContainer130/HBoxContainer131" unique_id=1317806127]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.53333336, 0.4627451, 0.6156863, 1)
-theme_override_font_sizes/font_size = 8
-text = "BEST TRACK"
-
-[node name="ValueBestTitle" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestTitlePanel/VBoxContainer130" unique_id=250373685]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.9607843, 0.9411765, 1, 1)
-theme_override_fonts/font = SubResource("SystemFont_v6i80")
-theme_override_font_sizes/font_size = 20
-text = "—"
-vertical_alignment = 1
-text_overrun_behavior = 3
-
-[node name="BestAccPanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=117513631]
+[node name="AvgAccPanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=117513631]
 custom_minimum_size = Vector2(180, 82)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -1266,85 +1172,38 @@ fill = Color(0.025, 0.018, 0.05, 0.82)
 edge = Color(0.34901962, 0.2509804, 0.42745098, 1)
 cut = 12.0
 
-[node name="VBoxContainer135" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel" unique_id=643882118]
+[node name="VBoxContainer135" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel" unique_id=643882118]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="HBoxContainer136" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel/VBoxContainer135" unique_id=1685948299]
+[node name="HBoxContainer136" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel/VBoxContainer135" unique_id=1685948299]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Label137" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1797102693]
+[node name="Label137" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1797102693]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "最高分准确率"
+text = "平均准确率"
 
-[node name="Control138" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1253111347]
+[node name="Control138" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1253111347]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Label139" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1353955160]
+[node name="Label139" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel/VBoxContainer135/HBoxContainer136" unique_id=1353955160]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.53333336, 0.4627451, 0.6156863, 1)
 theme_override_font_sizes/font_size = 8
-text = "BEST ACCURACY"
+text = "AVERAGE ACCURACY"
 
-[node name="ValueBestAcc" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/BestAccPanel/VBoxContainer135" unique_id=1653462252]
+[node name="ValueAvgAcc" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/AvgAccPanel/VBoxContainer135" unique_id=1653462252]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0.65882355, 0.4117647, 1, 1)
 theme_override_fonts/font = SubResource("SystemFont_v6i80")
 theme_override_font_sizes/font_size = 30
-text = "—"
-vertical_alignment = 1
-text_overrun_behavior = 3
-
-[node name="LastPanel" type="PanelContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid" unique_id=605660183]
-custom_minimum_size = Vector2(180, 82)
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "—"
-theme_override_styles/panel = SubResource("StyleBoxEmpty_oik8n")
-script = ExtResource("3_7cwr7")
-fill = Color(0.025, 0.018, 0.05, 0.82)
-edge = Color(0.34901962, 0.2509804, 0.42745098, 1)
-cut = 12.0
-
-[node name="VBoxContainer140" type="VBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel" unique_id=1429190712]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="HBoxContainer141" type="HBoxContainer" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel/VBoxContainer140" unique_id=1632735333]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Label142" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel/VBoxContainer140/HBoxContainer141" unique_id=1476804402]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_font_sizes/font_size = 12
-text = "最近一局"
-
-[node name="Control143" type="Control" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel/VBoxContainer140/HBoxContainer141" unique_id=497101990]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="Label144" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel/VBoxContainer140/HBoxContainer141" unique_id=845109366]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.53333336, 0.4627451, 0.6156863, 1)
-theme_override_font_sizes/font_size = 8
-text = "LAST SESSION"
-
-[node name="ValueLast" type="Label" parent="ContentPanel/VBoxContainer90/ProfileScroll/ProfileBody/StatsGrid/LastPanel/VBoxContainer140" unique_id=1862667149]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_fonts/font = SubResource("SystemFont_v6i80")
-theme_override_font_sizes/font_size = 17
 text = "—"
 vertical_alignment = 1
 text_overrun_behavior = 3

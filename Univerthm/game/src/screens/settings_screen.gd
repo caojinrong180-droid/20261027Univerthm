@@ -2,8 +2,12 @@ extends Control
 ## 设置界面：界面在 scenes/settings.tscn 里，脚本只负责数值和连线。
 ## 改一项就存一次（user://settings.cfg），不用点保存。
 
+const Calibration = preload("res://src/ui/calibration_overlay.gd")
+
 var _settings: AppSettings
 var _preview_player: AudioStreamPlayer
+## 「辅助测量」浮窗，第一次点按钮时才建
+var _calibration: Calibration
 
 var _rows := {}
 
@@ -45,12 +49,14 @@ func _find(node_name: String) -> Node:
 
 
 func _resolve() -> void:
+	_ensure_unlock_row()
 	_rows = {
 		"offset": _find("OffsetRow"),
 		"music": _find("MusicRow"),
 		"hitvol": _find("HitVolumeRow"),
 		"hitsound": _find("HitSoundRow"),
 		"hitfx": _find("HitFxRow"),
+		"unlockall": _find("UnlockAllRow"),
 	}
 	var handlers := {
 		"offset": _step_offset,
@@ -58,6 +64,7 @@ func _resolve() -> void:
 		"hitvol": _step_hit_volume,
 		"hitsound": _toggle_hit_sound,
 		"hitfx": _step_hit_fx,
+		"unlockall": _toggle_unlock_all,
 	}
 	for key in _rows:
 		var row = _rows[key]
@@ -78,6 +85,63 @@ func _resolve() -> void:
 	var reset := _find("ResetButton") as Button
 	if reset != null and not reset.pressed.is_connected(_reset_defaults):
 		reset.pressed.connect(_reset_defaults)
+	_ensure_calib_button()
+
+
+## 「全部解锁」的调试开关：场景里没有就补一行（跟在打击音 / 特效那排后面）
+func _ensure_unlock_row() -> void:
+	var anchor_row := _find("HitFxRow") as Control
+	if anchor_row == null:
+		return
+	var row := find_child("UnlockAllRow", true, false) as StepperRow
+	if row == null:
+		row = _make_row("UnlockAllRow", "全部解锁（Debug）", _toggle_unlock_all, 118)
+		var line := anchor_row.get_parent()
+		var box := line.get_parent()
+		# 先进场景树（StepperRow 的 _ready 才会把 Title / ValueBox 建出来），再套样式
+		box.add_child(row)
+		box.move_child(row, line.get_index() + 1)
+		_style_stepper(row)
+		var hint := NeonUi.label("调试用：跳过逐首解锁，所有曲目直接可玩。", 11, NeonUi.MUTED)
+		hint.name = "UnlockAllHint"
+		box.add_child(hint)
+		box.move_child(hint, row.get_index() + 1)
+
+
+## 「辅助测量」的小按钮：场景里没有就在「音画偏移」标题后面补一个
+func _ensure_calib_button() -> void:
+	var row := _rows.get("offset") as Control
+	if row == null:
+		return
+	var button := row.get_node_or_null("CalibButton") as Button
+	if button == null:
+		button = NeonUi.button("辅助测量", false, 14)
+		button.name = "CalibButton"
+		button.tooltip_text = "跟着节拍打 5 次，测出来的延迟直接写进音画偏移"
+		button.custom_minimum_size = Vector2(104, 36)
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		button.add_theme_color_override("font_color", NeonUi.MUTED)
+		row.add_child(button)
+		var title := row.get_node_or_null("Title")
+		if title != null:
+			row.move_child(button, title.get_index() + 1)
+	if not button.pressed.is_connected(_open_calibration):
+		button.pressed.connect(_open_calibration)
+
+
+func _open_calibration() -> void:
+	if _calibration == null:
+		_calibration = Calibration.new()
+		_calibration.name = "CalibrationOverlay"
+		UiKit.full_rect(_calibration)
+		_calibration.applied.connect(_on_calibration_applied)
+		add_child(_calibration)
+	_calibration.open()
+
+
+func _on_calibration_applied(value_ms: float) -> void:
+	_settings.audio_offset_ms = clampf(round(value_ms), -250.0, 250.0)
+	_save()
 
 
 func _on_back() -> void:
@@ -96,6 +160,7 @@ func _refresh() -> void:
 	_set_row("hitvol", "%d %%" % int(round(_settings.hit_volume * 100.0)))
 	_set_row("hitsound", "开" if _settings.hit_sound else "关")
 	_set_row("hitfx", ["关", "标准", "强"][clampi(_settings.hit_fx, 0, 2)])
+	_set_row("unlockall", "开" if _settings.unlock_all else "关")
 
 
 func _set_row(key: String, text: String) -> void:
@@ -139,6 +204,11 @@ func _preview_hit_sound() -> void:
 
 func _toggle_hit_sound(_dir: int) -> void:
 	_settings.hit_sound = not _settings.hit_sound
+	_save()
+
+
+func _toggle_unlock_all(_dir: int) -> void:
+	_settings.unlock_all = not _settings.unlock_all
 	_save()
 
 
@@ -259,7 +329,8 @@ func _export_prepare() -> void:
 		_preview_player.free()
 		_preview_player = null
 	for n in ["OffsetRow", "MusicRow", "HitVolumeRow", "HitSoundRow", "HitFxRow",
-			"PreviewButton", "ResetButton", "BackButton", "AccentBackButton"]:
+			"UnlockAllRow", "UnlockAllHint",
+			"PreviewButton", "ResetButton", "BackButton", "AccentBackButton", "CalibButton"]:
 		var node := find_child(n, true, false)
 		if node != null:
 			node.unique_name_in_owner = true

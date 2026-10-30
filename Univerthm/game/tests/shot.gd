@@ -92,7 +92,8 @@ func _shot_song_select() -> void:
 	App.refresh_library()
 	var select = load("res://scenes/song_select.tscn").instantiate()
 	get_tree().root.add_child(select)
-	await _wait_frames(4)
+	# 等曲目行的入场弹簧停稳（0.6 秒延迟 + 回弹），否则截到的是滑入半截的画面
+	await get_tree().create_timer(2.2).timeout
 	await _capture("01_song_select")
 	select.queue_free()
 	await _wait_frames(2)

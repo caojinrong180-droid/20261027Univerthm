@@ -24,13 +24,58 @@ static func scan(roots: Array) -> Array:
 	var seen := {}
 	for root in roots:
 		_scan_dir(str(root), 0, entries, seen)
+	# 列表顺序按**文件名 / 文件夹名里的数字**排（0_1_… → 0_2_… → 0_3_…，10 排在 9 后面），
+	# 名字一样时再按曲名、最后按 key。
 	entries.sort_custom(func(a, b):
+		var na := _sort_name(a)
+		var nb := _sort_name(b)
+		if na != nb:
+			return _natural_less(na, nb)
 		var ta := str(a["title"]).to_lower()
 		var tb := str(b["title"]).to_lower()
-		if ta == tb:
-			return str(a["key"]) < str(b["key"])
-		return ta < tb)
+		if ta != tb:
+			return ta < tb
+		return str(a["key"]) < str(b["key"]))
 	return entries
+
+
+## 排序用的名字：zip / json 去掉扩展名，文件夹原样，统一小写。
+static func _sort_name(entry: Dictionary) -> String:
+	var base_name := str(entry.get("path", "")).get_file()
+	if str(entry.get("kind", "")) != "folder":
+		base_name = base_name.get_basename()
+	return base_name.to_lower()
+
+
+## 自然排序：数字段按数值比（「0_2_xx」在「0_10_xx」前面），其它字符按编码比。
+static func _natural_less(a: String, b: String) -> bool:
+	var i := 0
+	var j := 0
+	while i < a.length() and j < b.length():
+		var ca := a[i]
+		var cb := b[j]
+		if _is_digit(ca) and _is_digit(cb):
+			var start_a := i
+			var start_b := j
+			while i < a.length() and _is_digit(a[i]):
+				i += 1
+			while j < b.length() and _is_digit(b[j]):
+				j += 1
+			var value_a := int(a.substr(start_a, i - start_a))
+			var value_b := int(b.substr(start_b, j - start_b))
+			if value_a != value_b:
+				return value_a < value_b
+		else:
+			if ca != cb:
+				return ca < cb
+			i += 1
+			j += 1
+	# 前面都一样：短的那个算小（"0_1" < "0_1_a"）
+	return a.length() < b.length()
+
+
+static func _is_digit(ch: String) -> bool:
+	return ch >= "0" and ch <= "9"
 
 
 static func _scan_dir(dir_path: String, depth: int, entries: Array, seen: Dictionary) -> void:
