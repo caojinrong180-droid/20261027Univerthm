@@ -1,15 +1,6 @@
 extends Control
 class_name StagePost
 ## 故事板后处理层（游戏侧）。
-##
-## 网页版是「一条 shader = 一层，逐层 ping-pong pass」；Godot 这里用同样的思路，
-## 但走 2D 后缓冲：每层一个 ColorRect（素材 = story_grade.gdshader），
-## 前面插一个 BackBufferCopy，于是第 N 层采到的 screen_tex 就是第 N-1 层的输出。
-##
-## 用法（gameplay 里）：
-##   _post = StagePost.new()  （或者场景里先放一个）
-##   _post.apply(StoryboardSource.active_shaders(chart_scene, chart_time), chart_time)
-## 每帧调一次，层数按需增减。
 
 const SBS = preload("res://src/core/storyboard_source.gd")
 const SHADER_PATH := "res://shaders/story_grade.gdshader"

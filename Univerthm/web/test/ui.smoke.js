@@ -226,9 +226,6 @@ function countOf(type) {
 
 /* ---------------- 布局核对 ---------------- */
 // clientWidth 1000 / clientHeight 800：judgeY = 672，gutter = 56
-// laneW = min(160, (1000-56)/4) = 160，laneX0 = 56 + (944-640)/2 = 208
-// pps = 672 / 2.0 = 336 像素/秒
-// 时间轴画布 1000x800、4 轨：gutter 56 + 密度条 52 + 音符区 / 事件区各一半
 const TL_GUTTER = 56, TL_PAD = 10, TL_MINI = 52, TL_DIVIDER = 14;
 const TL_NOTES_LEFT = TL_GUTTER + TL_PAD + TL_MINI + 10;      // 128
 const TL_HALF = Math.max(60, (1000 - TL_NOTES_LEFT - TL_PAD - TL_DIVIDER) / 2);  // 424
@@ -1017,7 +1014,6 @@ try {
     'step 曲线不再经过中点——形状真的换了');
 
   // 播放头进到事件里 → 曲线上多一个进度点
-  // 注意：阶段 G 载入的音频还在，span = 4s，所以 y = 672*(1-t/4)
   easeCtx._calls.length = 0;
   ptr('pointerdown', MINI_X, 462);
   ptr('pointerup', MINI_X, 462);
@@ -1384,8 +1380,6 @@ try {
     '流速 20（4×）后长条顶到 y≈' + y20Top.toFixed(1) + '（原来是 ' + y10Top.toFixed(1) + '）');
 
   // 流速 0：长条回退到上一个非零流速，不会缩成一条线。
-  // 前提是这条长条「已经到线」—— 流速 0 时未来长条的 head 恒为 0，
-  // 所以先把播放头推到 0.6s（长条是 0.1~0.3s，已经过线）再验。
   setLaneParam(0, 4, 0, 0);
   chartAudios().forEach((a) => { a.duration = 4; });
   ptr('pointerdown', MINI_X, 672 - (0.6 / 4) * 672);
@@ -1654,7 +1648,6 @@ try {
   const headFills = () => callsOf(previewCtx, 'fill', (c) => String(c[1]).indexOf('rgba(255,255,255,0.92)') >= 0);
 
   // 播放头 0.2s：长条时刻还没到。0 速下头一直钉在判定线上（看得见才打得到），
-  // 但不能凭空长出身体。
   chartAudios().forEach((a) => { a.duration = 4; });
   ptr('pointerdown', MINI_X, 672 - (0.2 / 4) * 672);
   ptr('pointerup', MINI_X, 672 - (0.2 / 4) * 672);

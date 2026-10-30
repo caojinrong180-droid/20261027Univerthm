@@ -1,7 +1,6 @@
 class_name AppSettings
 extends RefCounted
 ## 玩家设置。存在 user://settings.cfg，Windows 上大约是
-## %APPDATA%\Godot\app_userdata\Rhythm Game\settings.cfg
 
 const PATH := "user://settings.cfg"
 const KEY_LAYOUTS := ["asdf_jkl", "dfjk"]
@@ -32,8 +31,12 @@ var stage_offset_px := -24.0
 var player_name := "User"
 ## 主界面看板娘立绘序号（assets/banners/ 里的第几张）
 var banner_index := 0
+## 新手教程弹窗看过没有：第一次进主界面自动弹一次，之后只在设置里手动打开
+var tutorial_seen := false
 ## 调试：全部解锁（跳过选曲页的逐首解锁）
 var unlock_all := false
+## 全屏：和 F11 是同一个开关，存下来下次启动也生效
+var fullscreen := false
 
 
 func save() -> void:
@@ -50,7 +53,9 @@ func save() -> void:
 	cf.set_value("ui", "stage_offset_px", stage_offset_px)
 	cf.set_value("ui", "player_name", player_name)
 	cf.set_value("ui", "banner_index", banner_index)
+	cf.set_value("ui", "tutorial_seen", tutorial_seen)
 	cf.set_value("debug", "unlock_all", unlock_all)
+	cf.set_value("ui", "fullscreen", fullscreen)
 	var err := cf.save(PATH)
 	if err != OK:
 		push_warning("设置存不下来: %s" % error_string(err))
@@ -76,7 +81,9 @@ static func load_settings() -> AppSettings:
 	var nm := str(cf.get_value("ui", "player_name", s.player_name)).strip_edges()
 	s.player_name = nm if nm != "" else "User"
 	s.banner_index = clampi(int(cf.get_value("ui", "banner_index", s.banner_index)), 0, 99)
+	s.tutorial_seen = bool(cf.get_value("ui", "tutorial_seen", s.tutorial_seen))
 	s.unlock_all = bool(cf.get_value("debug", "unlock_all", s.unlock_all))
+	s.fullscreen = bool(cf.get_value("ui", "fullscreen", s.fullscreen))
 	return s
 
 
@@ -94,6 +101,8 @@ func reset() -> void:
 	player_name = "User"
 	banner_index = 0
 	unlock_all = false
+	fullscreen = false
+	# tutorial_seen 不跟着恢复默认：那是「看过了」的记录，想再看直接去设置里点「重新查看」
 
 
 ## 毫秒 → 秒，判定时用

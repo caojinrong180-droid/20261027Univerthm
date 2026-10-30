@@ -1,14 +1,6 @@
 class_name CalibrationOverlay
 extends Control
 ## 音画偏移的「辅助测量」浮窗（设置页那一行旁边的小按钮打开）。
-##
-## 一块铺满屏幕的暗底 + 居中、不可拖动的面板；点面板中间的「开始」之后跑节拍器：
-## 每小节四下、三轻一重，玩家在**重音落下的瞬间**按 F。
-## 量的是「重音真正播出去的时刻 → 按键」的间隔，包含声卡 / 蓝牙的延迟和人的反应，
-## 打满 5 次取平均，点「应用」直接写进 settings.audio_offset_ms。
-##
-## 方向：按晚了 = 声音比画面到得晚 = 谱面要整体推后 = 正数，
-## 和设置页「正数会将谱面整体推后」一个字都不差，所以平均值原样写进去。
 
 signal applied(value_ms: float)
 signal closed
@@ -350,7 +342,6 @@ func _make_player(player_name: String, stream: AudioStream, volume_db: float) ->
 
 
 ## 一小段 16 位单声道 PCM：正弦 + 二次 / 三次谐波，头 2 ms 起音防爆音，
-## 频率从 start_hz 滑到 end_hz 做「木鱼」那种一敲就收的手感，尾巴再线性收到 0。
 func _make_click(start_hz: float, end_hz: float, seconds: float, decay: float, peak: float) -> AudioStreamWAV:
 	const RATE := 44100
 	const ATTACK := 0.0018

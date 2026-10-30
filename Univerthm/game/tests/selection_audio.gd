@@ -1,6 +1,5 @@
 extends SceneTree
 ## 试听音量、快速切歌、无音频与离开清理；用隔离的 APPDATA 运行。
-## godot --headless --path game --script res://tests/selection_audio.gd
 
 const Synthetic = preload("res://tests/fixtures/synthetic_chart.gd")
 var passed := 0

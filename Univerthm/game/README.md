@@ -66,6 +66,18 @@
 （不然会从背景把曲绘漏出来），**也不播试听**（放音乐同样算剧透）。
 等它第一次打完、`[progress] best` 里有记录了，就自动恢复完整信息并恢复试听。
 它同时也受逐首解锁约束，所以一开始看到的是「黑卡 + 锁」。
+
+**神秘曲的第一次踏入**：还没正式踏进去之前，在选曲页点它会先弹一块血红警告框
+（`src/ui/first_entry_warning.gd` + `App.needs_first_entry()`）——
+「踏出这一步就不能反悔了，你确定吗？」。选「否」（或按 `Esc`）关掉框、留在列表，什么都不进；
+选「是」之后屏幕**慢慢压到全黑**（`FADE_TO_BLACK` 0.8 秒，`song_select.gd` 的 `_fade_to_black()`），
+黑透了才切场景；谱面这一侧再从黑里淡出来——`FROM_BLACK_HOLD` 0.45 秒全黑 + `FROM_BLACK_FADE` 0.75 秒淡出
+（`gameplay.gd` 的 `_reveal_from_black()`），解锁动画在黑幕开始淡出时才起播，前后接成一段。
+这段解锁动画**不能跳过**（任意键 / 点击只被吃掉），整段看完才进倒计时。
+进谱面后**这一趟 `Esc` 既不暂停也不回选曲**（`_first_entry`，`_pause()` 也直接返回）。
+全部打完到结算时 `App.commit_entry()` 才把 key 写进 `[progress] entered`，
+之后这首照常能暂停；**没打完就强关游戏不会落盘**，下次打开还是「第一次」，警告再来一遍、
+`Esc` 照样锁着。`reset_progress()` 会连这条记录一起清掉。
 暂停页只有继续、重试、返回选曲三个无文字图标，以阻尼弹簧动画滑入中央并排。
 暂停背景是一整块**亚克力板**：`BackBufferCopy` 抄下谱面场，`shaders/pause_acrylic.gdshader` 把它磨砂、去饱和、压暗，再叠磨砂颗粒与板边受光，所以背景会随当前谱面变化（不再是固定黑罩）。
 
@@ -78,7 +90,8 @@
 
 窗口固定 **16:9**，默认开 **1920×1080**，可以随便拉伸缩放，拉伸时保持 16:9 不变形。
 **画面永远按窗口的真实像素分辨率渲染**（1280×720 / 1920×1080 / 2560×1440 都是 1:1 出图），
-放大窗口不会把低分辨率画面拉糊；想再清晰就按 **`F11` 全屏**（按屏幕原生分辨率画）。
+放大窗口不会把低分辨率画面拉糊；想再清晰就按 **`F11` 全屏**（按屏幕原生分辨率画），
+设置页里的「全屏」开关和 F11 是同一个值，也会记在 `settings.cfg` 里。
 UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所有控件。
 游玩画面的舞台也是 **16:9**，直接铺满窗口（没有黑边）；判定线仍在画面高度的 85%。
 和制谱器的预渲染窗口是同构的。
@@ -88,7 +101,7 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 场景 | 键 | 作用 |
 | --- | --- | --- |
 | 游戏 | `A S D F` / `J K L ;` | 打左 / 右判定区的轨道（`judge_zone = none` 的轨道任意键都吃） |
-| | `Esc` | 暂停 / 继续 |
+| | `Esc` | 暂停 / 继续（神秘曲第一次踏入的那一趟无效，也退不出去） |
 | | `R` | 重试 |
 | | `F11` | 全屏 / 窗口（全屏按屏幕原生分辨率渲染，最清晰） |
 | 警告 | 任意键 / 点击 | 跳过，直接进开屏画面（不按也会 5 秒后自动进） |
@@ -106,6 +119,7 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 个人资料 | `Enter` / `Esc` | 保存名字 / 返回主界面 |
 | 设置 | `◀ ▶` / `Esc` / `R` | 调值 / 返回上一页 / 恢复默认 |
 | 设置 · 辅助测量 | `F` / `Esc` | 跟着重音打点 / 关掉浮窗 |
+| 新手教程 | `滚轮` / `↑ ↓` `PgUp PgDn` / `Esc` | 往下翻 / 关掉（主界面第一次进会自动弹一次，之后在「设置 · 新手教程」打开） |
 
 拖拽：把 `.zip`（制谱器导出的包）或 `.json` 拖进窗口会自动复制到 `user://charts` 并刷新（选曲页）；
 把 `.txt` 拖进窗口会复制到 `user://剧情`，收藏品页的「剧情」分类马上就能读到。
@@ -240,6 +254,7 @@ game/
       theme_builder.gd       Theme：字体 / 按钮 / 面板 / 滚动条 / 进度条
       ui_kit.gd              建控件的小函数（label / button / panel / chip / stepper…）
       calibration_overlay.gd 音画偏移的「辅助测量」浮窗（节拍器 + 打点 + 取平均）
+      tutorial_overlay.gd    新手教程弹窗（整页教程图 + 滚动；主界面首次自动弹、设置里可重开）
     screens/
       warning.gd             启动：光敏性癫痫警告（5 秒自动继续，任意键 / 点击可跳过）
       splash.gd              开屏：标题 logo + 「点击任意按键进入游戏」（节点都在 scenes/splash.tscn 里）
@@ -254,6 +269,7 @@ game/
   audio/result.mp3           结算音乐（源文件在仓库根的 sound/结算.mp3）
   assets/main_bg.png         主界面背景（换成自己的科幻背景即可）
   assets/Title.png           开屏标题 logo（透明底；四周留白在 scenes/splash.tscn 里用 AtlasTexture 裁掉）
+  assets/tutorial.png        新手教程整页图（源文件 img/教程.png）
   assets/banners/*.png       看板娘立绘（主界面右下角可切换，收藏品里也会列出来；按文件名排序）
   assets/menu/*.png          主界面切图（User_name 名牌 / Start / Collection / Setting / User_profile 按钮 / change_character 切换立绘 / Line 装饰线）
   assets/back.png            选曲页右上角的返回图标（源文件 img/bacK.png；按钮是 scenes/song_select.tscn 里的 BackButton，用 icon + expand_icon）
@@ -265,6 +281,7 @@ game/
     smoke.tscn / smoke.gd    界面 + 玩法冒烟（自动演示把测试谱面打通）
     realtime.tscn / realtime.gd  真实音频时钟自检（需要窗口 / 声卡）
     calibration_check.tscn / .gd 设置页「辅助测量」浮窗自检（节拍器 / 打点 / 取平均 / 写进偏移）
+    tutorial_check.tscn / .gd 新手教程弹窗自检（按钮 / 图载入 / Esc 关闭 / 记成看过）
     shot.tscn / shot.gd      截图脚本（开发自查用）
     fixtures/synthetic_chart.gd  测试用合成谱面（只在测试里，不写盘、不进 charts）
 ```
@@ -363,6 +380,7 @@ game/
 | 音乐/打击音音量 | 85% / 60% | 打击音音量旁边有「试听」 |
 | 打击音 | 开 | 在设置页切换 |
 | 打击特效 | 强 | 关 / 标准 / 强（判定环粗细） |
+| 全屏 | 关 | 开 / 关。和 `F11` 是**同一个开关**（`AppSettings.fullscreen`），会存进 `settings.cfg`，下次启动直接生效 |
 | 全部解锁（Debug） | 关 | 跳过选曲页的逐首解锁，所有曲目直接可玩 |
 
 存档：`user://settings.cfg`（Windows ≈ `%APPDATA%\Godot\app_userdata\Rhythm Game\settings.cfg`）。
@@ -374,6 +392,12 @@ game/
 `App.average_accuracy()`，自动演示不计入）。老存档没有这两个累计字段时，`load_stats()` 会按
 「每局都等于当时的最高分」补齐一次，之后的游玩正常累加，平均值再慢慢收敛。最高分/最高分曲目仍然在
 记录（`[stats] best_*` 和 `[progress] best`），只是不再占个人资料的位置。
+
+**删除游玩存档**：个人资料页「← 返回」旁边有 `删除游玩存档`（暗红框、粉字），点开先弹确认框
+（`src/ui/confirm_dialog.gd`：暗底 + 切角面板 + 「确认删除 / 取消」，默认焦点在取消上，`Esc` 也能关）。
+确认后 `App.reset_progress()` 会清空 `profile.cfg` 里的游玩次数 / 平均分 / 最好成绩 / 通关列表 /
+每首最好成绩 / 解锁动画记录，以及 `collection.cfg` 里的剧情搜集 —— **曲目重新上锁**；
+`settings.cfg`（音量、偏移、玩家名、看板娘、Debug 开关）完全不碰。
 
 ### 辅助测量（音画偏移）
 
@@ -391,6 +415,18 @@ game/
 节拍音是脚本现合成的（`calibration_overlay.gd::_make_click`：正弦 + 二次 / 三次谐波、
 指数衰减、2 ms 起音、尾巴收 0），不读 `audio/*.wav`。想换音色只改
 `_build_players()` 里的两组「起始频率 / 结束频率 / 时长 / 衰减 / 音量」。
+
+### 新手教程
+
+第一次进**主界面**时（入场动画 + 光晕都站稳之后 0.55 秒）自动弹一次
+`src/ui/tutorial_overlay.gd`：暗底 + 居中切角面板，里面是 `assets/tutorial.png`
+（`img/教程.png`，1000×1920 的整页图）—— 按面板宽度等比缩放放进滚动区，
+**滚轮 / `↑ ↓` / `PgUp PgDn` / `Home End` 往下翻**，`Esc` / `×` / `知道了` 关掉。
+关掉之后 `settings.cfg` 的 `[ui] tutorial_seen = true`，以后不再自动弹。
+
+想再看：设置页底部那排（`← 返回` / `恢复默认` / **`新手教程`**）点一下就能重新打开同一个弹窗；
+从这个入口看完也会记成「看过了」。`恢复默认`（R）**不会**把 `tutorial_seen` 清掉——
+想让它下次再自动弹，删掉 `settings.cfg` 里那一行就行。换教程图只要替换 `assets/tutorial.png`（比例随意）。
 
 ## 美化（留给你）
 
@@ -416,12 +452,19 @@ game/
   `TRANS_CUBIC + EASE_OUT` 先快后慢、0.55 秒；动 offset 而不是 position，窗口缩放后不会错位。
 - **曲绘**：预渲染窗口里没有曲绘，所以游玩画面不画；选曲界面会用 `meta.cover` 当背景和封面
 - **故事板**（可选）：包里带 `storyboard.json` 就自动读（`src/core/storyboard_source.gd`）
-  - **解锁动画**：**每首谱面只在第一次进谱面时演一次**（`src/game/unlock_frames.gd`），演过 / 跳过的 key
-    记在 `user://profile.cfg` 的 `progress/unlock_seen`（`App.has_seen_unlock()` / `App.mark_unlock_seen()`），
+  - **解锁动画**：**每首谱面只在第一次进谱面时演一次**（`src/game/unlock_frames.gd`），演过的 key
+    记在 `user://profile.cfg` 的 `progress/unlock_seen`（`App.mark_unlock_seen()`），
     重开（R）、重进选曲再进同一首都直接跳过它；想重新演一次就调 `App.forget_unlock_seen()`。
+    **例外是神秘曲的第一次踏入**：那一趟能不能演由 `App.should_play_unlock(key)` 判，
+    以 `progress/entered`（正式踏入）为准 —— 没结算之前哪怕 `unlock_seen` 里已经有它，
+    再进一次也照样演，这样「强关游戏 = 回到踏入之前」连解锁动画一起回滚；
+    演完之后也不当场记账（`should_mark_unlock_seen()` 返回 false），等结算时和「踏入」一起写。
     播的是谱面包里**导入的那个视频**——
     由 `tools/bake_unlock.ps1` 烘焙成 `unlock_frames/*.jpg` + `unlock_audio.ogg` + `unlock.json`
-    （本机 ffmpeg 的 libtheora 编码坏的，产不出可播 ogv，所以走帧序列）；任意键 / 点击跳过；`debug_mode` / 无头模式自动跳过
+    （本机 ffmpeg 的 libtheora 编码坏的，产不出可播 ogv，所以走帧序列）。
+    **不能跳过**：解锁动画期间任意键 / 点击只被吃掉（`gameplay.gd` 的 `_unhandled_input` 在
+    `State.UNLOCK` 里直接 `return`，不再调 `skip_unlock()`），整段必须看完；
+    `skip_unlock()` 只留给调试 / 测试用；`debug_mode` / 无头模式照旧不播
   - 谱面场的**后处理 Shader** 已生效：一条 shader = 一层，逐层叠加（`shaders/story_grade.gdshader` + `src/game/stage_post.gd`，
     每层一个 ColorRect，层间插 `BackBufferCopy`），15 种预设和网页版同一套公式
   - **解锁动画 / 文字 / 图片 / 形状图层还没画**（Godot 端只做了解析，图层渲染待补）
@@ -452,6 +495,9 @@ game/
 
 # 设置页「辅助测量」浮窗（节拍器 / 早按晚按 / 取平均 / 写进偏移；≈25 秒，跑完还原玩家的偏移）
 & 'Godot...console.exe' --headless --path game res://tests/calibration_check.tscn
+
+# 新手教程弹窗（设置里的按钮 / 教程图载入 / 比例 / Esc 关闭 / 记成「看过了」；跑完还原标记）
+& 'Godot...console.exe' --headless --path game res://tests/tutorial_check.tscn
 
 # 截图（要窗口，会写到 tests/_shots/，已在 .gitignore）
 & 'Godot...console.exe' --path game res://tests/shot.tscn

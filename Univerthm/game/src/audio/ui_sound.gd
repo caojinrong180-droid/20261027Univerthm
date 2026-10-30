@@ -1,9 +1,6 @@
 class_name UiSound
 extends Node
 ## 主菜单的界面音效：**按下按钮** → `click.wav`（悬停不发声）。
-##
-## 挂成 App 的子节点（和 MenuMusic 一样跨场景存活），这样点「开始游戏」换场景时
-## 点击音效不会被掐断。只有主界面把按钮接上来，其它界面不放。
 
 const CLICK_SOUND := "res://audio/click.wav"
 

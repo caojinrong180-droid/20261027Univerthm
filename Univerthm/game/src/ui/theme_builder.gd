@@ -1,7 +1,6 @@
 class_name UiTheme
 extends RefCounted
 ## 统一主题：字体 / 按钮 / 面板 / 滚动条 / 进度条。
-## 想整体换皮：改 Palette 里的颜色，或者直接替换这里的 StyleBox。
 
 static var _cached: Theme = null
 static var _sans_font: Font = null
@@ -25,7 +24,6 @@ static func sans() -> Font:
 
 
 ## 数字 / 数值：Noto Sans SC（等宽数字、0 是干净的椭圆、中文也全）
-## 注意别用 Cascadia Mono / Consolas：它们的 0 带点或斜杠
 static func mono() -> Font:
 	if _mono_font == null:
 		var f := SystemFont.new()

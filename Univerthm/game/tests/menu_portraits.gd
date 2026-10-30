@@ -1,6 +1,5 @@
 extends Node
 ## godot --headless --path game res://tests/menu_portraits.tscn
-## 原生渲染可追加 -- --capture-dir <已忽略的草稿目录> 保存切换画面。
 
 var passed := 0
 var failed := 0

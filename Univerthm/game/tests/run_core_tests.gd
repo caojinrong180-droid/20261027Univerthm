@@ -1,8 +1,5 @@
 extends SceneTree
 ## 数据层 + 判定引擎的 headless 单测。
-## 跑法：
-##   godot --headless --path game --script res://tests/run_core_tests.gd
-## 退出码 0 = 全过。
 
 var passed := 0
 var failed := 0
@@ -240,7 +237,6 @@ func _test_convert() -> void:
 	near(RhythmChart.hold_speed_mult(zero_lane, 1.0), 1.0, "全篇 0 流速时回退到 1.0×")
 
 	# 开场倒计时跑的是负时间（LEAD_IN），那时还没有任何事件开始：
-	# 必须按第一条关键帧的 from 往前外推，否则 16 条轨道会全叠在舞台正中、流速退回 1×。
 	var countdown_lane: Dictionary = RhythmChart.parse({"lanes": [{
 		"x": 0, "speed": 10, "alpha": 0,
 		"events": {
@@ -257,7 +253,6 @@ func _test_convert() -> void:
 	near(float(p_pos["x"]), -45.0, "事件结束后沿用 to（t≥0 的行为不变）")
 
 	# 流速 0 的可见提前量：按这条轨道「最近的正常流速」算可视时长
-	# （远了不画 → 不会把 30 秒后的音符提前堆到判定线上；近了才画 → 不会晚到打中了才出现）
 	var zs_lane: Dictionary = RhythmChart.parse({"lanes": [{
 		"speed": 0,
 		"events": {"speed": [{"start": 10.0, "end": 11.0, "ease": "linear", "from": 20, "to": 20}]},

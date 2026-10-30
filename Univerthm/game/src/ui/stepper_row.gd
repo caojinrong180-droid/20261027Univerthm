@@ -1,7 +1,6 @@
 class_name StepperRow
 extends HBoxContainer
 ## 设置里那种「名字 [数值] ◀ ▶」的一行。场景里放一个、挂这个脚本、改 title 就能用。
-## 也可以在代码里 StepperRow.new() 然后 set_title()。
 
 signal stepped(dir: int)
 

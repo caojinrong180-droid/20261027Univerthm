@@ -1,14 +1,6 @@
 class_name RhythmChart
 extends RefCounted
 ## rchart v3 数据层：读谱 / 容错 / 参数换算 / 缓动。
-##
-## 所有公式与 `docs/CHART_FORMAT.md`、`docs/GAME_INTEGRATION.md` 一致：
-##   - 时间单位是秒
-##   - 缺字段用默认值，不报错
-##   - 轨道动画 6 条独立通道，事件结束保持尾值不回弹
-##   - 判定按轨道序号，不按屏幕位置
-##
-## 这个文件不依赖场景树，可以单独跑（tests/run_core_tests.gd 会直接调用）。
 
 const MAX_LANES := 16
 const NOTE_TYPES := ["tap", "hold"]
@@ -93,7 +85,6 @@ static func normalize_zone(v) -> String:
 # --------------------------------------------------------------------------- #
 
 ## 把从 JSON 解析出来的原始 Dictionary 变成规范谱面。
-## 返回 { "chart": Dictionary 或 null, "warnings": Array[String] }
 static func parse(raw) -> Dictionary:
 	var warnings: Array[String] = []
 
@@ -335,11 +326,6 @@ static func length_scale(p: Dictionary) -> float:
 
 
 ## 流速 0 的轨道上「提前多少秒把音符画出来」。
-## 按这条轨道「最近的正常流速」算它本来该有的可视时长 —— 恢复正常流速后是什么观感，现在就什么观感：
-##   · 4× 轨道、标准长度：约 0.6 秒可见
-##   · 1× 轨道：约 2.4 秒
-## 这样既不会把 30 秒后的音符提前堆到判定线上（那是「凭空多出来的音符」），
-## 也不会晚到「打中了才出现」。
 static func zero_speed_lookahead(lane: Dictionary, t: float, visible_px: float, base_pps: float) -> float:
 	var sp := hold_speed_mult(lane, t)
 	if sp <= 0.001:
@@ -355,8 +341,6 @@ static func note_visible_at(speed_value: float, note_time: float, t: float, look
 
 
 ## 长条（hold）用的流速倍率。
-## 流速为 0 时音符全压在判定线上、长条会缩成一条线，这里回退到
-## 「时间上最近的非零流速」（先往回找，没有再往前找），和 core.js 的 holdSpeed 一致。
 static func hold_speed_mult(lane: Dictionary, t: float) -> float:
 	var here := speed_mult(lane_params_at(lane, t))
 	if here > 0.001:
@@ -399,12 +383,6 @@ static func display_color(lane: Dictionary) -> Color:
 
 
 ## 取「起点 ≤ t 且起点最晚」的那条事件。
-## t < 0（开场倒计时 LEAD_IN 跑的是负时间）时还没有任何事件开始，这时返回第一条事件本身：
-## 各通道都按 clamp((t - start) / span, 0, 1) 求值，所以等于用第一条关键帧的 from 往前外推。
-## 不能退回轨道的静态值 —— 谱面里 16 条轨道的静态 x 都是 0、静态流速都是 10，
-## 倒计时期间就变成「所有轨道叠在舞台正中 + 流速退回 1×」，
-## 画面上正是「开头凭空冒出几个在画面正中的 note」，而且开唱瞬间还会整体跳一下。
-## t ≥ 0 的行为不变：第一条事件开始之前仍然用静态值（run_core_tests 里锁着这条）。
 static func _event_at(arr: Array, t: float):
 	var cur = null
 	for e in arr:
@@ -418,7 +396,6 @@ static func _event_at(arr: Array, t: float):
 
 
 ## 判定区在某时刻是哪个：有 zone 事件就按事件（数值 0/1/2 插值后取整），没有就用静态值。
-## 和 core.js 的 zoneAt 一致。
 static func lane_zone_at(lane: Dictionary, t: float) -> String:
 	var static_zone := normalize_zone(lane.get("judge_zone"))
 	var evs = lane.get("events", {})
@@ -471,7 +448,6 @@ static func lane_params_at(lane: Dictionary, t: float) -> Dictionary:
 
 
 ## 某一刻这条轨道的父线序号（-1 = 没有父线）
-## 静态字段 `parent` 是 0 起（-1 = 不跟）；事件通道 `parent` 是 0 = 不跟、i + 1 = 轨道 i
 static func lane_parent_at(lane: Dictionary, t: float, lane_count: int) -> int:
 	var idx := _int_of(lane.get("parent"), -1)
 	var evs = lane.get("events", {})
@@ -491,9 +467,6 @@ static func lane_parent_at(lane: Dictionary, t: float, lane_count: int) -> int:
 
 
 ## 轨道坐标系（已把父线 / 爷爷线叠进来）：
-##   x / y = 相对「舞台中心 / 判定线」的偏移（y 向上为正），rot = 累计角度
-## 子线的 x 是沿父线横向的偏移、y 是沿父线方向（向上）的偏移，rotation 叠加。
-## 父链最多走 8 层，环会被切断（成环的那条当没有父线）。
 static func lane_frame_at(lanes: Array, index: int, t: float) -> Dictionary:
 	var chain: Array = []
 	var seen := {}

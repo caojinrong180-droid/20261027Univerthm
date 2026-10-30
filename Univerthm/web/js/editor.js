@@ -833,7 +833,6 @@
       var dur = (nt.type === 'hold') ? Math.max(0, nt.duration) : 0;
       var isHold = dur > 0.001;
       // 流速 0：位置不再表示时间，音符只能钉在判定线上 —— 提前量按「这条轨道本来该有的可视时长」算。
-      // 更远的音符不画（否则 30 秒后的音符会提前堆在判定线上），更近才画又会晚到打中了才出现。
       var atLine = nt.time <= S.viewTime + 0.02;
       if (g.speed <= 0.001) {
         var ahead = RC.zeroSpeedLookahead(g.lane, S.viewTime, g.len + 40, PV.pps);
@@ -841,16 +840,12 @@
       }
 
       // 长条长度必须和头用同一个流速基准，否则流速一变，
-      // 头已经过线而「按旧流速算出来的尾巴」还在判定线上方 → 长条卡在那儿不消失。
-      // 流速 0 时音符全压在判定线上、长条会缩没，所以回退到最近的非零流速；
-      // 但「已到线」是前提 —— 否则还没到的长条 head 恒为 0，会凭空长出身体。
       var bodyMul = g.speed > 0.001
         ? g.speed
         : (atLine ? RC.holdSpeed(g.lane, S.viewTime) : 0);
       var tail = head + dur * PV.pps * bodyMul;
 
       // 剔除：长条要看「尾巴」是否过线，不能按头算 —— 否则头一过判定线 40px
-      // 整条就被砍掉，明明身上还有一大截。
       if (isHold) {
         if (tail < -10) continue;                 // 整条都过判定线了
       } else if (head < -0.5) {
@@ -2711,7 +2706,6 @@
       var all = fixed.concat(extra);
 
       // 打开时带进来的其它文件（storyboard.json / assets/…）原样放回去，
-      // 别让「打开 zip 再导出」把故事板和 Shader 弄丢
       var used = {};
       var i;
       for (i = 0; i < all.length; i++) used[all[i].name] = 1;

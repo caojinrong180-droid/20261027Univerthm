@@ -1,11 +1,5 @@
 extends Node
 ## headless 冒烟测试：真把选曲 / 游玩 / 结算 / 设置建起来跑一遍，
-## 并用「自动演示」把一个**运行时合成的测试谱面**（tests/fixtures/synthetic_chart.gd）
-## 从头打到尾，检查判定统计。
-##
-## 跑法：
-##   godot --headless --path game res://tests/smoke.tscn
-## 退出码 0 = 全过。
 
 const SyntheticChart = preload("res://tests/fixtures/synthetic_chart.gd")
 
@@ -61,6 +55,10 @@ func _run() -> void:
 	await _check_fx_rules()
 	await _check_chord_marking()
 	await _check_unlock_once()
+	await _check_first_entry_gate()
+	await _check_first_entry_lock()
+	await _check_first_entry_warning()
+	await _check_from_black()
 	await _check_settings()
 	print("  smoke done")
 
@@ -117,7 +115,6 @@ func _check_warning_input() -> void:
 
 
 ## 开屏画面：画面任意处点一下、或者按任意键都进主界面；
-## F11 留给全屏、滚轮不算点击，防误触时间内不响应。
 func _check_splash_input() -> void:
 	for target in ["", "Center/Column/Logo", "Center/Column/Hint"]:
 		var splash = load("res://scenes/splash.tscn").instantiate()
@@ -715,6 +712,189 @@ func _check_unlock_once() -> void:
 	check(not App.has_seen_unlock(key), "forget_unlock_seen 后又能再演一次")
 	_restore_file(App.STATS_PATH, backup)
 	App.load_stats()
+
+
+## 神秘曲（列表第 3 首）的「第一次踏入」：红色警告 + 当次禁用 Esc，通关结算后才落盘
+func _check_first_entry_gate() -> void:
+	var backup := _backup_file(App.STATS_PATH)
+	var saved := App.entered.duplicate()
+	var key := App.first_entry_key()
+	if key == "":
+		check(true, "谱面库不足 3 首，跳过神秘曲第一次踏入的检查")
+		return
+	App.entered.clear()
+	check(App.needs_first_entry(key), "神秘曲没踏入过 → 要弹红色警告")
+	check(not App.needs_first_entry("test:synthetic"), "别的曲子不弹警告")
+	check(not App.has_entered(key), "还没正式踏入")
+
+	# 只是一趟没打完就强关游戏：没有任何落盘，下次还是「第一次」
+	App.load_stats()
+	check(App.needs_first_entry(key), "没结算就没有落盘，强关后回到踏入之前")
+
+	# 之前演过解锁动画（unlock_seen 里有它）也照样能再看：这一趟以「正式踏入」为准
+	App.unlock_seen.append(key)
+	check(App.should_play_unlock(key), "还没正式踏入时，解锁动画每次都能再看")
+	check(not App.should_mark_unlock_seen(key), "这一趟不当场记账（等结算）")
+
+	App.commit_entry(key)
+	check(App.has_entered(key), "结算后记为已踏入")
+	check(not App.needs_first_entry(key), "踏入过就不再弹警告")
+	check(App.has_seen_unlock(key), "commit_entry 连「解锁动画演过了」一起记")
+	check(not App.should_play_unlock(key), "踏入之后解锁动画不再演")
+	check(App.should_mark_unlock_seen(key), "普通曲子的记账规则不变")
+	App.load_stats()
+	check(App.has_entered(key), "已踏入记录写进了 profile.cfg")
+
+	# 收拾现场
+	_restore_file(App.STATS_PATH, backup)
+	App.load_stats()
+	App.entered = saved
+
+
+## 第一次踏入那一趟：Esc 既不暂停也不回选曲；普通曲子照旧能暂停
+func _check_first_entry_lock() -> void:
+	var backup := _backup_file(App.STATS_PATH)
+	var saved := App.entered.duplicate()
+	var key := App.first_entry_key()
+	if key == "":
+		check(true, "谱面库不足 3 首，跳过 Esc 锁的检查")
+		return
+	App.entered.clear()
+
+	_make_session()
+	App.session["entry"] = {"key": key, "title": "神秘曲"}
+	App.autoplay_once = false
+	var game = _new_gameplay()
+	await get_tree().process_frame
+	check(game._first_entry, "神秘曲第一次进入 → 这一趟锁 Esc")
+	game.debug_start_now()
+	game._unhandled_input(_esc_event())
+	check(game.state == game.State.PLAYING, "Esc 不暂停")
+	check(not game._pause_layer.visible, "暂停面板没出来")
+	game._pause()
+	check(game.state == game.State.PLAYING, "直接调 _pause() 也不给暂停")
+	game.queue_free()
+	await get_tree().process_frame
+
+	_make_session()
+	App.autoplay_once = false
+	var normal = _new_gameplay()
+	await get_tree().process_frame
+	check(not normal._first_entry, "普通曲子不锁 Esc")
+	normal.debug_start_now()
+	normal._unhandled_input(_esc_event())
+	check(normal.state == normal.State.PAUSED, "普通曲子 Esc 照旧暂停")
+	normal.queue_free()
+	await get_tree().process_frame
+
+	# 解锁动画不能跳过：UNLOCK 期间按键只会被吃掉，状态原地不动
+	_make_session()
+	App.autoplay_once = false
+	var locked = _new_gameplay()
+	await get_tree().process_frame
+	locked.state = locked.State.UNLOCK
+	locked._unhandled_input(_esc_event())
+	check(locked.state == locked.State.UNLOCK, "解锁动画期间按 Esc 不跳过")
+	locked._unhandled_input(_key_event(KEY_SPACE))
+	check(locked.state == locked.State.UNLOCK, "空格也不跳过")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	locked._unhandled_input(click)
+	check(locked.state == locked.State.UNLOCK, "鼠标点击也不跳过")
+	await get_tree().process_frame
+	check(locked.state == locked.State.UNLOCK, "片子没播完就一直停在解锁动画")
+	locked.queue_free()
+	await get_tree().process_frame
+
+	_restore_file(App.STATS_PATH, backup)
+	App.load_stats()
+	App.entered = saved
+
+
+func _esc_event() -> InputEventKey:
+	return _key_event(KEY_ESCAPE)
+
+
+func _key_event(code: Key) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.physical_keycode = code
+	event.pressed = true
+	return event
+
+
+## 选曲页：点神秘曲先弹红色警告，选「否」留在列表
+func _check_first_entry_warning() -> void:
+	var backup := _backup_file(App.STATS_PATH)
+	var saved := App.entered.duplicate()
+	var key := App.first_entry_key()
+	if key == "":
+		check(true, "谱面库不足 3 首，跳过红色警告框的检查")
+		return
+	App.entered.clear()
+	# 神秘曲平时还锁在「通关前一首」后面，这里先放开解锁，单测警告框本身
+	var saved_unlock_all := App.settings.unlock_all
+	App.settings.unlock_all = true
+	var screen = load("res://scenes/song_select.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var gated_index := App.library.find_custom(func(e): return str(e.get("key", "")) == key)
+	check(gated_index >= 0, "神秘曲在曲库里")
+	screen._focus_row(gated_index)
+	await get_tree().process_frame
+	check(not screen._selected_locked, "神秘曲已解锁（临时全解锁）")
+	screen._play_selected(false)
+	await get_tree().process_frame
+	check(screen._warning != null and screen._warning.is_open(), "点神秘曲先弹红色警告")
+	check(not screen._leaving, "警告没答完不会离开选曲页")
+	screen._warning._choose(false)
+	await get_tree().process_frame
+	check(not screen._warning.is_open(), "选「否」关掉警告框")
+	check(not screen._leaving, "选「否」留在选曲列表")
+	check(App.session.is_empty() or str(App.session.get("entry", {}).get("key", "")) != key,
+		"选「否」没有进谱面")
+
+	# 选「是」：先慢慢变黑，黑透了才切场景（这里把补间掐掉，别真的换场景）
+	screen._play_selected(false)
+	await get_tree().process_frame
+	check(screen._warning.is_open(), "再点一次又弹警告")
+	screen._warning._choose(true)
+	await get_tree().process_frame
+	check(screen._fade != null, "选「是」之后先盖一层黑幕")
+	check(screen._leaving, "变黑期间不再响应操作")
+	check(str(App.session.get("entry", {}).get("key", "")) != key, "还没黑透就不切场景")
+	if screen._fade_tween != null and screen._fade_tween.is_valid():
+		screen._fade_tween.kill()
+	screen.queue_free()
+	await get_tree().process_frame
+	App.settings.unlock_all = saved_unlock_all
+	_restore_file(App.STATS_PATH, backup)
+	App.load_stats()
+	App.entered = saved
+
+
+## 从选曲页的「变黑」接过来：谱面这一侧先全黑，再淡出到解锁动画 / 舞台
+func _check_from_black() -> void:
+	_make_session()
+	App.session["entry"] = {"key": "test:from_black"}
+	App.session["from_black"] = true
+	App.autoplay_once = false
+	var game = load("res://scenes/gameplay.tscn").instantiate()
+	get_tree().root.add_child(game)
+	await get_tree().process_frame
+	var cover = game.get_node_or_null("FromBlack")
+	check(cover != null, "进谱面时自带一层全黑")
+	if cover != null:
+		check(float(cover.color.a) > 0.99, "接过来的时候是全黑")
+		check(cover.get_index() == game.get_child_count() - 1, "黑幕盖在最上层")
+	await get_tree().create_timer(0.6).timeout
+	if cover != null and is_instance_valid(cover):
+		check(float(cover.color.a) < 0.99, "压一会儿之后黑幕开始淡出")
+	game.queue_free()
+	await get_tree().process_frame
+	_make_session()
 
 
 func _check_settings() -> void:

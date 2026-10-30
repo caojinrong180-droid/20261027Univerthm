@@ -1,7 +1,6 @@
 class_name SpriteButton
 extends TextureRect
 ## 主界面那种「切图当按钮」的控件：悬停时轻轻上浮、不透明度变高，鼠标指针保持默认箭头。
-## 在编辑器里把一张切图拖到 Texture 上，挂这个脚本就能用。
 
 signal pressed
 

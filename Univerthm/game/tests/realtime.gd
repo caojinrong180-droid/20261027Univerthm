@@ -1,10 +1,5 @@
 ﻿extends Node
 ## 真实时间 / 真实音频时钟的自检（需要窗口和声卡，不能 --headless）：
-##   godot --path game res://tests/realtime.tscn
-##
-## 用运行时合成的一段正弦波当音频（不落盘、不是谱面），跑一遍
-## 「倒计时 → 播放 → 音频时钟推进 → 判定随时间走」，确认
-## get_playback_position + 混音延迟这套算谱面时间的方式真的在跑。
 
 const SyntheticChart = preload("res://tests/fixtures/synthetic_chart.gd")
 

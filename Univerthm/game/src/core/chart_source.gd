@@ -1,13 +1,6 @@
 class_name ChartSource
 extends RefCounted
 ## 谱面发现 + 加载。
-##
-## 支持的三种形态（都来自网页制谱器 / 手写）：
-##   1. zip        —— 制谱器 Ctrl+S 导出的包：chart.json + 音频 + 曲绘
-##   2. 文件夹     —— 目录里有 chart.json，音频 / 曲绘放同目录（demo 就是这种）
-##   3. 单个 json  —— chart.json / xxx.rchart，音频去同目录、res://audio、user://audio 找
-##
-## 扫描根目录：res://charts（随游戏发布）+ user://charts（拖进来的谱面）
 
 const CHART_EXTS := ["json", "rchart"]
 const AUDIO_EXTS := ["mp3", "ogg", "wav"]
@@ -25,7 +18,6 @@ static func scan(roots: Array) -> Array:
 	for root in roots:
 		_scan_dir(str(root), 0, entries, seen)
 	# 列表顺序按**文件名 / 文件夹名里的数字**排（0_1_… → 0_2_… → 0_3_…，10 排在 9 后面），
-	# 名字一样时再按曲名、最后按 key。
 	entries.sort_custom(func(a, b):
 		var na := _sort_name(a)
 		var nb := _sort_name(b)
@@ -540,8 +532,6 @@ static func import_file(src_path: String) -> Dictionary:
 
 
 ## 解锁动画（烘焙好的帧序列）
-## 返回 { ok, fps, frames: Array[PackedByteArray], width, duration, audio: PackedByteArray }
-## 包里由 tools/bake_unlock.ps1 生成：unlock_frames/*.jpg + unlock_audio.ogg + unlock.json
 static func load_unlock(entry: Dictionary) -> Dictionary:
 	var none := {"ok": false}
 	var kind := str(entry.get("kind", ""))

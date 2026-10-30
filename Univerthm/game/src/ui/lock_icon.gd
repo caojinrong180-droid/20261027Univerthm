@@ -2,7 +2,6 @@
 class_name LockIcon
 extends Control
 ## 极简纯白小挂锁：一段圆弧当锁梁 + 一块圆角矩形当锁体，纯色、无渐变无阴影。
-## 尺寸跟着节点走（把 Control 拉多大就画多大），在编辑器里也能直接看到。
 
 @export var color := Color(1, 1, 1, 0.96):
 	set(value):

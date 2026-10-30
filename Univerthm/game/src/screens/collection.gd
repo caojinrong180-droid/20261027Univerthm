@@ -1,6 +1,5 @@
 extends Control
 ## 收藏品图鉴：真实资源计数、分类与全屏预览。
-## 分类：全部 / 角色立绘 / 曲绘（卡片网格）+ 剧情（列表，点开读 txt 全文）。
 
 const BANNERS_DIR := "res://assets/banners"
 const FILTERS := ["all", "banner", "cover", "story"]
@@ -375,7 +374,7 @@ func _build_story_ui() -> void:
 func _build() -> void:
 	Neon.background(self)
 	Neon.topbar(self, "收藏品")
-	Neon.footer(self, "Esc 返回  ·  点击卡片查看大图  ·  通关掉落剧情", "COLLECTION / 00 ITEMS")
+	Neon.footer(self, "在这里查看收藏品！", "COLLECTION / 00 ITEMS")
 	var panel := Neon.content(self)
 	var box := UiKit.vbox(12)
 	panel.add_child(box)

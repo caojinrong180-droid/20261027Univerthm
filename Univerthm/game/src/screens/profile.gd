@@ -1,13 +1,15 @@
 extends Control
 ## 个人资料：玩家名（可改，存进 settings.cfg）+ 游玩统计（user://profile.cfg）。
-## 与收藏品共用紫黑宇宙视觉；场景保留可编辑节点。
+## 右下角还有「删除游玩存档」：弹确认框，确认后清空成绩 / 通关记录（设置和名字保留）。
 
 const Neon = preload("res://src/ui/neon_ui.gd")
+const ConfirmDialog = preload("res://src/ui/confirm_dialog.gd")
 
 var _name_label: Label
 var _avatar: AvatarCircle
 var _edit: LineEdit
 var _stat_grid: GridContainer
+var _dialog: Control
 
 
 func _ready() -> void:
@@ -20,6 +22,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _dialog != null and _dialog.visible:
+		return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var key := (event as InputEventKey).keycode
@@ -57,6 +61,60 @@ func _resolve() -> void:
 	_find("ProfileScroll").resized.connect(_resize_profile)
 	Neon.style_scroll(_find("ProfileScroll"))
 	_resize_profile.call_deferred()
+	_ensure_delete_button()
+
+
+## 「删除游玩存档」按钮：场景里没有就补在「返回」旁边
+func _ensure_delete_button() -> void:
+	var back := _find("AccentBackButton") as Control
+	if back == null:
+		return
+	var actions := back.get_parent() as Control
+	if actions == null:
+		return
+	var button := actions.get_node_or_null("DeleteSaveButton") as Button
+	if button == null:
+		button = Neon.button("删除游玩存档", false, 15)
+		button.name = "DeleteSaveButton"
+		button.tooltip_text = "清空游玩次数 / 成绩 / 通关记录；设置和玩家名称保留"
+		button.custom_minimum_size = Vector2(196, 46)
+		var frame := button.get_node_or_null("ButtonFrame") as NeonPanel
+		if frame != null:
+			frame.fill = Color(0.13, 0.03, 0.06, 0.92)
+			frame.edge = Color("e05a72")
+			frame.glow = false
+		button.add_theme_color_override("font_color", Color("ffb3c0"))
+		button.add_theme_color_override("font_hover_color", Color("ffffff"))
+		actions.add_child(button)
+		actions.move_child(button, back.get_index() + 1)
+	if not button.pressed.is_connected(_open_delete_confirm):
+		button.pressed.connect(_open_delete_confirm)
+
+
+func _ensure_dialog() -> void:
+	if _dialog != null:
+		return
+	_dialog = ConfirmDialog.new()
+	_dialog.name = "DeleteSaveConfirm"
+	UiKit.full_rect(_dialog)
+	add_child(_dialog)
+	_dialog.confirmed.connect(_delete_save)
+
+
+func _open_delete_confirm() -> void:
+	_ensure_dialog()
+	_dialog.open(
+		"删除游玩存档？",
+		"会清空游玩次数、平均分、每首最好成绩、通关记录和已搜集的剧情，曲目会重新上锁。\n设置（音量 / 偏移 / 名字）不受影响。",
+		"确认删除", "取消")
+
+
+func _delete_save() -> void:
+	App.reset_progress()
+	_refresh()
+	var hint := _find("SaveHint")
+	if hint != null:
+		hint.text = "✓ 游玩记录已清空"
 
 
 func _refresh() -> void:

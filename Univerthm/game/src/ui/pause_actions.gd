@@ -1,9 +1,5 @@
 extends Control
 ## 三个动作在中心并排，采用阻尼弹簧保留滑入的惯性与回弹。
-##
-## 背景是一整块亚克力板：先把下层谱面场用 BackBufferCopy 抄一份，再由这块
-## ColorRect 磨砂、压暗、加颗粒（见 shaders/pause_acrylic.gdshader），
-## 于是图标浮在雾面玻璃上而不是按在纯黑遮罩上。
 
 signal action_requested(action: int)
 

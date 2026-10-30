@@ -1,9 +1,5 @@
 extends Control
 ## 结算界面：沿用设置 / 个人资料 / 收藏那套宇宙霓虹语言——
-## 黑洞背景 + Univerthm 顶栏 + 切角内容框 + 紫色数值 + 底部状态条。
-## 数据全部来自 App.last_result，界面在代码里搭（results.tscn 只有根节点 + 本脚本）。
-## 中段（曲目 / 成绩 / 判定）放在一层可滑动的 ScrollContainer 里：进场时从右向左
-## 缓动滑回原位（先快后慢），小窗口或超高卡片只会滚动，不会顶掉底部动作栏。
 
 const Neon = preload("res://src/ui/neon_ui.gd")
 
@@ -100,7 +96,6 @@ func _slide_in() -> void:
 
 
 ## 离场：音乐先淡出 0.22 秒再换场景，避免直接被切掉。
-## 已经淡出过就直接走——第二次按键不该再空等一遍淡出（也不该落空）。
 func _leave(action: Callable) -> void:
 	if _leaving:
 		action.call()
@@ -322,7 +317,6 @@ func _build_actions() -> Control:
 # --------------------------------------------------------------------------- #
 
 ## 掉落提示：最下方那条「收藏品 · Stra的笔记#1 已搜集」。
-## 没有新掉落（已经有了 / 自动演示 / 不是从谱面库进的）整条不占位。
 func _build_story_drop() -> Control:
 	var drop = _result.get("story_drop", {})
 	if not (drop is Dictionary) or drop.is_empty():

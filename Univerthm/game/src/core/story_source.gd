@@ -1,18 +1,6 @@
 class_name StorySource
 extends RefCounted
 ## 剧情文本发现 + 读取。
-##
-## 只认纯文本：把 `.txt` 放进 `res://剧情`（随游戏发布）或 `user://剧情`（收藏品页的「剧情目录」），
-## 收藏品页的「剧情」分类就会自动列出来，点标题读全文。子文件夹也认（最多两层，比如 `剧情/序章/`）。
-##
-## 排版约定（都可以不写，写了更好看）：
-##   标题：xxx          ← 第一行可写标题（也认「题目：」「title:」）
-##   # 第一章 xxx       ← 行首 # / 【】 / 「第X章」当作小标题
-##   ---                ← 一条分隔线
-##   空行               ← 分段；一行以句号 / 问号 / 感叹号结尾也算一段结束
-##
-## 编码：优先 UTF-8（带不带 BOM 都行）；Windows 记事本存的 UTF-16（Unicode）也会自动认。
-## GBK / ANSI 读不了，界面会提示另存为 UTF-8。
 
 const STORY_ROOTS := ["res://剧情", "user://剧情"]
 const TEXT_EXTS := ["txt"]
@@ -136,7 +124,6 @@ static func parse_bytes(bytes: PackedByteArray, file := "") -> Dictionary:
 
 
 ## 纯文本 → { title, blocks, chars, chapters, paragraphs, excerpt, minutes, utf8_ok }
-## blocks: [{ kind: "text" | "chapter" | "rule", text: String }]
 static func parse(text: String, fallback_title := "") -> Dictionary:
 	var blocks: Array = []
 	var title := ""
@@ -390,6 +377,14 @@ static func grant_unlock(story_name: String, path := UNLOCK_PATH) -> bool:
 	cf.load(path)
 	cf.set_value(UNLOCK_SECTION, "unlocked", PackedStringArray(list))
 	return cf.save(path) == OK
+
+
+## 清空已搜集的剧情（个人资料页「删除游玩存档」用）
+static func clear_unlocks(path := UNLOCK_PATH) -> void:
+	var cf := ConfigFile.new()
+	cf.load(path)
+	cf.set_value(UNLOCK_SECTION, "unlocked", PackedStringArray())
+	cf.save(path)
 
 
 # --------------------------------------------------------------------------- #

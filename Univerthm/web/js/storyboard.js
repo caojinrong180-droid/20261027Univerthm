@@ -2983,7 +2983,6 @@
     var files = [];
 
     // 资源（视频 / 图片）单独成文件放进 assets/，json 里只留相对路径 ——
-    // 否则它们被 base64 塞在 storyboard.json 里，解压后一个视频文件都看不到
     var assetPaths = {};
     var assetNames = Object.keys(S.doc.assets || {});
     for (var ai = 0; ai < assetNames.length; ai++) {

@@ -1,11 +1,11 @@
 extends Control
 ## 主界面。界面节点都在 scenes/main_menu.tscn 里，可以在编辑器里直接拖；
-## 负责界面交互、错峰回弹入场，以及背景和立绘的轻量动态。
 
 signal entrance_finished
 signal glow_revealed
 
 const ExitConfirm = preload("res://src/ui/exit_confirm.gd")
+const Tutorial = preload("res://src/ui/tutorial_overlay.gd")
 
 # 固定顺序并显式引用资源，导出后的游戏也能载入全部立绘。
 const BANNER_TEXTURES := [
@@ -78,6 +78,7 @@ var _outgoing_rotation := 0.0
 var _background_material: ShaderMaterial
 var _glow_material: ShaderMaterial
 var _exit_confirm
+var _tutorial
 
 
 func _ready() -> void:
@@ -107,6 +108,7 @@ func _ready() -> void:
 
 	_apply_banner()
 	_build_exit_confirm()
+	_build_tutorial()
 	_build_ui_sound()
 	resized.connect(_update_motion_pivots)
 	_update_motion_pivots.call_deferred()
@@ -147,6 +149,7 @@ func _finish_entrance() -> void:
 	glow_entry.tween_method(_set_glow_reveal, 0.0, 1.0, glow_reveal_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	glow_entry.finished.connect(glow_revealed.emit)
 	entrance_finished.emit()
+	_maybe_show_tutorial()
 
 
 func _set_glow_reveal(progress: float) -> void:
@@ -234,8 +237,33 @@ func _build_exit_confirm() -> void:
 	_exit_confirm.confirmed.connect(App.quit_game)
 
 
+## 新手教程弹窗：第一次进主界面自动弹，关掉就记成「看过了」（之后只在设置里手动打开）
+func _build_tutorial() -> void:
+	_tutorial = Tutorial.new()
+	_tutorial.name = "Tutorial"
+	UiKit.full_rect(_tutorial)
+	add_child(_tutorial)
+	_tutorial.closed.connect(_on_tutorial_closed)
+
+
+func _maybe_show_tutorial() -> void:
+	if _tutorial == null or App.settings == null or App.settings.tutorial_seen:
+		return
+	# 等入场动画和底下的界面都站稳了再弹
+	await get_tree().create_timer(0.55).timeout
+	if not is_inside_tree() or _tutorial == null or App.settings.tutorial_seen:
+		return
+	_tutorial.open()
+
+
+func _on_tutorial_closed() -> void:
+	if App.settings == null or App.settings.tutorial_seen:
+		return
+	App.settings.tutorial_seen = true
+	App.settings.save()
+
+
 ## 主界面的按钮点击音效（只有这里有）：按下 → click.wav，悬停不发声。
-## 音效节点在 App 里（跨场景存活，点「开始游戏」换场景时点击音效不会被掐断）。
 func _build_ui_sound() -> void:
 	if App.ui_sound == null:
 		return

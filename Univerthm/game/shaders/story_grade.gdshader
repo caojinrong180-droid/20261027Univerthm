@@ -1,7 +1,5 @@
 shader_type canvas_item;
 // 故事板后处理（和网页 web/js/sb_render.js 的 FRAG 一一对应）
-// 用法：每个生效的 shader 一层 ColorRect，配一个 ShaderMaterial；层与层之间插 BackBufferCopy，
-// 这样第 N 层读到的就是第 N-1 层的输出（真正的逐层叠加，不是合并成一个 pass）。
 
 uniform sampler2D screen_tex : hint_screen_texture, repeat_disable, filter_linear;
 

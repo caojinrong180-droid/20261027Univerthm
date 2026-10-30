@@ -1,19 +1,9 @@
 extends Control
 ## 极简曲绘选曲：点击选择试听，独立确认后开始游玩。
-##
-## 界面本身在 `scenes/song_select.tscn` 里（顶部栏 / 曲库列表 / 右侧详情 / 底栏都能在
-## 编辑器里直接拖），曲目行是 `scenes/song_row.tscn`。这条脚本只管数据和动效：
-## 谱面行的增删、背景淡入、试听、拖拽导入。
-##
-## 列表刻意**没有切歌位移**：换选时行原地不动，只有高亮换人。
-## 唯一的动效是鼠标悬停：没选中的行滑出去一点、选中的行把框拉长，都带缓动。
-##
-## 界面本身在 `scenes/song_select.tscn` 里（顶部栏 / 曲库列表 / 右侧详情 / 底栏都能在
-## 编辑器里直接拖），曲目行是 `scenes/song_row.tscn`。这条脚本只管数据和动效：
-## 谱面行的增删、悬停动画、背景淡入、试听、拖拽导入。
 
 const Neon = preload("res://src/ui/neon_ui.gd")
 const Preview = preload("res://src/audio/song_preview.gd")
+const EntryWarning = preload("res://src/ui/first_entry_warning.gd")
 const ROW_SCENE = preload("res://scenes/song_row.tscn")
 ## 曲目行的框高（列表里只留标题 + 作者，行做细一点）
 const ROW_HEIGHT := 72.0
@@ -41,6 +31,8 @@ const BEST_EMPTY_COLOR := Color(0.45, 0.43, 0.52, 1)
 ## 「自动演示」可用 / 未解锁时的字色
 const AUTO_READY_COLOR := Color(0.7647059, 0.7372549, 0.81960785, 1)
 const AUTO_LOCKED_COLOR := Color(0.42, 0.4, 0.48, 1)
+## 神秘曲「是」之后屏幕变黑用多久（秒）。变黑走完才切场景，谱面那边从黑里接解锁动画
+const FADE_TO_BLACK := 0.8
 
 var _rows: Array = []
 ## 每个列表项解锁没有（按 App.library 的顺序，第 1 首永远解锁）
@@ -83,6 +75,14 @@ var _background_tween: Tween
 var _list_scroll: ScrollContainer
 var _detail_scroll: ScrollContainer
 var _leaving := false
+## 神秘曲第一次踏入的红色警告（点「是」之后才真的进谱面）
+var _warning: Node
+## 警告框确认前先记下这次要进哪首 / 是不是自动演示
+var _pending_entry := {}
+var _pending_autoplay := false
+## 神秘曲「是」之后那层慢慢变黑的黑幕（全黑才切场景）
+var _fade: ColorRect
+var _fade_tween: Tween
 
 @onready var _background_a: TextureRect = $BlurredCover0
 @onready var _background_b: TextureRect = $BlurredCover1
@@ -129,6 +129,11 @@ func _ready() -> void:
 	_preview = Preview.new()
 	_preview.name = "SongPreview"
 	add_child(_preview)
+	# 红色警告框盖在最上层：关着的时候 mouse_filter 也跟着藏起来
+	_warning = EntryWarning.new()
+	_warning.name = "FirstEntryWarning"
+	add_child(_warning)
+	_warning.chosen.connect(_on_warning_chosen)
 	if App.menu_music != null:
 		App.menu_music.stop_immediately()
 	App.refresh_library()
@@ -144,6 +149,12 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	# 红色警告框开着的时候，按键归它管（Esc = 否），别顺手退回主界面
+	if _warning != null and _warning.is_open():
+		return
+	# 正在变黑 / 正在切场景：这一刻的按键全部丢掉
+	if _leaving:
 		return
 	if event.keycode not in [KEY_UP, KEY_DOWN, KEY_ENTER, KEY_KP_ENTER, KEY_A, KEY_F5, KEY_S, KEY_ESCAPE]:
 		return
@@ -227,7 +238,6 @@ func _refresh_list() -> void:
 
 
 ## 「神秘曲」：第 3 首在打出成绩之前，所有信息都是 ???、曲绘纯黑。
-## 打完第一次（有了成绩记录）就恢复正常显示。
 func _is_hidden_song(index: int) -> bool:
 	if index != SECRET_INDEX or index >= App.library.size():
 		return false
@@ -313,8 +323,6 @@ func _refresh_row_styles() -> void:
 
 
 ## 一行的样子：hover_t = 0 常态、1 完全悬停。
-## 没选中：整行往右滑 + 上下各长一点（底框和文字一起走，命中区不动）。
-## 选中了：不位移，只把紫框往右拉长。
 func _row_visual(row: Button, index: int, hover_t: float) -> void:
 	if not is_instance_valid(row):
 		return
@@ -413,7 +421,6 @@ func _update_best_line(key: String) -> void:
 
 
 ## 没解锁的曲子：右侧曲绘压一个白锁 + 整个背景压暗，开始 / 自动演示都点不动。
-## 锁下面写清楚要通关哪一首（按列表顺序，就是它的前一首）。
 func _apply_lock_visual(locked: bool) -> void:
 	_lock_layer.visible = locked
 	_refresh_action_buttons()
@@ -439,7 +446,6 @@ func _unlock_requirement_title(index: int) -> String:
 
 
 ## 「开始 / 自动演示」两个按钮的可用状态：
-## 没解锁 / 空库 → 都点不动；「自动演示」还要先游玩过一次谱面。
 func _refresh_action_buttons() -> void:
 	var empty := App.library.is_empty()
 	var autoplay_ready := App.autoplay_unlocked()
@@ -507,6 +513,8 @@ func _format_time(seconds: float) -> String:
 func _play_selected(autoplay: bool) -> void:
 	if _leaving or _selected < 0 or _selected >= App.library.size():
 		return
+	if _warning != null and _warning.is_open():
+		return
 	if _selected_locked:
 		var need := _unlock_requirement_title(_selected)
 		_show_toast("先通关「%s」才能玩这首" % need if need != "" else "这首还没解锁")
@@ -518,10 +526,60 @@ func _play_selected(autoplay: bool) -> void:
 
 
 func _play_entry(entry: Dictionary, autoplay: bool) -> void:
+	# 神秘曲的第一次踏入：先问「踏出这一步就不能反悔了」，选「否」留在列表
+	if App.needs_first_entry(str(entry.get("key", ""))):
+		_pending_entry = entry
+		_pending_autoplay = autoplay
+		_preview.stop()
+		if _warning != null:
+			_warning.open()
+		return
+	_start_entry(entry, autoplay)
+
+
+## 警告框选完：否 → 什么都不做（人还留在选曲列表），是 → 真的进谱面
+func _on_warning_chosen(confirmed: bool) -> void:
+	var entry: Dictionary = _pending_entry
+	var autoplay := _pending_autoplay
+	_pending_entry = {}
+	_pending_autoplay = false
+	if not confirmed or entry.is_empty():
+		if _selected >= 0 and _selected < _rows.size():
+			_rows[_selected].grab_focus()
+			# 神秘曲 / 未解锁的曲子本来就不试听，取消之后也别顺手放出来
+			if not _selected_locked and not _selected_hidden:
+				_preview.select(App.library[_selected])
+		return
+	# 是：先慢慢变黑，全黑之后才切进谱面（那边再淡出一次，接上解锁动画）
+	_fade_to_black(func(): _start_entry(entry, autoplay, true))
+
+
+## 屏幕慢慢压到全黑，黑透了才调 then（这时切场景不会看到跳变）
+func _fade_to_black(then: Callable) -> void:
+	_leaving = true              # 变黑的这一秒钟不再响应任何操作
+	_preview.stop()
+	_fade = ColorRect.new()
+	_fade.name = "FadeToBlack"
+	_fade.color = Color(0, 0, 0, 0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_fade)
+	UiKit.full_rect(_fade)
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_fade, "color:a", 1.0, FADE_TO_BLACK) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_fade_tween.finished.connect(then)
+
+
+func _start_entry(entry: Dictionary, autoplay: bool, from_black := false) -> void:
 	_preview.stop()
 	_leaving = true
-	if not App.play_entry(entry, autoplay):
+	if not App.play_entry(entry, autoplay, from_black):
 		_leaving = false
+		if _fade_tween != null and _fade_tween.is_valid():
+			_fade_tween.kill()
+		if _fade != null:
+			_fade.queue_free()
+			_fade = null
 		_show_toast(App.toast)
 		App.toast = ""
 		_preview.select(entry)

@@ -1,8 +1,5 @@
 extends RefCounted
 ## 测试用的合成谱面：只在 tests/ 里用，不写盘、不进 charts。
-##
-## 不是给玩家玩的谱面，只是为了让「游玩 / 判定 / 渲染」能在没有真实谱面的情况下被验证。
-## 覆盖 tap / hold，带几条轨道事件（位移 / 旋转 / 透明度 / 流速）。
 
 const BAR := 1.6
 const START := 1.2
@@ -60,7 +57,6 @@ static func raw() -> Dictionary:
 						{"start": 13.0, "end": 14.0, "ease": "inOutCubic", "from": 50, "to": 100},
 					],
 					# zone 事件：6.2~9.2 秒这条轨道临时改成左判定区
-					# （自动演示必须按「当前生效的判定区」按键，用静态值会漏打）
 					"zone": [
 						{"start": 6.0, "end": 6.2, "ease": "linear", "from": 2, "to": 1},
 						{"start": 9.0, "end": 9.2, "ease": "linear", "from": 1, "to": 2},

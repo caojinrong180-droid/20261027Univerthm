@@ -2,10 +2,6 @@ shader_type canvas_item;
 render_mode unshaded;
 
 // 暂停界面的亚克力板：把下层画面磨砂、去饱和、压暗，再叠上磨砂颗粒与板边受光，
-// 三个动作图标就浮在一块冷紫色雾面板上，而不是按在纯黑遮罩上。
-//
-// 用法：ColorRect 铺满全屏 + 这个材质；前面必须放一个 BackBufferCopy（COPY_MODE_VIEWPORT），
-// GL Compatibility 里没有它 screen_tex 采不到已经画好的谱面场。
 
 uniform sampler2D screen_tex : hint_screen_texture, repeat_disable, filter_linear;
 
@@ -27,7 +23,6 @@ vec3 frost_tap(vec2 uv) {
 }
 
 // 3×3 高斯；用三档步长各采一次再混合，凑出接近大半径的模糊
-// （屏幕纹理在兼容渲染器里没有 mipmap 可查）。
 vec3 frost_blur(vec2 uv, vec2 step_px) {
 	vec3 c = frost_tap(uv) * 0.25;
 	c += (frost_tap(uv + vec2(step_px.x, 0.0)) + frost_tap(uv - vec2(step_px.x, 0.0))

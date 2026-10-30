@@ -1,6 +1,5 @@
 extends SceneTree
 ## godot --headless --path game --script res://tests/ambient_glitch.gd
-## 原生渲染可追加 -- --capture-dir <已忽略的草稿目录>。
 
 const Synthetic = preload("res://tests/fixtures/synthetic_chart.gd")
 var passed := 0

@@ -1,8 +1,6 @@
 class_name UiKit
 extends RefCounted
 ## 一堆建控件的小函数，界面代码能短一点。
-## 界面都是代码搭的（这样换皮只要改 Palette / UiTheme / 这里），
-## 想改成编辑器场景也可以照这些结构手工摆。
 
 const PAD := 18
 
@@ -111,7 +109,6 @@ static func rule(color := Palette.LINE_SOFT) -> PanelContainer:
 
 
 ## 「名 值 ◀ ▶」一行，用在设置界面。
-## 返回 { "row": HBoxContainer, "value": Label }，value 里的文字由调用方刷新。
 static func stepper(row_label: String, on_step: Callable, min_width := 210) -> Dictionary:
 	var h := hbox(8)
 	var name_label := label(row_label, 14, Palette.DIM)

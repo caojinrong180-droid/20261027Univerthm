@@ -1,8 +1,5 @@
 extends Node
 ## 截图脚本：把几个界面渲染成 png，放在 res://tests/_shots/（已在 .gitignore 里）。
-## 需要窗口（不能 --headless）：
-##   godot --path game res://tests/shot.tscn
-## 用 tests/fixtures/synthetic_chart.gd 的合成谱面当背景，不依赖任何实际谱面。
 
 const OUT_DIR := "res://tests/_shots"
 const SyntheticChart = preload("res://tests/fixtures/synthetic_chart.gd")
@@ -61,6 +58,9 @@ func _shot_splash() -> void:
 
 
 func _shot_menu() -> void:
+	# 截图时别让新手教程挡住主界面（只改内存里的标记，不写盘）
+	var keep_tutorial: bool = App.settings.tutorial_seen
+	App.settings.tutorial_seen = true
 	var menu = load("res://scenes/main_menu.tscn").instantiate()
 	get_tree().root.add_child(menu)
 	await menu.glow_revealed
@@ -68,6 +68,7 @@ func _shot_menu() -> void:
 	await _capture("00b_main_menu")
 	menu.queue_free()
 	await _wait_frames(2)
+	App.settings.tutorial_seen = keep_tutorial
 
 
 func _shot_collection() -> void:

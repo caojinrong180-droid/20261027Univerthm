@@ -1,18 +1,6 @@
 extends RefCounted
 class_name StoryboardSource
 ## 读故事板工程（rstory v2），给游戏侧提供「某一时刻该画什么、叠哪些后处理」。
-##
-## 工程结构（web/js/sb_core.js 的 serializeDoc 输出）：
-##   { format: "rstory", version: 2,
-##     meta: { title, author, note, coverArtist },
-##     stage: { width, height, bg, chartAlpha, highway, length, volume, chartBase },
-##     scenes: [ { id, kind: "unlock"|"chart"|"free", name, length,
-##                 layers: [ { id, type: "text"|"image"|"video"|"shape"|"unlock", ... } ],
-##                 shaders: [ { id, preset, start, end, amount, ramp, ease } ] } ] }
-## 场景里的时间都是**场景内本地时间**；谱面场长度跟随谱面（chart.duration）。
-##
-## 这里的语义和网页版一一对应（sb_core 的 sceneSpans / sceneAt / activeShaders）：
-##   场景区间 = 前面所有场景长度累加；谱面场长度 = 谱面时长。
 
 const SHADER_PRESETS := {
 	"bloom": {"bloom": 1.0, "grain": 0.08},
@@ -276,7 +264,6 @@ static func shader_value(fx: Dictionary, t: float) -> float:
 
 
 ## 把这一刻所有生效层的权重合并成一次 uniform（游戏里只有一个 shader 材质，
-## 逐层 pass 用不上时作为兜底：叠起来、同一项相加、封顶 1.5）
 static func merged_weights(layers: Array) -> Dictionary:
 	var w := {}
 	for key in WEIGHT_KEYS:

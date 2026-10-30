@@ -1,7 +1,5 @@
 extends Node
 ## 设置页「辅助测量」浮窗自检：开合 / 节拍器 / 打点 / 取平均 / 写进音画偏移。
-## 跑法：godot --headless --path game res://tests/calibration_check.tscn
-## 跑完会把玩家原来的音画偏移写回去。
 
 var _failures := 0
 

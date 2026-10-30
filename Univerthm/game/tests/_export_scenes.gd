@@ -1,7 +1,5 @@
 extends Node
 ## 一次性工具：把「代码搭出来的界面」打包成 .tscn（可以在编辑器里直接改）。
-## 用法：godot --path game res://tests/_export_scenes.tscn
-## 每个界面脚本里实现 _export_prepare()：删掉动态生成的东西、把关键节点改成有意义的名字。
 
 const SCREENS := [
 	"res://scenes/profile.tscn",

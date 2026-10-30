@@ -1,10 +1,5 @@
 extends Control
 ## 游玩场景：倒计时 → 播放 → 判定 → 暂停 / 结算。
-##
-## 时间来源（docs/GAME_INTEGRATION.md 第 4 节）：
-##   谱面时间 = 音频时间 - audio.offset - 玩家偏移
-## 音频时间用 get_playback_position() + 混音延迟 - 输出延迟算，再用帧时间做平滑。
-## 没有音频（例如拖进来一个只有 json 的谱面）时退化成用 delta 累加。
 
 enum State { COUNTDOWN, PLAYING, PAUSED, DONE, UNLOCK }
 
@@ -13,6 +8,9 @@ signal state_changed
 const LEAD_IN := 2.0
 const HIT_SOUND_PATH := "res://audio/hit.wav"
 const PauseActions = preload("res://src/ui/pause_actions.gd")
+## 从选曲页「变黑」接过来时：先压住全黑这么久，再淡出去（露出解锁动画 / 舞台）
+const FROM_BLACK_HOLD := 0.45
+const FROM_BLACK_FADE := 0.75
 
 @onready var stage: StageView = $Stage
 @onready var post: StagePost = $Post
@@ -24,6 +22,9 @@ var _unlock: UnlockFrames = null
 var _unlock_data: Dictionary = {}
 var _chart_scene: Dictionary = {}
 var _post_stack: Array = []
+## 这一趟是不是「神秘曲的第一次踏入」：是的话 Esc 不暂停、不退出
+## （中途强关游戏 = 没踏进去过，下次还要重新过红色警告，见 App.commit_entry）
+var _first_entry := false
 
 var chart: Dictionary = {}
 var settings: AppSettings
@@ -80,6 +81,7 @@ func _ready() -> void:
 		return
 
 	autoplay = App.autoplay_enabled()
+	_first_entry = App.needs_first_entry(_entry_key())
 
 	judge = RhythmJudge.new()
 	judge.setup(chart, settings.judge_window_scale)
@@ -122,6 +124,9 @@ func _ready() -> void:
 	chart_time = _countdown_from
 	stage.chart_time = chart_time
 	state = State.UNLOCK if _unlock != null else State.COUNTDOWN
+	# 选曲页那边已经黑透了：这一侧也从黑里淡出来，接上解锁动画
+	if bool(App.session.get("from_black", false)):
+		_reveal_from_black()
 
 
 func _process(delta: float) -> void:
@@ -208,10 +213,9 @@ func _on_audio_finished() -> void:
 # --------------------------------------------------------------------------- #
 
 func _unhandled_input(event: InputEvent) -> void:
-	# 解锁动画期间：任意键（含 Escape）都跳过，不进暂停菜单
+	# 解锁动画期间：整段必须看完。任意键 / 点击都只被吃掉，既不跳过也不进暂停菜单
 	if state == State.UNLOCK:
 		if (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed):
-			skip_unlock()
 			get_viewport().set_input_as_handled()
 		return
 
@@ -226,6 +230,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if not key_event.pressed:
 		_on_key_up(code)
+		return
+
+	# 神秘曲的第一次踏入：Esc 既不暂停也不回选曲，这一趟只能打完
+	# （真要把游戏关掉也行，但下次打开会回到踏入之前，等于没走过这一步）
+	if _first_entry and code == KEY_ESCAPE:
 		return
 
 	match state:
@@ -335,6 +344,9 @@ func _autoplay_step(t: float) -> void:
 func _pause() -> void:
 	if state != State.PLAYING:
 		return
+	# 神秘曲第一次踏入：这一趟不给暂停（Esc 也已经被 _unhandled_input 吃掉）
+	if _first_entry:
+		return
 	state = State.PAUSED
 	if has_audio:
 		player.stream_paused = true
@@ -389,6 +401,9 @@ func _finish() -> void:
 	debug_run_result = result
 	if not autoplay:
 		App.record_result(result)          # 个人资料里的游玩次数 / 最高分
+		# 这一趟打完了，神秘曲的「第一次踏入」才算真的踏进去（中途强关游戏走不到这里）
+		if not debug_mode:
+			App.commit_entry(_entry_key())
 	if debug_mode:
 		return
 	get_tree().change_scene_to_file("res://scenes/results.tscn")
@@ -491,6 +506,14 @@ func _update_story_post() -> void:
 # 解锁动画（谱面包里导入的视频 -> 烘焙成帧序列）
 # --------------------------------------------------------------------------- #
 
+## 这一趟玩的是哪首（谱面 key）。解锁动画 / 神秘曲第一次踏入都按它认人。
+func _entry_key() -> String:
+	var entry = App.session.get("entry", {})
+	if typeof(entry) != TYPE_DICTIONARY:
+		return ""
+	return str(entry.get("key", ""))
+
+
 func _build_unlock() -> void:
 	# 测试 / 截图 / 无头模式不播，避免每帧推进都要多等 20 秒
 	if debug_mode or DisplayServer.get_name() == "headless":
@@ -498,9 +521,10 @@ func _build_unlock() -> void:
 	var entry = App.session.get("entry", {})
 	if typeof(entry) != TYPE_DICTIONARY or entry.is_empty():
 		return
-	# 解锁动画每首谱面只演一次：演过（含中途跳过）就直接进倒计时，不占第二次的进谱时间
+	# 解锁动画每首谱面只演一次（演过就直接进倒计时，不占第二次的进谱时间）；
+	# 神秘曲的第一次踏入以「正式踏入」为准，规则在 App.should_play_unlock() 里
 	var key := str(entry.get("key", ""))
-	if App.has_seen_unlock(key):
+	if not App.should_play_unlock(key):
 		return
 	var data := ChartSource.load_unlock(entry)
 	if not bool(data.get("ok", false)):
@@ -514,8 +538,40 @@ func _build_unlock() -> void:
 	add_child(_unlock)
 	move_child(_unlock, stage.get_index() + 1)      # 盖在舞台上方、后处理下方
 	_unlock.finished.connect(_finish_unlock)
-	App.mark_unlock_seen(key)                       # 一开场就记下：跳过 / 中途退出也算看过
+	# 一般曲子一开场就记下（跳过 / 中途退出也算看过）；
+	# 神秘曲第一次踏入这趟不记，等结算时由 App.commit_entry() 和「踏入」一起落盘
+	if App.should_mark_unlock_seen(key):
+		App.mark_unlock_seen(key)
+	# 从选曲页黑过来的：先别播，等黑幕淡出时再起（见 _reveal_from_black）
+	if bool(App.session.get("from_black", false)):
+		return
 	_unlock.start()
+
+
+## 选曲页「是」→ 慢慢变黑 → 切到这里：先全黑压一下，再淡出去，
+## 让黑幕和解锁动画接成一段（没有解锁动画时就淡出到倒计时 / 舞台）。
+func _reveal_from_black() -> void:
+	if debug_mode:
+		return
+	var cover := ColorRect.new()
+	cover.name = "FromBlack"
+	cover.color = Color(0, 0, 0, 1)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cover)                                # 最后加 = 盖在所有东西上面
+	var tween := create_tween()
+	tween.tween_interval(FROM_BLACK_HOLD)
+	# 黑透了才让解锁动画动起来：开头那几帧不会被糊在淡出里
+	tween.tween_callback(_start_unlock_after_black)
+	tween.tween_property(cover, "color:a", 0.0, FROM_BLACK_FADE) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.finished.connect(cover.queue_free)
+
+
+## 黑幕开始淡出时起播解锁动画（调试里可能已经被 skip_unlock() 拆掉，所以先判有效性）
+func _start_unlock_after_black() -> void:
+	if _unlock != null and is_instance_valid(_unlock):
+		_unlock.start()
 
 
 func _finish_unlock() -> void:
@@ -528,7 +584,8 @@ func _finish_unlock() -> void:
 	stage.chart_time = chart_time
 
 
-## 任意键 / 点击跳过解锁动画
+## 调试 / 测试用：跳过解锁动画。
+## 正常游玩**不再**从这里跳过——`_unhandled_input` 只把按键吃掉，片子必须整段看完。
 func skip_unlock() -> void:
 	if state != State.UNLOCK:
 		return

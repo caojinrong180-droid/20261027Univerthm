@@ -1,11 +1,6 @@
 extends Control
 class_name UnlockFrames
 ## 解锁动画 = 谱面包里导入的那个视频（由 tools/bake_unlock.ps1 烘焙成帧序列）。
-##
-## 为什么是帧：本机 ffmpeg 的 libtheora 编码是坏的，产不出能播的 ogv；
-## 烘焙成 unlock_frames/*.jpg + unlock_audio.ogg 后 Godot 只翻帧 + 放音频，不依赖视频解码。
-##
-## 帧字节一次性读进内存（约 8MB），纹理按需解码：只有当前帧（+ 下一帧预取）占用显存。
 
 signal finished
 

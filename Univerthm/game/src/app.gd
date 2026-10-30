@@ -1,7 +1,5 @@
 extends Node
 ## 全局单例（autoload 名 = App）：设置 / 谱面库 / 当前游玩会话 / 结算数据。
-##
-## 屏幕之间只通过这个单例传数据，不互相引用。
 
 const WARNING_SCENE := "res://scenes/warning.tscn"
 const SPLASH_SCENE := "res://scenes/splash.tscn"
@@ -41,24 +39,27 @@ var toast := ""
 var _settings_return := "res://scenes/song_select.tscn"
 
 ## 玩家档案统计（user://profile.cfg）：游玩次数 / 平均分 / 平均准确率 / 最高分
-## score_total + acc_total 是累计量，平均数 = 累计 / 游玩次数；自动演示不计入。
 const STATS_PATH := "user://profile.cfg"
 var stats := {
 	"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0,
 	"score_total": 0.0, "acc_total": 0.0,
 }
 ## 通关过的谱面 key（自动演示不计入）。选曲列表按顺序解锁：第 1 首永远能玩，
-## 后面每首要先把前一首通关。
 var cleared: Array[String] = []
 ## 已经演过解锁动画的谱面 key：解锁动画每首只演一次，再进同一首直接进倒计时。
 var unlock_seen: Array[String] = []
+## 已经「正式踏入」过的谱面 key。目前只有神秘曲（第 3 首）的第一次踏入会在意它：
+## 通关结算时才落盘，所以第一次踏入途中强制关游戏 = 没踏入过，下次还要重新过红色警告。
+var entered: Array[String] = []
+## 「神秘曲」在列表里的第几首（0 开始，2 = 第 3 首）：第一次踏入要红色确认 + 当次禁用 Esc。
+const FIRST_ENTRY_INDEX := 2
 ## 每首曲子的最好成绩：谱面 key → { "score": int, "acc": float }（自动演示不计入）。
-## 选曲页详情里显示的那个 BEST。
 var best_records := {}
 
 
 func _ready() -> void:
 	settings = AppSettings.load_settings()
+	apply_fullscreen()
 	load_stats()
 	refresh_library()
 	menu_music = MenuMusic.new()
@@ -98,12 +99,26 @@ func _sync_menu_music_for_scene(path: String) -> void:
 			menu_music.fade_out()
 
 
-## F11：全屏 / 窗口切换（全屏就是按屏幕原生分辨率渲染，最清晰）
+## F11：全屏 / 窗口切换（全屏就是按屏幕原生分辨率渲染，最清晰）。
+## 和设置页的「全屏」开关是同一个值，会存进 settings.cfg。
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		var win := get_window()
-		win.mode = Window.MODE_WINDOWED if win.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		set_fullscreen(settings == null or not settings.fullscreen)
 		get_viewport().set_input_as_handled()
+
+
+## 把当前设置里的全屏开关应用到窗口（启动时和每次切换都调它）
+func apply_fullscreen() -> void:
+	var want := settings != null and settings.fullscreen
+	get_window().mode = Window.MODE_FULLSCREEN if want else Window.MODE_WINDOWED
+
+
+## 全屏开关：存设置 + 立刻应用
+func set_fullscreen(on: bool) -> void:
+	if settings != null:
+		settings.fullscreen = on
+		settings.save()
+	apply_fullscreen()
 
 
 func refresh_library() -> void:
@@ -123,7 +138,9 @@ func autoplay_unlocked() -> bool:
 # 场景切换
 # --------------------------------------------------------------------------- #
 
-func play_entry(entry: Dictionary, autoplay := false) -> bool:
+## from_black：进谱面时屏幕已经是全黑的（选曲页先慢慢压黑再切场景），
+## 谱面这一侧就从黑里淡出来，把「变黑 → 解锁动画」接成一段。
+func play_entry(entry: Dictionary, autoplay := false, from_black := false) -> bool:
 	toast = ""
 	var loaded := ChartSource.load_entry(entry)
 	if loaded["chart"] == null:
@@ -138,6 +155,7 @@ func play_entry(entry: Dictionary, autoplay := false) -> bool:
 		"unlock_video": loaded.get("unlock_video", {}),
 		"warnings": loaded["warnings"],
 		"errors": loaded["errors"],
+		"from_black": from_black,
 	}
 	autoplay_once = autoplay
 	get_tree().change_scene_to_file(GAMEPLAY_SCENE)
@@ -186,6 +204,22 @@ func best_record(key: String) -> Dictionary:
 	return found if found is Dictionary else {}
 
 
+## 删除游玩记录：次数 / 平均分 / 最好成绩 / 通关列表 / 每首最好成绩 / 解锁动画记录 /
+## 神秘曲的「已踏入」记录 / 已搜集剧情。
+## 设置（音量、偏移、名字、看板娘、调试开关）和个人信息都不动，曲目会重新上锁。
+func reset_progress() -> void:
+	stats = {
+		"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0,
+		"score_total": 0.0, "acc_total": 0.0,
+	}
+	cleared.clear()
+	unlock_seen.clear()
+	entered.clear()
+	best_records.clear()
+	save_stats()
+	StorySource.clear_unlocks()
+
+
 ## 平均分；还没有任何一局（或老存档没累计值）时返回 -1，界面显示「—」
 func average_score() -> float:
 	var plays := int(stats.get("plays", 0))
@@ -228,9 +262,57 @@ func forget_unlock_seen() -> void:
 	save_stats()
 
 
+## 「神秘曲」在列表里的 key；库不够长就返回空串（没有这回事）
+func first_entry_key() -> String:
+	if FIRST_ENTRY_INDEX < 0 or FIRST_ENTRY_INDEX >= library.size():
+		return ""
+	return str(library[FIRST_ENTRY_INDEX].get("key", ""))
+
+
+## 这一首踏进去过没有（见 entered）
+func has_entered(key: String) -> bool:
+	return key != "" and entered.has(key)
+
+
+## 这一次进谱面是不是「神秘曲的第一次踏入」：
+## 选曲页要弹红色警告（踏出这一步就不能反悔），谱面里当次不许按 Esc 暂停 / 退出。
+func needs_first_entry(key: String) -> bool:
+	var gated := first_entry_key()
+	return gated != "" and key == gated and not entered.has(key)
+
+
+## 正式踏入：通关结算时调。没打完就关游戏的局不会走到这里，所以下次还是「第一次」。
+## 解锁动画的「演过了」也在这里一起记：对神秘曲来说，那一趟演出的记号和「踏入」是同一件事。
+func commit_entry(key: String) -> void:
+	if key == "":
+		return
+	var changed := false
+	if not entered.has(key):
+		entered.append(key)
+		changed = true
+	if not unlock_seen.has(key):
+		unlock_seen.append(key)
+		changed = true
+	if changed:
+		save_stats()
+
+
+## 这一趟要不要演解锁动画：每首只演一次。神秘曲的第一次踏入例外——那一趟以「正式踏入」为准，
+## 所以还在「第一次」的时候（哪怕之前演过、后来强关游戏了）都还能再看一遍。
+func should_play_unlock(key: String) -> bool:
+	if key == "":
+		return false
+	if needs_first_entry(key):
+		return true
+	return not unlock_seen.has(key)
+
+
+## 演的时候要不要当场记账：神秘曲第一次踏入那一趟不记，等结算时由 commit_entry() 一起写。
+func should_mark_unlock_seen(key: String) -> bool:
+	return key != "" and not needs_first_entry(key)
+
+
 ## 通关掉落：列表里第 N 首谱面掉第 N 篇剧情（按文件名自然排序），每篇只掉一次。
-## 返回 {} = 这次没有新掉落；否则 { file, title, number }，结算界面据此显示提示。
-## 只记「在谱面库里的第几首」——玩家按顺序解锁着往下打，正好一篇对应一首。
 func grant_story_drop(result: Dictionary) -> Dictionary:
 	var entry = result.get("entry", {})
 	if not (entry is Dictionary):
@@ -260,7 +342,6 @@ func grant_story_drop(result: Dictionary) -> Dictionary:
 
 
 ## 选曲列表里第 index 首能不能玩：
-## 第 1 首永远能玩，后面每首要前一首先通关；设置里开了「全部解锁」就都放行。
 func is_chart_unlocked(index: int) -> bool:
 	if settings != null and settings.unlock_all:
 		return true
@@ -281,7 +362,6 @@ func load_stats() -> void:
 	stats["best_title"] = str(cf.get_value("stats", "best_title", ""))
 	stats["best_acc"] = float(cf.get_value("stats", "best_acc", 0.0))
 	# 老存档没有累计量：按「每局都等于最高分」补齐，免得平均数一读出来就是 0
-	# （之后的游玩会正常累加，平均值会慢慢往真实水平收敛）。
 	if cf.has_section_key("stats", "score_total"):
 		stats["score_total"] = float(cf.get_value("stats", "score_total", 0.0))
 		stats["acc_total"] = float(cf.get_value("stats", "acc_total", 0.0))
@@ -298,6 +378,11 @@ func load_stats() -> void:
 		var seen := str(key)
 		if seen != "":
 			unlock_seen.append(seen)
+	entered.clear()
+	for key in cf.get_value("progress", "entered", PackedStringArray()):
+		var went_in := str(key)
+		if went_in != "":
+			entered.append(went_in)
 	best_records.clear()
 	var records = cf.get_value("progress", "best", {})
 	if records is Dictionary:
@@ -320,6 +405,7 @@ func save_stats() -> void:
 	cf.set_value("stats", "acc_total", float(stats.get("acc_total", 0.0)))
 	cf.set_value("progress", "cleared", PackedStringArray(cleared))
 	cf.set_value("progress", "unlock_seen", PackedStringArray(unlock_seen))
+	cf.set_value("progress", "entered", PackedStringArray(entered))
 	cf.set_value("progress", "best", best_records)
 	cf.save(STATS_PATH)
 

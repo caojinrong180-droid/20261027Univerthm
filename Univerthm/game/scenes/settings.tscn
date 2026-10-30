@@ -1098,7 +1098,6 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "自动保存 · user://settings.cfg"
 
 [node name="ContentPanel" type="PanelContainer" parent="." unique_id=1402459217]
 layout_mode = 0
@@ -1155,17 +1154,6 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_d63bh")
-
-[node name="Control20" type="Control" parent="ContentPanel/VBoxContainer13/VBoxContainer22" unique_id=1259955952]
-custom_minimum_size = Vector2(5, 5)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Label21" type="Label" parent="ContentPanel/VBoxContainer13/VBoxContainer22" unique_id=1908633487]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_font_sizes/font_size = 14
-text = "改动立即生效并自动保存。游戏中按 Esc 可暂停。"
 
 [node name="Control23" type="Control" parent="ContentPanel/VBoxContainer13" unique_id=479389802]
 custom_minimum_size = Vector2(7, 7)

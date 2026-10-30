@@ -1,25 +1,6 @@
+## 1:1 复刻网页版制谱器的「预渲染窗口」（web/js/editor.js → drawPreview 那一套）。
 class_name StageView
 extends Control
-## 1:1 复刻网页版制谱器的「预渲染窗口」（web/js/editor.js → drawPreview 那一套）。
-##
-## 逻辑舞台 **350 × 196.875（16:9）**，正好铺满 16:9 窗口：
-##   judgeY = round(H*0.85) = 167
-##   laneWidth = min(W*0.05, W*0.43/N) * PV_SCALE(1.75) = 30.6（4 轨）
-##   halfW = 14.81，音符半宽 13.81，音符半厚 NOTE_TH = 2.0，判定线 = 底部实心加粗横条（halfW×0.36）
-## 谱面里的 x / y 像素值就是按这套逻辑尺寸定的，所以这里只在逻辑坐标里画，
-## 最后整体等比缩放到窗口：
-##   scale  = min(size.x / 350, size.y / 196.875)
-##   origin = 居中（+ 画面垂直偏移）
-##
-## 逐函数对照 editor.js：
-##   drawPreview()      → _draw()
-##   drawLaneBody()     → _draw_lane_body()
-##   drawPreviewNotes() → _draw_notes()
-##   drawLaneJudge()    → _draw_lane_judge()
-##   laneGeom / noteQuad / bandQuad → _lane_geom / _lane_shape / _band_quad（音符和轨道都带圆角）
-## 颜色、透明度、线宽、绘制顺序、剔除规则都照抄；预渲染窗口里没有的东西
-## （曲绘背景、渐变、键位字、打击特效）不在舞台本体里，特效单独画在屏幕坐标上，
-## 当作「游戏反馈」，设置里可以关。
 
 const STAGE_W := 350.0
 const STAGE_H := 350.0 * 9.0 / 16.0   # 16:9 舞台：350 × 196.875
@@ -46,8 +27,6 @@ const CHORD_EPS := 0.02
 ## 多押外圈发光色（Phigros 那种偏冷的蓝）
 const CHORD_GLOW := Color("#57c8ff")
 ## 多押蓝光：往外扩多少（舞台单位）+ 叠几层。
-## 是「横向和厚度方向一起均匀加宽」的实心柔光，音符本体只有 2*NOTE_TH = 4 单位厚，
-## 所以别调大：>3.5 就会糊成一坨胖蓝块；<1.5 又细得只剩一道描边。
 const CHORD_GLOW_SPREAD := 2.0
 const CHORD_GLOW_LAYERS := 5
 
@@ -110,17 +89,12 @@ func setup(chart_: Dictionary, judge_: RhythmJudge, settings_: AppSettings, cove
 
 	_mark_chords()
 
-	# 一行版本标记：换构建排查「改了没生效」时看这里
-	print("[StageView] v=2026-10-30d  chord-glow=soft spread=%.2f layers=%d  note-th=%.1f" % [
-		CHORD_GLOW_SPREAD, CHORD_GLOW_LAYERS, NOTE_TH])
-
 	if judge != null:
 		judge.note_judged.connect(_on_note_judged)
 		judge.hold_completed.connect(_on_hold_completed)
 
 
 ## 标出「多押」：同一时刻（±CHORD_EPS）有两个以上可判定音符时，给它们挂上 chord 数量，
-## 画的时候外圈镀一层蓝光（类似 Phigros 的多指提示）。地雷不算。
 func _mark_chords() -> void:
 	var notes: Array = chart.get("notes", [])
 	var i := 0
@@ -153,7 +127,6 @@ func stage_scale() -> float:
 
 
 ## 4:3 舞台在窗口里的矩形（居中，左右或上下留黑边；位置取整避免半像素发虚）
-## settings.stage_offset_px 可以整体上下微调（默认 0，和预渲染严格对齐）
 func stage_rect() -> Rect2:
 	var scale := stage_scale()
 	var stage_size := Vector2(STAGE_W, STAGE_H) * scale
@@ -335,9 +308,6 @@ func _lane_local_point(info: Dictionary, d: float, x: float, y: float) -> Vector
 
 
 ## 长条身体：靠尾那一端圆角 + 渐变透明，靠头那一端默认直角（和头无缝接上）
-## `r_head > 0` 时靠头那端也圆角——用在「头已经贴到判定线」的时候：
-## 此时头被判定线裁掉一半、快看不见了，身体自己带个圆角帽，就不会留下一个方缺口。
-## （纯粹是画法，判定、计分都不受影响）
 func _draw_hold_body(info: Dictionary, d0: float, d1: float, half: float, r_tail: float,
 		r_head: float, col: Color, alpha_mul: float, fade_scale := 1.0) -> void:
 	var h := maxf(0.0, d1 - d0)
@@ -394,8 +364,6 @@ func _draw_hold_body(info: Dictionary, d0: float, d1: float, half: float, r_tail
 	pts.append(_lane_local_point(info, d0 + rh, -half, 0.0))
 	dist.append(d0 + rh)
 	# 尾端一段慢慢透明掉：头部保持实心，尾巴渐隐
-	# （已经判 Miss / 断掉的 hold 是压暗后再画的，渐变缩一半，免得整条都看不见）
-	# 不能是 0：0 会让下面的除法出 NaN，整条直接画不出来
 	var fade := maxf(0.001, clampf(h * 0.45, 5.0, 34.0) * (1.0 if alpha_mul >= 0.99 else 0.45) * fade_scale)
 	var cols := PackedColorArray()
 	for i in pts.size():
@@ -420,7 +388,6 @@ func _draw_lane_body(info: Dictionary) -> void:
 
 
 ## drawLaneJudge()
-## 判定线 = 底部一条加粗的横线（粗细跟着轨道宽度走，12 轨也不会变成一堵墙）
 func _draw_lane_judge(index: int, info: Dictionary) -> void:
 	var alpha := float(info["alpha"])
 	if alpha <= 0.001:
@@ -465,7 +432,6 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 	var pps := base_pps * speed_now
 	var visible_px := lane_len + 40.0
 	# 流速 0：位置不再表示时间，音符只能钉在判定线上 → 用「这条轨道本来该有的可视时长」当提前量，
-	# 既不会把很远的音符提前堆上来，也不会晚到打中了才出现。见 RhythmChart.zero_speed_lookahead()。
 	var lookahead := RhythmChart.zero_speed_lookahead(lane, chart_time, visible_px, base_pps)
 
 	var max_time := INF
@@ -515,7 +481,6 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 			dur = maxf(0.0, float(note.get("duration", 0.0)))
 		var is_hold := dur > 0.001
 		# 流速 0：位置不再表示时间，音符只能钉在判定线上 —— 超出「本来该有的可视时长」的远未来音符不画
-		# （不然 30 秒后的音符会提前堆在判定线上，看着就是一坨「凭空多出来的音符」）。
 		if not RhythmChart.note_visible_at(speed_now, ntime, chart_time, lookahead):
 			continue
 		# 未来长条不画身体：head 恒为 0 时也不许从判定线往上长出一截。
@@ -545,7 +510,6 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 			var d1 := minf(tail, lane_len)
 			if d1 > d0:
 				# 尾巴被轨道长度截断时：不渐变、不圆角，直接是一截被轨道切开的实心条
-				# （否则渐变会把最后一大段吃掉，看起来像长条自己「消失」了）
 				var cut := tail > lane_len + 0.01
 				# 头贴到判定线后，头会被裁掉一半、几乎看不见；这时让身体自己带圆角帽
 				var head_cap := NOTE_RADIUS if head <= 0.01 else 0.0
@@ -553,7 +517,6 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 					head_cap, tint, alpha_mul, 0.0 if cut else 1.0)
 
 		# 音符头不许越过判定线：贴线时把整块往上抬，而不是把下半截压扁。
-		# （以前是裁掉下半截 → 0 速轨道上钉在判定线上的音符只剩一半厚，看起来像「note 变细了」）
 		var head_bottom := maxf(0.0, head_d - NOTE_TH)
 		var head_top := head_bottom + NOTE_TH * 2.0
 		var head_h := head_top - head_bottom
@@ -564,7 +527,6 @@ func _draw_notes(lane_index: int, info: Dictionary, base_pps: float, note_half_w
 
 
 ## 多押提示：音符外圈一层**柔和的实心蓝光**（由外到内叠几层低透明度圆角块，没有硬描边）。
-## 薄厚由顶部两个常量控制：CHORD_GLOW_SPREAD（外扩多少）+ CHORD_GLOW_LAYERS（叠几层）。
 func _draw_chord_glow(info: Dictionary, d: float, half_w: float) -> void:
 	var pulse := 0.9 + 0.1 * sin(chart_time * 7.0)
 	for i in CHORD_GLOW_LAYERS:
@@ -732,7 +694,6 @@ func _draw_fixed_digits(text: String, right_x: float, baseline: float,
 
 
 ## 命中特效的「锚点」：在**触发那一刻**把这条轨道在屏幕上的位置/朝向/半宽拍下来。
-## 特效之后就一直画在这个点上，不跟着轨道动 —— 轨道瞬移（x/y 事件跳变）时不会把特效拽走。
 func _lane_fx_anchor(lane_index: int) -> Dictionary:
 	var judge_y := roundf(STAGE_H * 0.85)
 	var count := maxi(1, _lane_count)

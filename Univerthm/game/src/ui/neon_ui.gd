@@ -155,7 +155,7 @@ static func content(root: Control) -> NeonPanel:
 	return p
 
 
-static func heading(title: String, english: String, subtitle: String) -> Control:
+static func heading(title: String, english: String, subtitle := "") -> Control:
 	var box := UiKit.vbox(0)
 	var row := UiKit.hbox(14)
 	box.add_child(row)
@@ -167,8 +167,10 @@ static func heading(title: String, english: String, subtitle: String) -> Control
 	row.add_child(en)
 	var line := UiKit.rule(Color("8342cf"))
 	box.add_child(line)
-	box.add_child(UiKit.gap(5))
-	box.add_child(label(subtitle, 14, MUTED))
+	# subtitle 留空就不占位（设置页现在不要那行说明了）
+	if subtitle != "":
+		box.add_child(UiKit.gap(5))
+		box.add_child(label(subtitle, 14, MUTED))
 	return box
 
 
