@@ -1,11 +1,11 @@
 class_name UiSound
 extends Node
-## 主菜单的界面音效：**按下按钮** → `click.wav`（悬停不发声）。
+## 主菜单的界面音效：按下按钮时播放 Codex 的提醒音（悬停不发声）。
 
 const CLICK_SOUND := "res://audio/click.wav"
 
 ## 音量（dB），想调大小改这里就行
-@export var click_volume_db := -9.0
+@export var click_volume_db := 0.0
 
 var _click: AudioStreamPlayer
 

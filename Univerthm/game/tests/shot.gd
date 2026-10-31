@@ -48,7 +48,7 @@ func _shot_warning() -> void:
 func _shot_splash() -> void:
 	var splash = load("res://scenes/splash.tscn").instantiate()
 	get_tree().root.add_child(splash)
-	# 等入场动画跑完：淡入 0.5 秒 + 提示文字延迟 0.75 秒 + 淡入 0.35 秒
+	# 等整屏 UI 淡入完成。
 	await get_tree().create_timer(1.8).timeout
 	splash._done = true       # 截图期间别跳去主界面
 	await _wait_frames(2)

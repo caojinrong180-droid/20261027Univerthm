@@ -2,6 +2,8 @@ extends Control
 ## 收藏品图鉴：真实资源计数、分类与全屏预览。
 
 const BANNERS_DIR := "res://assets/banners"
+const AUTHOR_NOTE_ROOT := "res://文档"
+const AUTHOR_NOTE_PATH := "res://文档/作者的话.txt"
 const FILTERS := ["all", "banner", "cover", "story"]
 const TAB_LABELS := {"all": "全部", "banner": "角色立绘", "cover": "曲绘", "story": "剧情"}
 const TOAST_COLOR := Color("bdf49c")
@@ -9,6 +11,8 @@ const STORY_BODY := Color("ded7ef")
 const Neon = preload("res://src/ui/neon_ui.gd")
 
 var _cards: Array = []
+var _author_note: Dictionary = {}
+var _story_catalog: Array = []
 var _stories: Array = []
 var _filter := "all"
 var _reading_story := false
@@ -136,42 +140,49 @@ func _refresh_counts() -> void:
 		if card.kind == "banner":
 			banners += 1
 	var covers := _cards.size() - banners
-	_find("CountLabel").text = "%02d 件收藏 · %02d 篇剧情" % [_cards.size(), _stories.size()]
-	_find("Tab_all").text = "全部  %02d" % (_cards.size() + _stories.size())
+	var document_count := 0 if _author_note.is_empty() else 1
+	var total := _cards.size() + _stories.size() + document_count
+	_find("CountLabel").text = "%02d 件收藏 · %02d/%02d 篇剧情" % [total, _stories.size(), _story_catalog.size()]
+	_find("Tab_all").text = "全部  %02d" % total
 	_find("Tab_banner").text = "%s  %02d" % [TAB_LABELS["banner"], banners]
 	_find("Tab_cover").text = "%s  %02d" % [TAB_LABELS["cover"], covers]
 	var story_tab := _find("Tab_story") as Button
 	if story_tab != null:
-		story_tab.text = "%s  %02d" % [TAB_LABELS["story"], _stories.size()]
+		story_tab.text = "%s  %02d/%02d" % [TAB_LABELS["story"], _stories.size(), _story_catalog.size()]
 	var story_count := _find("StoryCount") as Label
 	if story_count != null:
-		story_count.text = "%02d 篇" % _stories.size()
-	_find("FooterInfo").text = "COLLECTION  /  %02d ITEMS · %02d STORIES" % [_cards.size(), _stories.size()]
+		story_count.text = "%02d/%02d 篇剧情 · %02d 份文档" % [_stories.size(), _story_catalog.size(), document_count]
+	_find("FooterInfo").text = "COLLECTION  /  %02d ITEMS · %02d/%02d STORIES" % [total, _stories.size(), _story_catalog.size()]
 
 
 func _set_filter(key: String) -> void:
 	_filter = key
 	# 剧情是外部文件：切回这一类就重新扫一遍，刚放进来的 txt 会自己出现。
 	if key == "all" or key == "story":
-		_stories = _unlocked_stories()
+		_scan_stories()
 		_refresh_counts()
 	_fill_cards()
 
 
 func _reload_stories() -> void:
-	_stories = _unlocked_stories()
+	_scan_stories()
 	_refresh_counts()
 	_fill_cards()
 
 
-## 只列已搜集的剧情：没通关对应谱面掉到的那篇，收藏品页不显示。
-func _unlocked_stories() -> Array:
+## 保留完整目录用于显示锁定槽位；全文仍须通关对应谱面才能阅读。
+func _scan_stories() -> void:
 	var owned := StorySource.unlocked_names()
-	var out: Array = []
-	for entry in StorySource.scan():
+	_story_catalog = StorySource.scan()
+	_author_note = {}
+	for entry in StorySource.scan([AUTHOR_NOTE_ROOT]):
+		if str(entry.get("path", "")) == AUTHOR_NOTE_PATH:
+			_author_note = entry
+			break
+	_stories.clear()
+	for entry in _story_catalog:
 		if owned.has(str(entry.get("file", ""))):
-			out.append(entry)
-	return out
+			_stories.append(entry)
 
 
 # --------------------------------------------------------------------------- #
@@ -216,28 +227,37 @@ func _fill_cards() -> void:
 
 func _fill_stories() -> void:
 	_clear_children(_story_rows)
-	# 一篇都还没搜集到时留空，不摆提示文字
-	if _stories.is_empty():
+	if not _author_note.is_empty():
+		_story_rows.add_child(_build_story_row(_author_note, 0, true))
+	if _story_catalog.is_empty():
+		if _author_note.is_empty():
+			_story_rows.add_child(Neon.label("暂无剧情档案", 15, Neon.MUTED))
 		return
-	for i in _stories.size():
-		_story_rows.add_child(_build_story_row(_stories[i], i + 1))
+	var owned := StorySource.unlocked_names()
+	for i in _story_catalog.size():
+		var story: Dictionary = _story_catalog[i]
+		_story_rows.add_child(_build_story_row(story, i + 1, owned.has(str(story.get("file", "")))))
 
 
-func _build_story_row(story: Dictionary, index: int) -> Button:
+func _build_story_row(story: Dictionary, index: int, unlocked: bool) -> Button:
 	var button := Button.new()
-	button.name = "Story_%02d" % index
+	button.name = "AuthorNote" if index == 0 else "Story_%02d" % index
 	button.custom_minimum_size.y = 66
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.focus_mode = Control.FOCUS_ALL
-	button.tooltip_text = "%s · 点击阅读" % str(story.get("title", ""))
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if unlocked else Control.CURSOR_ARROW
+	button.focus_mode = Control.FOCUS_ALL if unlocked else Control.FOCUS_NONE
+	button.disabled = not unlocked
+	button.tooltip_text = ("%s · 点击阅读" % str(story.get("title", ""))) if unlocked else "通关对应曲目后解锁"
 	button.add_theme_stylebox_override("normal",
 		UiTheme.style_box(Color(0.04, 0.025, 0.08, 0.62), 0, 1, Color("4b3568"), Vector4(16, 8, 16, 8)))
 	button.add_theme_stylebox_override("hover",
 		UiTheme.style_box(Color(0.15, 0.065, 0.25, 0.82), 0, 1, Color("a06ce8"), Vector4(16, 8, 16, 8)))
 	button.add_theme_stylebox_override("pressed",
 		UiTheme.style_box(Color(0.21, 0.09, 0.35, 0.9), 0, 1, Color("c79bff"), Vector4(16, 8, 16, 8)))
+	button.add_theme_stylebox_override("disabled",
+		UiTheme.style_box(Color(0.025, 0.02, 0.05, 0.55), 0, 1, Color("352947"), Vector4(16, 8, 16, 8)))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.pressed.connect(_open_story.bind(story))
+	if unlocked:
+		button.pressed.connect(_open_story.bind(story))
 	var content := UiKit.hbox(14)
 	content.name = "RowContent"
 	UiKit.full_rect(content)
@@ -247,7 +267,7 @@ func _build_story_row(story: Dictionary, index: int) -> Button:
 	content.offset_bottom = -10
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(content)
-	var number := Neon.label("%02d" % index, 11, Neon.PURPLE, true)
+	var number := Neon.label("文" if index == 0 else "%02d" % index, 11, Neon.PURPLE, true)
 	number.custom_minimum_size.x = 26
 	number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	content.add_child(number)
@@ -256,19 +276,24 @@ func _build_story_row(story: Dictionary, index: int) -> Button:
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	content.add_child(texts)
-	var title := Neon.label(str(story.get("title", "未命名剧情")), 17, Neon.LIGHT, true)
+	var row_title := str(story.get("title", "未命名剧情")) if unlocked else "未解锁档案 %02d" % index
+	var title := Neon.label(row_title, 17, Neon.LIGHT if unlocked else Neon.MUTED, true)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(title)
-	var excerpt := Neon.label(str(story.get("subtitle", "")), 11, Neon.MUTED)
+	var hint := "通关第 %02d 首曲目后解锁" % index if index <= App.library.size() else "尚无对应曲目"
+	var excerpt := Neon.label(str(story.get("subtitle", "")) if unlocked else hint, 11, Neon.MUTED)
 	excerpt.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(excerpt)
 	var parts: Array = []
-	if str(story.get("folder", "")) != "":
-		parts.append(str(story["folder"]))
-	parts.append("%s 字" % _thousands(int(story.get("chars", 0))))
-	parts.append("%d 分钟" % int(story.get("minutes", 1)))
-	if not bool(story.get("utf8_ok", true)):
-		parts.append("编码异常")
+	if unlocked:
+		if str(story.get("folder", "")) != "":
+			parts.append(str(story["folder"]))
+		parts.append("%s 字" % _thousands(int(story.get("chars", 0))))
+		parts.append("%d 分钟" % int(story.get("minutes", 1)))
+		if not bool(story.get("utf8_ok", true)):
+			parts.append("编码异常")
+	else:
+		parts.append("未收集")
 	var info := Neon.label("  ·  ".join(parts), 11, Neon.MUTED)
 	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	content.add_child(info)
@@ -310,7 +335,7 @@ func _collect() -> void:
 		if tex != null:
 			_cards.insert(cover_index, {"title": str(entry.get("title", "未命名谱面")), "subtitle": str(entry.get("difficulty", "NORMAL")), "kind": "cover", "tex": tex})
 			cover_index += 1
-	_stories = _unlocked_stories()
+	_scan_stories()
 
 
 # --------------------------------------------------------------------------- #
@@ -573,7 +598,7 @@ func _open_story(story: Dictionary) -> void:
 		_story_scroll.show()
 		_story_scroll.scroll_vertical = 0
 	if _overlay_kind != null:
-		_overlay_kind.text = "剧情阅览 / STORY"
+		_overlay_kind.text = "文档阅览 / DOCUMENT" if str(story.get("path", "")) == AUTHOR_NOTE_PATH else "剧情阅览 / STORY"
 	_overlay_title.text = str(story.get("title", "未命名剧情"))
 	var meta := "%s  ·  %s 字  ·  约 %d 分钟" % [
 		str(story.get("source", "")),

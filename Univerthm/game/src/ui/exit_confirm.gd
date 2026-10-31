@@ -51,7 +51,7 @@ func _ready() -> void:
 	prompt = UiKit.label("", 25, Color("f0e5ff"))
 	prompt.name = "Prompt"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prompt.autowrap_mode = TextServer.AUTOWRAP_OFF
 	column.add_child(prompt)
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER

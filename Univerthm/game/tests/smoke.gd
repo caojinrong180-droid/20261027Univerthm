@@ -116,7 +116,7 @@ func _check_warning_input() -> void:
 
 ## 开屏画面：画面任意处点一下、或者按任意键都进主界面；
 func _check_splash_input() -> void:
-	for target in ["", "Center/Column/Logo", "Center/Column/Hint"]:
+	for target in ["", "Artwork"]:
 		var splash = load("res://scenes/splash.tscn").instantiate()
 		get_tree().root.add_child(splash)
 		splash.set_process(false)
@@ -307,10 +307,16 @@ func _check_song_select() -> void:
 	await get_tree().process_frame
 
 
-## 收藏品：剧情分类是列表，只有「已搜集」的才显示，点开能读到全文
+## 收藏品：未搜集剧情显示锁定槽位，搜集后可点开读全文
 func _check_collection() -> void:
 	# 这个测试会真的写搜集进度，跑完要把玩家的 user://collection.cfg 原样放回去
 	var unlock_backup := _backup_file(StorySource.UNLOCK_PATH)
+	var builtins := StorySource.scan(["res://剧情"])
+	eq(builtins.size(), 3, "序章三篇剧情随游戏资源可扫描")
+	for i in builtins.size():
+		var story: Dictionary = builtins[i]
+		check(str(story.get("title", "")).begins_with("Stra的笔记#%d" % (i + 1)), "序章剧情标题与掉落顺序一致")
+		check((StorySource.read_story(story).get("blocks", []) as Array).size() >= 5, "序章剧情有可阅读的正文")
 	var story_path := "user://剧情/_smoke_story.txt"
 	DirAccess.make_dir_recursive_absolute("user://剧情")
 	var fh := FileAccess.open(story_path, FileAccess.WRITE)
@@ -322,7 +328,26 @@ func _check_collection() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	check(screen._find("Tab_story") != null, "收藏品有「剧情」分类")
-	check(not _lists_story(screen, "_smoke_story.txt"), "没搜集到的剧情不显示")
+	var author_row := screen._find("AuthorNote") as Button
+	check(author_row != null and not author_row.disabled, "作者的话作为常驻文档可直接阅读")
+	if author_row != null:
+		author_row.pressed.emit()
+		await get_tree().process_frame
+		eq(str(screen._overlay_title.text), "作者的话", "作者文档显示独立标题")
+		eq(str(screen._overlay_kind.text), "文档阅览 / DOCUMENT", "作者文档使用文档阅览标记")
+		check(screen._story_text.get_child_count() >= 2, "作者文档正文在收藏品内可读")
+		screen._close_preview()
+	check(screen._find("StoryCount").text.contains("01 份文档"), "作者文档计入文档数量")
+	check(not _lists_story(screen, "_smoke_story.txt"), "没搜集到的剧情不可阅读")
+	var smoke_index := -1
+	for i in screen._story_catalog.size():
+		if str(screen._story_catalog[i].get("file", "")) == "_smoke_story.txt":
+			smoke_index = i
+			break
+	check(smoke_index >= 0, "未搜集的剧情仍占一个档案槽位")
+	if smoke_index >= 0:
+		var locked_row := screen._story_rows.get_child(smoke_index + 1) as Button
+		check(locked_row.disabled and not locked_row.tooltip_text.contains("冒烟剧情"), "锁定槽位不能阅读且不泄露标题")
 
 	# 掉落：第 1 首谱面 → 第 1 篇；已经搜集过就不重复掉
 	check(StorySource.grant_unlock("_smoke_story.txt"), "掉落记为已搜集")
@@ -330,9 +355,11 @@ func _check_collection() -> void:
 	screen._set_filter("story")
 	await get_tree().process_frame
 	check(_lists_story(screen, "_smoke_story.txt"), "搜集后出现在剧情列表")
+	if smoke_index >= 0:
+		check(not (screen._story_rows.get_child(smoke_index + 1) as Button).disabled, "搜集后档案可点击")
 	check(screen._story_section.visible, "剧情分类显示列表")
 	check(not screen._find("CardGrid").visible, "剧情分类隐藏卡片网格")
-	eq(screen._find("StoryList").get_child_count(), screen._stories.size(), "列表行数 = 已搜集剧情数")
+	eq(screen._find("StoryList").get_child_count(), screen._story_catalog.size() + 1, "列表行数 = 剧情档案与作者文档总数")
 
 	if not App.library.is_empty():
 		var stories := StorySource.scan()

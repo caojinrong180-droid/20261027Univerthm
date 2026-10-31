@@ -1,14 +1,8 @@
 extends Control
-## 开屏画面：标题 logo + 一行「点击任意按键进入游戏」。
+## 开屏画面：透明整屏 UI 叠在暗色背景上，点击或按键进入主界面。
 
 ## 刚出现时的保护时间：这之前不响应点击。
 const SKIP_GUARD := 0.4
-## 提示文字多久之后淡入
-const HINT_DELAY := 0.75
-## 提示文字一次呼吸的时长（秒）与最暗时的透明度
-const HINT_BREATH := 1.9
-const HINT_MIN_ALPHA := 0.6
-
 ## F11 是全局全屏切换，当「进入游戏」的话玩家就没法全屏了
 const IGNORED_KEYS := [KEY_F11]
 ## 滚轮不算点击
@@ -17,37 +11,46 @@ const IGNORED_BUTTONS := [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN,
 
 @export_range(0.1, 1.5, 0.05) var fade_in_duration := 0.5
 @export_range(0.1, 1.5, 0.05) var fade_out_duration := 0.45
+@export_range(0.0, 2.0, 0.05) var idle_motion_strength := 1.0
 
 var _elapsed := 0.0
 var _done := false
-## 提示文字的淡入进度（0 → 1），呼吸效果再乘上去
-var _hint_reveal := 0.0
-var _hint_time := 0.0
+var _motion_time := 0.0
 
-@onready var _hint: Label = $Center/Column/Hint
+@onready var _artwork: TextureRect = $Artwork
 
 
 func _ready() -> void:
 	theme = UiTheme.theme()
+	_artwork.resized.connect(_update_artwork_pivot)
+	_update_artwork_pivot()
 	modulate.a = 0.0
-	_hint.self_modulate.a = 0.0
 	var intro := create_tween()
 	intro.tween_property(self, "modulate:a", 1.0, fade_in_duration) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	intro.tween_interval(HINT_DELAY)
-	intro.tween_property(self, "_hint_reveal", 1.0, 0.35) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-## 提示文字一直轻轻呼吸，提示这里在等人按。
 func _process(delta: float) -> void:
 	if _done:
 		return
 	_elapsed += delta
-	_hint_time += delta
-	var breath := HINT_MIN_ALPHA + (1.0 - HINT_MIN_ALPHA) \
-		* (0.5 + 0.5 * sin(_hint_time * TAU / HINT_BREATH))
-	_hint.self_modulate.a = _hint_reveal * breath
+	_motion_time += delta
+	_update_artwork_motion()
+
+
+func _update_artwork_pivot() -> void:
+	_artwork.pivot_offset = _artwork.size * Vector2(0.5, 0.5)
+
+
+func _update_artwork_motion() -> void:
+	# 与主界面 Banner 相同的呼吸、轻摆和浮动节奏。
+	var t := _motion_time
+	var strength := idle_motion_strength
+	var breath := sin(t * 1.15)
+	_artwork.scale = Vector2(1.0 + breath * 0.0025 * strength, 1.0 + breath * 0.004 * strength)
+	_artwork.rotation = sin(t * 0.58) * deg_to_rad(0.14) * strength
+	var idle_offset := Vector2(sin(t * 0.53) * 1.5, -sin(t * 1.05) * 3.5) * strength
+	_artwork.position = (size - _artwork.size) * 0.5 + idle_offset
 
 
 ## 在 GUI 控件消费输入前接住事件，画面任何位置、任何键都算。
