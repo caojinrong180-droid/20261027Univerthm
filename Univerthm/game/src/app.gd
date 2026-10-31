@@ -32,6 +32,8 @@ var last_result := {}
 var autoplay_once := false
 ## 当前主角：0 = Stra，1 = Kisai。只在本次游戏运行期间保留。
 var character_index := 0
+## 每次启动只在首次进入主界面时自动弹一次新手教程；返回主界面不重复弹。
+var tutorial_shown_this_run := false
 ## 跨场景的一次性提示（选曲界面底部状态栏会显示）
 var toast := ""
 

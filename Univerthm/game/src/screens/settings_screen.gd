@@ -175,7 +175,7 @@ func _ensure_tutorial_button() -> void:
 	if button == null:
 		button = NeonUi.button("新手教程", false, 15)
 		button.name = "TutorialButton"
-		button.tooltip_text = "第一次进主界面会自动弹一次；这里可以随时再看"
+		button.tooltip_text = "每次启动后首次进入主界面会自动弹出；这里可以随时再看"
 		button.custom_minimum_size = Vector2(150, 46)
 		actions.add_child(button)
 		var reset := _find("ResetButton") as Button

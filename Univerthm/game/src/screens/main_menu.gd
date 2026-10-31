@@ -237,7 +237,7 @@ func _build_exit_confirm() -> void:
 	_exit_confirm.confirmed.connect(App.quit_game)
 
 
-## 新手教程弹窗：第一次进主界面自动弹，关掉就记成「看过了」（之后只在设置里手动打开）
+## 新手教程弹窗：每次启动后首次进入主界面自动弹，同次返回不重复弹。
 func _build_tutorial() -> void:
 	_tutorial = Tutorial.new()
 	_tutorial.name = "Tutorial"
@@ -247,12 +247,13 @@ func _build_tutorial() -> void:
 
 
 func _maybe_show_tutorial() -> void:
-	if _tutorial == null or App.settings == null or App.settings.tutorial_seen:
+	if _tutorial == null or App.tutorial_shown_this_run:
 		return
 	# 等入场动画和底下的界面都站稳了再弹
 	await get_tree().create_timer(0.55).timeout
-	if not is_inside_tree() or _tutorial == null or App.settings.tutorial_seen:
+	if not is_inside_tree() or _tutorial == null or App.tutorial_shown_this_run:
 		return
+	App.tutorial_shown_this_run = true
 	_tutorial.open()
 
 

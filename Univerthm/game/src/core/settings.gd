@@ -31,7 +31,7 @@ var stage_offset_px := -24.0
 var player_name := "User"
 ## 主界面看板娘立绘序号（assets/banners/ 里的第几张）
 var banner_index := 0
-## 新手教程弹窗看过没有：第一次进主界面自动弹一次，之后只在设置里手动打开
+## 新手教程弹窗的历史已看记录；启动后的自动弹窗由 App 的运行时标志控制。
 var tutorial_seen := false
 ## 调试：全部解锁（跳过选曲页的逐首解锁）
 var unlock_all := false
@@ -102,7 +102,7 @@ func reset() -> void:
 	banner_index = 0
 	unlock_all = false
 	fullscreen = false
-	# tutorial_seen 不跟着恢复默认：那是「看过了」的记录，想再看直接去设置里点「重新查看」
+	# tutorial_seen 不跟着恢复默认：那是「看过了」的历史记录。
 
 
 ## 毫秒 → 秒，判定时用

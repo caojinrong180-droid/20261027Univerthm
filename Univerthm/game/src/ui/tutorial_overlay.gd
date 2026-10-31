@@ -1,8 +1,8 @@
 class_name TutorialOverlay
 extends Control
 ## 新手教程弹窗：整页教程图（assets/tutorial.png）塞在滚动区里，滚轮 / ↑↓ 往下翻。
-## 第一次进主界面自动弹一次（记录在 AppSettings.tutorial_seen），
-## 之后在「设置 · 新手教程 · 重新查看」里随时打开（两边用的是同一个弹窗）。
+## 每次启动后首次进入主界面自动弹一次；
+## 也可以在「设置 · 新手教程」里随时打开（两边用的是同一个弹窗）。
 
 signal closed
 

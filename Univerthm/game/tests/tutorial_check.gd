@@ -16,6 +16,7 @@ func _ok(condition: bool, message: String) -> void:
 
 func _ready() -> void:
 	var keep_seen: bool = App.settings.tutorial_seen
+	var keep_shown: bool = App.tutorial_shown_this_run
 	App.settings.tutorial_seen = false
 	var screen: Control = load("res://scenes/settings.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(screen)
@@ -52,7 +53,29 @@ func _ready() -> void:
 	screen.queue_free()
 	await get_tree().process_frame
 
+	# 已经看过的老存档，每次启动后仍在首次进入主界面时自动显示。
+	App.settings.tutorial_seen = true
+	App.tutorial_shown_this_run = false
+	var menu: Control = load("res://scenes/main_menu.tscn").instantiate()
+	get_tree().root.add_child(menu)
+	await menu.entrance_finished
+	await get_tree().create_timer(0.7).timeout
+	_ok(menu._tutorial.visible, "已看过的存档在本次启动首次进入主界面仍自动弹教程")
+	_ok(App.tutorial_shown_this_run, "自动弹出后记住本次启动已展示")
+	menu._tutorial.close()
+	menu.queue_free()
+	await get_tree().process_frame
+
+	menu = load("res://scenes/main_menu.tscn").instantiate()
+	get_tree().root.add_child(menu)
+	await menu.entrance_finished
+	await get_tree().create_timer(0.7).timeout
+	_ok(not menu._tutorial.visible, "同一次运行中返回主界面不重复弹教程")
+	menu.queue_free()
+	await get_tree().process_frame
+
 	App.settings.tutorial_seen = keep_seen
 	App.settings.save()
+	App.tutorial_shown_this_run = keep_shown
 	print("failures = ", _failures)
 	get_tree().quit(1 if _failures > 0 else 0)

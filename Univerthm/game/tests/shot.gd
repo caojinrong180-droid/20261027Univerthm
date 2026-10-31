@@ -58,9 +58,9 @@ func _shot_splash() -> void:
 
 
 func _shot_menu() -> void:
-	# 截图时别让新手教程挡住主界面（只改内存里的标记，不写盘）
-	var keep_tutorial: bool = App.settings.tutorial_seen
-	App.settings.tutorial_seen = true
+	# 截图时别让新手教程挡住主界面（只改本次运行的标记，不写盘）
+	var keep_tutorial: bool = App.tutorial_shown_this_run
+	App.tutorial_shown_this_run = true
 	var menu = load("res://scenes/main_menu.tscn").instantiate()
 	get_tree().root.add_child(menu)
 	await menu.glow_revealed
@@ -68,7 +68,7 @@ func _shot_menu() -> void:
 	await _capture("00b_main_menu")
 	menu.queue_free()
 	await _wait_frames(2)
-	App.settings.tutorial_seen = keep_tutorial
+	App.tutorial_shown_this_run = keep_tutorial
 
 
 func _shot_collection() -> void:
