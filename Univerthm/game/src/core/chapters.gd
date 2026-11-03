@@ -26,8 +26,22 @@ const LIST := [
 		"cover": preload("res://assets/covers/C0.png"),
 	},
 	{"key": "main_1", "index": "一", "spine": "主线·一", "name": "尚未开放", "unlocked": false},
-	{"key": "heartbeat", "index": "联动", "spine": "心跳电波！", "name": "心跳电波！精选集", "unlocked": false},
-	{"key": "drum_cube", "index": "联动", "spine": "鼓立方", "name": "鼓立方精选集", "unlocked": false},
+	{
+		"key": "heartbeat",
+		"index": "联动",
+		"spine": "心跳电波！",
+		"name": "心跳电波 ON AIR!精选集",
+		"unlocked": false,
+		"cover": preload("res://assets/covers/XTDB.png"),
+	},
+	{
+		"key": "drum_cube",
+		"index": "联动",
+		"spine": "鼓立方",
+		"name": "鼓立方精选集",
+		"unlocked": false,
+		"cover": preload("res://assets/covers/glf.png"),
+	},
 ]
 
 

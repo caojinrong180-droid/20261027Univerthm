@@ -707,6 +707,10 @@ func _update_detail(entry: Dictionary) -> void:
 	_cover_mask.visible = false
 	_set_background(_cover.texture)
 	_apply_lock_visual(_selected_locked)
+	# 详情板滑到位之后 _process 会自我关掉（省得每帧空转），
+	# 所以换歌时右半边那层「糊曲绘」得在这儿手动刷一次，否则它会一直停在上一首上。
+	if _base_ready:
+		_apply_sheet(0.0)
 
 
 ## 详情里的最好成绩：分数 + ACC（和结算界面同一套格式），没打过就写「暂无记录」

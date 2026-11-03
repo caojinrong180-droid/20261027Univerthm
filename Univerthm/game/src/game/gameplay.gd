@@ -28,9 +28,13 @@ var _unlock: UnlockFrames = null
 var _unlock_data: Dictionary = {}
 var _chart_scene: Dictionary = {}
 var _post_stack: Array = []
+## 谱面场的故事板图层（文字）；没有图层的包这里是 null
+var _story_layers: StoryLayers = null
 ## 这一趟是不是「神秘曲的第一次踏入」：是的话 Esc 不暂停、不退出
 ## （中途强关游戏 = 没踏进去过，下次还要重新过红色警告，见 App.commit_entry）
 var _first_entry := false
+## 这一趟是不是新手教程（第一次进游戏打的那个包）：打完 / 中途退出都直接回主界面
+var _tutorial := false
 
 var chart: Dictionary = {}
 var settings: AppSettings
@@ -93,6 +97,7 @@ func _ready() -> void:
 
 	autoplay = App.autoplay_enabled()
 	_first_entry = App.needs_first_entry(_entry_key())
+	_tutorial = bool(App.session.get("tutorial", false))
 
 	judge = RhythmJudge.new()
 	judge.setup(chart, settings.judge_window_scale)
@@ -130,6 +135,7 @@ func _ready() -> void:
 
 	_build_pause_layer()
 	_build_countdown_label()
+	_build_story_layers()
 
 	_build_unlock()
 	_countdown_from = -_chart_offset() - LEAD_IN
@@ -152,6 +158,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_story_post()
+	_update_story_layers()
 	match state:
 		State.UNLOCK:
 			pass          # 帧播放自己走时间，播完发 finished
@@ -285,7 +292,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_R:
 					_retry()
 				KEY_Q:
-					App.goto_select()
+					_quit_run()
 		State.RESUME:
 			match code:
 				KEY_ESCAPE:
@@ -293,7 +300,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_R:
 					_retry()
 				KEY_Q:
-					App.goto_select()
+					_quit_run()
 		State.PLAYING:
 			match code:
 				KEY_ESCAPE:
@@ -306,9 +313,18 @@ func _unhandled_input(event: InputEvent) -> void:
 						_on_key_down(code, zone)
 		State.COUNTDOWN:
 			if code == KEY_ESCAPE:
-				App.goto_select()
+				_quit_run()
 			elif code == KEY_R:
 				_retry()
+
+
+## 退出这一趟：普通谱面回选曲页；新手教程回主界面，并且记下「教程走过了」
+func _quit_run() -> void:
+	if _tutorial:
+		App.finish_tutorial()
+		App.goto_menu()
+		return
+	App.goto_select()
 
 
 func _zone_for_key(code: int) -> String:
@@ -470,6 +486,12 @@ func _finish() -> void:
 		result["cover_drop"] = App.grant_cover_drop(result)
 	App.last_result = result
 	debug_run_result = result
+	# 新手教程这一趟：不记成绩、不掉剧情，直接记「教程走过了」然后回主界面
+	if _tutorial:
+		if not debug_mode:
+			App.finish_tutorial()
+			App.goto_menu()
+		return
 	if not autoplay:
 		App.record_result(result)          # 个人资料里的游玩次数 / 最高分
 		# 这一趟打完了，神秘曲的「第一次踏入」才算真的踏进去（中途强关游戏走不到这里）
@@ -523,7 +545,7 @@ func _on_pause_action(action: int) -> void:
 		1:
 			_retry()
 		2:
-			App.goto_select()
+			_quit_run()
 
 
 # --------------------------------------------------------------------------- #
@@ -604,6 +626,30 @@ func _update_story_post() -> void:
 		return
 	_post_stack = StoryboardSource.active_shaders(_chart_scene, chart_time)
 	post.apply(_post_stack, chart_time)
+
+
+## 谱面场的故事板图层（文字）：建在 Stage 之后、Post 之前，
+## 这样后处理 shader 会把字一起处理，和制谱器里「先画图层再叠 shader」一致。
+func _build_story_layers() -> void:
+	if _chart_scene.is_empty():
+		return
+	var layers = _chart_scene.get("layers", [])
+	if not (layers is Array) or (layers as Array).is_empty():
+		return
+	var node := StoryLayers.new()
+	node.name = "StoryLayers"
+	node.setup(_chart_scene)
+	add_child(node)
+	if post != null:
+		move_child(node, mini(post.get_index(), get_child_count() - 1))
+	_story_layers = node
+
+
+## 每帧把图层的时间推到谱面时间上（暂停 / 结算时时间不走，字也就定格）
+func _update_story_layers() -> void:
+	if _story_layers == null or not is_instance_valid(_story_layers):
+		return
+	_story_layers.set_time(chart_time)
 
 
 # --------------------------------------------------------------------------- #

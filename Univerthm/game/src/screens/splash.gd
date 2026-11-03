@@ -77,4 +77,8 @@ func _leave() -> void:
 	fade.tween_property(self, "modulate:a", 0.0, fade_out_duration) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	fade.tween_interval(0.04)
+	# 第一次进游戏：先去黑屏做偏移校准 + 打新手教程谱面，打完才回主界面
+	if App.settings != null and not App.settings.tutorial_seen:
+		fade.tween_callback(App.goto_first_run)
+		return
 	fade.tween_callback(App.goto_menu)

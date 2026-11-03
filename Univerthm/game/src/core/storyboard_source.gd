@@ -103,6 +103,7 @@ static func _normalize_layer(L: Dictionary) -> Dictionary:
 		"id": int(_num(L.get("id"), 0)),
 		"type": type,
 		"name": str(L.get("name", "")),
+		"visible": bool(L.get("visible", true)),
 		"start": maxf(0.0, _num(L.get("start"), 0.0)),
 		"end": maxf(0.0, _num(L.get("end"), 0.0)),
 		"x": clampf(_num(L.get("x"), 0.5), -2.0, 3.0),

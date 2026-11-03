@@ -138,6 +138,15 @@ static func _entry_from_json(json_path: String, search_dir: String) -> Variant:
 	return _make_entry("json:" + json_path, "json", json_path, chart, search_dir, json_path)
 
 
+## 直接给一个 zip 包做 entry（不在曲库扫描范围里的谱面用，比如新手教程的包）。
+## 打不开 / 里面没有 chart.json 就返回 {}。
+static func entry_from_zip(zip_path: String) -> Dictionary:
+	var made = _entry_from_zip(zip_path)
+	if made == null:
+		return {}
+	return made
+
+
 static func _entry_from_zip(zip_path: String) -> Variant:
 	var z := ZIPReader.new()
 	if z.open(zip_path) != OK:

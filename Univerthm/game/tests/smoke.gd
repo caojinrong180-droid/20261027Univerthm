@@ -52,11 +52,13 @@ func _run() -> void:
 	await _check_collection()
 	await _check_result_story_drop()
 	await _check_gameplay_autoplay()
+	await _check_story_layers()
 	await _check_gameplay_timing()
 	await _check_key_input()
 	await _check_fx_rules()
 	await _check_chord_marking()
 	await _check_unlock_once()
+	await _check_first_run_flow()
 	await _check_first_entry_gate()
 	await _check_first_entry_lock()
 	await _check_first_entry_warning()
@@ -574,6 +576,73 @@ func _check_collection() -> void:
 	check(not await _lists_story_after_reload("_smoke_story.txt"), "清理后剧情重新上锁")
 
 
+## 谱面场的故事板文字图层要真的画出来（新手教程就是靠它讲玩法）
+func _check_story_layers() -> void:
+	App.autoplay_once = false
+	App.session = {
+		"entry": {"key": "test:storyboard"},
+		"chart": SyntheticChart.build(),
+		"stream": SyntheticChart.stream(),
+		"cover": null,
+		"storyboard": {"scenes": [{
+			"kind": "chart",
+			"length": 0.0,
+			"layers": [
+				{"id": 1, "type": "text", "start": 0.5, "end": 2.0, "x": 0.5, "y": 0.4,
+					"text": "故事板文字", "style": {"size": 40, "weight": 800, "color": "#ffffff"}},
+				{"id": 2, "type": "text", "start": 0.5, "end": 2.0, "x": 0.5, "y": 0.7,
+					"text": "隐藏的", "visible": false},
+			],
+			"shaders": [],
+		}]},
+		"warnings": [],
+		"errors": [],
+	}
+	var game = _new_gameplay()
+	await get_tree().process_frame
+	check(game._story_layers != null, "有文字图层就建出 StoryLayers")
+	if game._story_layers == null:
+		game.queue_free()
+		await get_tree().process_frame
+		return
+	game.debug_set_audio_clock(false)
+	game.debug_start_now()
+	game.debug_advance(0.2)
+	await get_tree().process_frame
+	eq(game._story_layers.visible_texts().size(), 0, "时间没到：不显示")
+	game.debug_advance(0.6)
+	await get_tree().process_frame
+	var texts: Array = game._story_layers.visible_texts()
+	check(texts.has("故事板文字"), "到点就显示文字")
+	check(not texts.has("隐藏的"), "visible=false 的图层不画")
+	var label := game._story_layers.get_node_or_null("TextLayer1") as Label
+	check(label != null, "图层节点按 id 命名")
+	if label != null:
+		var center := label.position + label.size * 0.5
+		near(center.x, game._story_layers.size.x * 0.5, "x = 0.5 居中", 2.0)
+		near(center.y, game._story_layers.size.y * 0.4, "y = 0.4 偏上", 2.0)
+	game.debug_advance(2.0)
+	await get_tree().process_frame
+	eq(game._story_layers.visible_texts().size(), 0, "过了 end 时间就收掉")
+	game.queue_free()
+	await get_tree().process_frame
+
+	# 真包：新手教程的故事板就是靠它讲玩法的（14 条文字图层）
+	var entry: Dictionary = App.tutorial_entry()
+	if not entry.is_empty():
+		var loaded := ChartSource.load_entry(entry)
+		var sb: Dictionary = loaded.get("storyboard", {})
+		var chart_scene := {}
+		for sp in StoryboardSource.scene_spans(sb, RhythmChart.chart_duration(loaded["chart"])):
+			if str(sp["kind"]) == "chart":
+				chart_scene = sp["scene"]
+		var active := StoryboardSource.active_layers(chart_scene, 1.0)
+		check(active.size() >= 1, "教程故事板 1 秒时有文字层（%d 条）" % active.size())
+		if not active.is_empty():
+			check(str(active[0]["layer"].get("text", "")).begins_with("欢迎来到"), "第一条是欢迎语")
+
+
+
 ## 结算最下方：有新掉落时显示「收藏品 · xxx 已搜集」（剧情 / 曲绘可能同时掉）
 func _check_result_story_drop() -> void:
 	var original: Dictionary = App.last_result
@@ -959,6 +1028,70 @@ func _check_unlock_once() -> void:
 	App.load_stats()
 
 
+## 第一次进游戏那条流程：黑屏 → 辅助校准 → 新手教程谱面（White Noise 的包）→ 主界面
+func _check_first_run_flow() -> void:
+	# 教程谱面包：能读出来、里面确实是那首 White Noise
+	var entry: Dictionary = App.tutorial_entry()
+	check(not entry.is_empty(), "新手教程谱面包能读出来：" + App.TUTORIAL_ZIP)
+	if not entry.is_empty():
+		eq(str(entry.get("title", "")), "White Noise", "教程谱面的曲名")
+		eq(str(entry.get("kind", "")), "zip", "教程谱面走 zip 那条路")
+		var loaded := ChartSource.load_entry(entry)
+		check(loaded["chart"] != null, "教程谱面能完整加载")
+		check(loaded["stream"] is AudioStream, "教程谱面的音频也读出来了")
+	# 教程谱面不在曲库里（放在 charts/ 外面）
+	var in_library := false
+	for item in App.library:
+		if str(item.get("key", "")) == str(entry.get("key", "")):
+			in_library = true
+	check(not in_library, "教程谱面不进曲库（选曲页看不到）")
+	# 打不开的包返回 {}
+	check(ChartSource.entry_from_zip("res://tutorial/not_here.zip").is_empty(),
+		"读不到的包返回空 entry")
+
+	# 黑屏场景：一块全黑底 + 校准弹窗，弹窗一开始是关着的（延迟一会儿才开）
+	var screen = load("res://scenes/first_run.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await get_tree().process_frame
+	var black = screen.get_node_or_null("Black")
+	check(black != null, "首次启动页有全黑底")
+	if black != null:
+		eq((black as ColorRect).color, Color(0, 0, 0, 1), "底色是纯黑")
+	check(screen._calibration != null, "首次启动页带辅助校准弹窗")
+	if screen._calibration != null:
+		check(not screen._calibration.visible, "校准弹窗等黑一下才弹")
+		check(screen._calibration.first_run, "首次流程用的是强制校准版本")
+		check(screen._calibration.find_child("CloseButton", true, false) == null,
+			"首次流程没有右上角「×」")
+		var skip = screen._calibration.find_child("SkipButton", true, false)
+		check(skip != null and str(skip.text) == "跳过", "左下角那颗是「跳过」")
+	screen.queue_free()
+	await get_tree().process_frame
+
+	# 谱面这一侧：session 带 tutorial 标记时认得出来（打完 / 退出都回主界面）
+	_make_session()
+	App.session["tutorial"] = true
+	App.autoplay_once = false
+	var game = load("res://scenes/gameplay.tscn").instantiate()
+	get_tree().root.add_child(game)
+	await get_tree().process_frame
+	check(game._tutorial, "谱面认得出这一趟是教程")
+	game.queue_free()
+	await get_tree().process_frame
+
+	# 「教程走过了」这个标记：写完立刻生效，splash 之后就不再走首次流程
+	var saved_seen := App.settings.tutorial_seen
+	App.settings.tutorial_seen = false
+	App.settings.save()
+	check(not App.settings.tutorial_seen, "清掉标记后算「第一次」")
+	App.finish_tutorial()
+	check(App.settings.tutorial_seen, "finish_tutorial 记下看过了")
+	check(bool(AppSettings.load_settings().tutorial_seen), "标记已经写进 settings.cfg")
+	App.settings.tutorial_seen = saved_seen
+	App.settings.save()
+	_make_session()
+
+
 ## 神秘曲（列表第 3 首）的「第一次踏入」：红色警告 + 当次禁用 Esc，通关结算后才落盘
 func _check_first_entry_gate() -> void:
 	var backup := _backup_file(App.STATS_PATH)
@@ -1159,6 +1292,12 @@ func _check_settings() -> void:
 	check(screen._rows.size() >= 5, "设置项数量（音画偏移 / 音乐音量 / 打击音音量 / 打击音 / 打击特效）")
 	screen._refresh()
 	check(App.settings.key_layout in AppSettings.KEY_LAYOUTS, "键位布局合法")
+	# 底部那颗「新手教程」现在直接进教程谱面（不再弹教程图）
+	var tutorial_button := screen.find_child("TutorialButton", true, false) as Button
+	check(tutorial_button != null, "设置页底部有新手教程按钮")
+	if tutorial_button != null:
+		eq(tutorial_button.text, "新手教程", "教程按钮文案")
+		check(tutorial_button.tooltip_text.contains("教程谱面"), "教程按钮的提示指向教程谱面")
 	screen.queue_free()
 	await get_tree().process_frame
 

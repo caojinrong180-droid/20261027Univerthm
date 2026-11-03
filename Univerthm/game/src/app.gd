@@ -11,6 +11,10 @@ const SELECT_SCENE := "res://scenes/song_select.tscn"
 const GAMEPLAY_SCENE := "res://scenes/gameplay.tscn"
 const RESULTS_SCENE := "res://scenes/results.tscn"
 const SETTINGS_SCENE := "res://scenes/settings.tscn"
+## 第一次进游戏的那条流程：黑屏 → 辅助校准 → 新手教程谱面 → 主界面
+const FIRST_RUN_SCENE := "res://scenes/first_run.tscn"
+## 新手教程谱面（White Noise 的包；放在 charts/ 外面，所以不会进曲库）
+const TUTORIAL_ZIP := "res://tutorial/White_noise.zip"
 const MenuMusic = preload("res://src/audio/menu_music.gd")
 
 ## 谱面扫描根目录：随游戏发布 + 用户拖进来的
@@ -183,6 +187,46 @@ func play_entry(entry: Dictionary, autoplay := false, from_black := false) -> bo
 	return true
 
 
+# --------------------------------------------------------------------------- #
+# 新手教程：第一次进游戏时先做偏移校准，再打 White Noise 这个包，打完才进主界面
+# --------------------------------------------------------------------------- #
+
+var _tutorial_entry: Dictionary = {}
+
+
+## 新手教程谱面的 entry（按 zip 路径自己建，不走曲库扫描 → 不会出现在选曲页 / 地图上）
+func tutorial_entry() -> Dictionary:
+	if _tutorial_entry.is_empty():
+		_tutorial_entry = ChartSource.entry_from_zip(TUTORIAL_ZIP)
+	return _tutorial_entry
+
+
+## 开始打新手教程谱面：和普通进入共用一套 session，只是多一个 tutorial 标记
+## （谱面里看到它就按「教程」处理：打完 / 中途退出都直接回主界面，不记成绩、不进结算）
+func play_tutorial() -> bool:
+	var entry := tutorial_entry()
+	if entry.is_empty():
+		toast = "找不到新手教程谱面：%s" % TUTORIAL_ZIP
+		return false
+	if not play_entry(entry, false, false):
+		return false
+	session["tutorial"] = true
+	return true
+
+
+## 教程走完了：记下「看过」，以后启动就不再走这条流程
+func finish_tutorial() -> void:
+	if settings == null or settings.tutorial_seen:
+		return
+	settings.tutorial_seen = true
+	settings.save()
+
+
+## 第一次进游戏的黑屏流程（辅助校准 → 新手教程谱面 → 主界面）
+func goto_first_run() -> void:
+	get_tree().change_scene_to_file(FIRST_RUN_SCENE)
+
+
 ## 重开同一首。skip_countdown = true 时不走开场倒计时（从暂停菜单重开用这个）
 func retry(skip_countdown := false) -> void:
 	if session.is_empty():
@@ -311,6 +355,39 @@ func reset_progress() -> void:
 	best_records.clear()
 	save_stats()
 	StorySource.clear_unlocks()
+
+
+## 「初始化游戏」：把存档 / 设置 / 收藏品全删掉，内存状态退回**第一次启动之前**，
+## 然后回到光敏性警告界面（第一次开游戏看到的那一页）。
+## 玩家自己导入的谱面（`user://charts`）不动——那是内容，不是存档。
+func factory_reset() -> void:
+	for path in [AppSettings.PATH, STATS_PATH, StorySource.UNLOCK_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	stats = {
+		"plays": 0, "best_score": 0, "best_title": "", "best_acc": 0.0,
+		"score_total": 0.0, "acc_total": 0.0,
+	}
+	cleared.clear()
+	unlock_seen.clear()
+	entered.clear()
+	best_records.clear()
+	settings = AppSettings.load_settings()      # 文件删了 → 拿一整套默认值：音量 / 偏移 / 速度 /
+	#                                              判定窗口 / 打击音与特效 / 键位 / 画面偏移 /
+	#                                              玩家名 / 看板娘序号 / 教程标记 / Debug 全解锁 / 全屏
+	apply_fullscreen()
+	character_index = 0                          # 主界面看板娘（运行时那一份）也回第一张
+	tutorial_shown_this_run = false
+	selected_chart_key = ""
+	chapter_key = "all"
+	autoplay_once = false
+	session = {}
+	last_result = {}
+	toast = ""
+	refresh_library()
+	refresh_music_volume()
+	# 回到标题（开屏）界面：之后点任意键就按「第一次进游戏」走校准 + 新手教程那一套
+	goto_splash()
 
 
 ## 平均分；还没有任何一局（或老存档没累计值）时返回 -1，界面显示「—」

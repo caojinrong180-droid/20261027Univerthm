@@ -25,10 +25,13 @@ var _card: NeonPanel
 var _no_button: Button
 var _yes_button: Button
 ## 正文和闪白层留个引用，方便测试 / 以后改文案
+var _headline: Label
 var _body: Label
 var _flash: ColorRect
 var _flash_tween: Tween
 var _stinger: AudioStreamPlayer
+## 静音模式：弹出时不放那声轰鸣（只有闪白）
+var _silent := false
 
 
 func _ready() -> void:
@@ -72,6 +75,7 @@ func _ready() -> void:
 	headline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	headline.custom_minimum_size = Vector2(560, 0)
 	box.add_child(headline)
+	_headline = headline
 
 	var body := NeonUi.label(BODY, 13, NeonUi.MUTED)
 	body.name = "Body"
@@ -189,11 +193,23 @@ func _refresh_button(button: Button) -> void:
 		frame.glow = false
 
 
-## 弹出来：默认焦点在「否」，手滑也不会直接踏进去；同时闪一下白 + 响一声
+## 换文案：这块血红面板也当通用「危险操作确认框」用（个人档案里的「初始化游戏」）。
+## 在 `open()` 之前调就行。
+## silent = true：弹出时既不放轰鸣、也不闪白，就是安安静静地浮出来
+func configure(headline_text: String, body_text: String, silent := false) -> void:
+	if _headline != null:
+		_headline.text = headline_text
+	if _body != null:
+		_body.text = body_text
+	_silent = silent
+
+
+## 弹出来：默认焦点在「否」，手滑也不会直接踏进去；静音模式只有面板淡入
 func open() -> void:
 	show()
-	_play_stinger()
-	_flash_white()
+	if not _silent:
+		_play_stinger()
+		_flash_white()
 	if _no_button != null:
 		_no_button.grab_focus()
 

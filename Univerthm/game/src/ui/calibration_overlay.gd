@@ -1,6 +1,8 @@
 class_name CalibrationOverlay
 extends Control
-## 音画偏移的「辅助测量」浮窗（设置页那一行旁边的小按钮打开）。
+## 音画偏移的「辅助测量」浮窗。两处用它：
+##   · 设置页「音画偏移」那一行旁边的小按钮（`closable` 默认：右上角「×」+ 左下角「关闭（Esc）」）
+##   · 第一次进游戏的强制校准（`first_run = true`：没有「×」，左下角换成「跳过」→ 直接进谱面）
 
 signal applied(value_ms: float)
 signal closed
@@ -32,6 +34,9 @@ const DOT_ACCENT := Color("b06bff")
 const KEYS := [KEY_F]
 
 const HINT := "在重音时按下F"
+
+## true = 第一次进游戏那次：右上角不摆「×」，左下角那颗改成「跳过」（跳过校准，直接进谱面）
+var first_run := false
 
 var _state := State.IDLE
 var _beat_index := 0
@@ -76,6 +81,8 @@ func _ready() -> void:
 
 func open() -> void:
 	_reset_round()
+	# 这是靠「听节拍」判断延迟的测试：浮窗一开就把背景音乐关掉，免得盖住节拍音
+	_mute_menu_music(true)
 	show()
 	modulate.a = 0.0
 	var tween := create_tween()
@@ -87,8 +94,22 @@ func close() -> void:
 	if not visible:
 		return
 	_stop_round()
+	_mute_menu_music(false)
 	hide()
 	closed.emit()
+
+
+## 静音 / 恢复菜单背景音乐（恢复时按设置里的「音乐音量」重新算）
+func _mute_menu_music(muted: bool) -> void:
+	if App == null or App.menu_music == null:
+		return
+	if muted:
+		App.menu_music.set_music_volume(0.0)
+		return
+	var volume := 1.0
+	if App.settings != null:
+		volume = clampf(App.settings.music_volume, 0.0, 1.0)
+	App.menu_music.set_music_volume(volume)
 
 
 func _reset_round() -> void:
@@ -323,13 +344,18 @@ func _on_toast_timeout() -> void:
 
 
 # --------------------------------------------------------------------------- #
-# 节拍音（自己合成，不读现成的 wav）
+# 节拍音（用素材：轻拍 offest1 / 重拍 offest2）
 # --------------------------------------------------------------------------- #
 
+## 轻拍（每拍一下）与重拍（小节第一拍）：都是音频素材，源文件在 sound/
+const LIGHT_CLICK = preload("res://audio/offest1.wav")
+const ACCENT_CLICK = preload("res://audio/offest2.wav")
+
+
 func _build_players() -> void:
-	# 轻拍：偏高、偏短、偏轻；重音：低八度附近、更长、更实
-	_light_player = _make_player("LightPlayer", _make_click(1720.0, 1290.0, 0.075, 58.0, 0.20), LIGHT_DB)
-	_accent_player = _make_player("AccentPlayer", _make_click(980.0, 640.0, 0.14, 26.0, 0.38), ACCENT_DB)
+	# 轻拍：offest1.wav（0.08 秒的短 tick）；重拍：offest2.wav（0.24 秒，更重更实）
+	_light_player = _make_player("LightPlayer", LIGHT_CLICK, LIGHT_DB)
+	_accent_player = _make_player("AccentPlayer", ACCENT_CLICK, ACCENT_DB)
 
 
 func _make_player(player_name: String, stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
@@ -339,33 +365,6 @@ func _make_player(player_name: String, stream: AudioStream, volume_db: float) ->
 	player.stream = stream
 	add_child(player)
 	return player
-
-
-## 一小段 16 位单声道 PCM：正弦 + 二次 / 三次谐波，头 2 ms 起音防爆音，
-func _make_click(start_hz: float, end_hz: float, seconds: float, decay: float, peak: float) -> AudioStreamWAV:
-	const RATE := 44100
-	const ATTACK := 0.0018
-	const TAIL := 0.12
-	var frames := maxi(8, int(RATE * seconds))
-	var data := PackedByteArray()
-	data.resize(frames * 2)
-	var dt := 1.0 / float(RATE)
-	var phase := 0.0
-	for index in frames:
-		var t := float(index) * dt
-		var progress := t / seconds
-		var glide := minf(1.0, progress / 0.45)
-		phase += TAU * lerpf(start_hz, end_hz, glide) * dt
-		var envelope := exp(-decay * t) * minf(1.0, t / ATTACK)
-		envelope *= minf(1.0, (1.0 - progress) / TAIL)
-		var tone := sin(phase) + 0.28 * sin(phase * 2.0) + 0.09 * sin(phase * 3.0)
-		data.encode_s16(index * 2, int(clampf(tone * envelope * peak, -1.0, 1.0) * 32767.0))
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = RATE
-	stream.stereo = false
-	stream.data = data
-	return stream
 
 
 # --------------------------------------------------------------------------- #
@@ -404,11 +403,13 @@ func _build() -> void:
 	head.add_child(NeonUi.label("///", 18, NeonUi.PURPLE, true))
 	head.add_child(UiKit.stretch())
 	head.add_child(NeonUi.label("CALIBRATION", 11, NeonUi.MUTED))
-	var close_button := NeonUi.button("×", false, 17)
-	close_button.name = "CloseButton"
-	close_button.custom_minimum_size = Vector2(42, 32)
-	close_button.pressed.connect(close)
-	head.add_child(close_button)
+	# 首次进游戏是强制校准：右上角不摆「×」（左下角那颗「跳过」就是唯一出口）
+	if not first_run:
+		var close_button := NeonUi.button("×", false, 17)
+		close_button.name = "CloseButton"
+		close_button.custom_minimum_size = Vector2(42, 32)
+		close_button.pressed.connect(close)
+		head.add_child(close_button)
 
 	column.add_child(UiKit.rule(Color("8342cf")))
 	var hint := NeonUi.label(HINT, 12, NeonUi.MUTED)
@@ -460,11 +461,13 @@ func _build() -> void:
 	column.add_child(UiKit.rule(Color("4b2a70")))
 	var actions := UiKit.hbox(12)
 	column.add_child(actions)
-	var footer_close := NeonUi.button("关闭（Esc）", false, 14)
-	footer_close.name = "FooterCloseButton"
-	footer_close.custom_minimum_size = Vector2(136, 42)
-	footer_close.pressed.connect(close)
-	actions.add_child(footer_close)
+	# 首次进游戏：这颗是「跳过」——不测了，直接进谱面（关掉浮窗，first_run 那边接着开谱）
+	var skip := NeonUi.button("跳过" if first_run else "关闭（Esc）", false, 14)
+	skip.name = "SkipButton" if first_run else "FooterCloseButton"
+	skip.custom_minimum_size = Vector2(136, 42)
+	skip.tooltip_text = "跳过校准，直接进谱面" if first_run else ""
+	skip.pressed.connect(close)
+	actions.add_child(skip)
 	actions.add_child(UiKit.stretch())
 	_apply_button = NeonUi.button("应用到偏移", true, 15)
 	_apply_button.name = "ApplyButton"

@@ -1,13 +1,12 @@
-﻿extends Control
-## 涓荤晫闈€傜晫闈㈣妭鐐归兘鍦?scenes/main_menu.tscn 閲岋紝鍙互鍦ㄧ紪杈戝櫒閲岀洿鎺ユ嫋锛?
+extends Control
+## 主界面。界面节点都在 scenes/main_menu.tscn 里，可以在编辑器里直接拖；
 
 signal entrance_finished
 signal glow_revealed
 
 const ExitConfirm = preload("res://src/ui/exit_confirm.gd")
-const Tutorial = preload("res://src/ui/tutorial_overlay.gd")
 
-# 鍥哄畾椤哄簭骞舵樉寮忓紩鐢ㄨ祫婧愶紝瀵煎嚭鍚庣殑娓告垙涔熻兘杞藉叆鍏ㄩ儴绔嬬粯銆?
+# 固定顺序并显式引用资源，导出后的游戏也能载入全部立绘。
 const BANNER_TEXTURES := [
 	preload("res://assets/banners/stra1.png"),
 	preload("res://assets/banners/stra2.png"),
@@ -23,12 +22,12 @@ const POSES_PER_CHARACTER := 4
 const BANNER_SPRING_DECAY := 8.5
 const BANNER_SPRING_FREQUENCY := 16.0
 
-## 绔嬬粯鏄剧ず瑙勫垯锛堝榻愭牱鍥撅細澶撮《闈犱笂銆佽吙琚簳杈硅鎺夛級
+## 立绘显示规则（对齐样图：头顶靠上、腿被底边裁掉）
 const GIRL_HEIGHT := 880.0
 const GIRL_TOP := 90.0
 const GIRL_CENTER_X := 940.0
 
-## 鍚岀粍鎺т欢涓€璧峰姩锛屽鍚嶇墝鍜屾枃瀛楀缁堝榻愩€?
+## 同组控件一起动，姓名牌和文字始终对齐。
 const ENTRANCE_GROUPS := [
 	["Line"], ["NamePlate", "NameLabel"], ["StartButton"],
 	["CollectionButton"], ["SettingButton", "ProfileButton"],
@@ -68,7 +67,7 @@ var _banner_tween: Tween
 var _entrance_complete := false
 var _banner_pending_steps := 0
 var _banner_mix := 1.0
-# x锛氭í鍚戞儻鎬т綅绉伙紱y锛氭尋鍘?/ 鎷変几锛泎锛氭棆杞€傞€熷害鍜屼綅绉讳竴璧疯“鍑忓洖闆躲€?
+# x：横向惯性位移；y：挤压 / 拉伸；z：旋转。速度和位移一起衰减回零。
 var _banner_spring := Vector3.ZERO
 var _banner_velocity := Vector3.ZERO
 var _outgoing_home := Vector2.ZERO
@@ -77,7 +76,6 @@ var _outgoing_rotation := 0.0
 var _background_material: ShaderMaterial
 var _glow_material: ShaderMaterial
 var _exit_confirm
-var _tutorial
 
 
 func _ready() -> void:
@@ -107,7 +105,6 @@ func _ready() -> void:
 
 	_apply_banner()
 	_build_exit_confirm()
-	_build_tutorial()
 	_build_ui_sound()
 	resized.connect(_update_motion_pivots)
 	_update_motion_pivots.call_deferred()
@@ -147,7 +144,6 @@ func _finish_entrance() -> void:
 	glow_entry.tween_method(_set_glow_reveal, 0.0, 1.0, glow_reveal_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	glow_entry.finished.connect(glow_revealed.emit)
 	entrance_finished.emit()
-	_maybe_show_tutorial()
 
 
 func _set_glow_reveal(progress: float) -> void:
@@ -170,7 +166,7 @@ func _process(delta: float) -> void:
 	_pointer = _pointer.lerp(target, 1.0 - exp(-delta * 4.5))
 	var t := _motion_time
 	var strength := idle_motion_strength
-	# 鎵╁浘鑳屾櫙鍦ㄦ潗璐ㄤ腑鏁翠綋杞荤Щ銆佸懠鍚哥缉鏀撅紱鎺т欢鍥哄畾锛屼笉褰卞搷鎸夐挳鍛戒腑鍖哄煙銆?
+	# 扩图背景在材质中整体轻移、呼吸缩放；控件固定，不影响按钮命中区域。
 	if _background_material != null:
 		_background_material.set_shader_parameter("pointer_offset", _pointer)
 		_background_material.set_shader_parameter("motion_time", t)
@@ -202,7 +198,7 @@ func _gui_input(event: InputEvent) -> void:
 	if not _entrance_complete or _exit_confirm.visible:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# 鍦ㄦ牴鎺т欢鎺ユ敹鏈鎸夐挳娑堣垂鐨勭偣鍑伙紱閫忔槑绌虹櫧鍜屾偓娴寜閽笉浼氳瑙﹁鑹层€?
+		# 在根控件接收未被按钮消费的点击；透明空白和悬浮按钮不会误触角色。
 		if _portrait_has_point(_girl, event.position) or _portrait_has_point(_outgoing_girl, event.position):
 			accept_event()
 			_cycle_banner()
@@ -235,34 +231,7 @@ func _build_exit_confirm() -> void:
 	_exit_confirm.confirmed.connect(App.quit_game)
 
 
-## 鏂版墜鏁欑▼寮圭獥锛氭瘡娆″惎鍔ㄥ悗棣栨杩涘叆涓荤晫闈㈣嚜鍔ㄥ脊锛屽悓娆¤繑鍥炰笉閲嶅寮广€?
-func _build_tutorial() -> void:
-	_tutorial = Tutorial.new()
-	_tutorial.name = "Tutorial"
-	UiKit.full_rect(_tutorial)
-	add_child(_tutorial)
-	_tutorial.closed.connect(_on_tutorial_closed)
-
-
-func _maybe_show_tutorial() -> void:
-	if _tutorial == null or App.tutorial_shown_this_run:
-		return
-	# 绛夊叆鍦哄姩鐢诲拰搴曚笅鐨勭晫闈㈤兘绔欑ǔ浜嗗啀寮?
-	await get_tree().create_timer(0.55).timeout
-	if not is_inside_tree() or _tutorial == null or App.tutorial_shown_this_run:
-		return
-	App.tutorial_shown_this_run = true
-	_tutorial.open()
-
-
-func _on_tutorial_closed() -> void:
-	if App.settings == null or App.settings.tutorial_seen:
-		return
-	App.settings.tutorial_seen = true
-	App.settings.save()
-
-
-## 涓荤晫闈㈢殑鎸夐挳鐐瑰嚮闊虫晥锛堝彧鏈夎繖閲屾湁锛夛細鎸変笅 鈫?click.wav锛屾偓鍋滀笉鍙戝０銆?
+## 主界面的按钮点击音效（只有这里有）：按下 → click.wav，悬停不发声。
 func _build_ui_sound() -> void:
 	if App.ui_sound == null:
 		return
@@ -274,7 +243,7 @@ func _build_ui_sound() -> void:
 
 
 # --------------------------------------------------------------------------- #
-# 绔嬬粯
+# 立绘
 # --------------------------------------------------------------------------- #
 
 func _banner_index() -> int:
@@ -323,7 +292,7 @@ func _toggle_character() -> void:
 
 
 func _start_banner_transition(next_index: int) -> void:
-	# 鐗堟湰鍙风偣鍑诲彲浠ユ墦鏂繃娓★紝浣跨敤褰撳墠鏇存竻鏅扮殑涓€寮犱綔涓烘贰鍑虹殑鏃х珛缁樸€?
+	# 版本号点击可以打断过渡，使用当前更清晰的一张作为淡出的旧立绘。
 	var source := _outgoing_girl if _banner_busy and _banner_mix < 0.5 else _girl
 	var old_texture := source.texture
 	var old_size := source.size
@@ -334,7 +303,7 @@ func _start_banner_transition(next_index: int) -> void:
 	if _banner_tween != null and _banner_tween.is_running():
 		_banner_tween.kill()
 	_banner_busy = true
-	# 淇濈暀涓婁竴寮犲綋鍓嶇殑灞忓箷濮挎€侊紝杩炵画鐐瑰嚮鏃朵篃涓嶄細绐佺劧璺冲洖鍘熶綅銆?
+	# 保留上一张当前的屏幕姿态，连续点击时也不会突然跳回原位。
 	_outgoing_girl.texture = old_texture
 	_outgoing_girl.size = old_size
 	_outgoing_girl.pivot_offset = old_pivot
@@ -365,7 +334,7 @@ func _finish_banner_transition() -> void:
 
 
 func _advance_banner_spring(delta: float) -> void:
-	# 娆犻樆灏煎脊绨х殑瑙ｆ瀽瑙ｏ細浣庡抚鐜囧拰闀垮抚涓嬩篃淇濇寔绋冲畾锛屼笉渚濊禆閫愬抚绾挎€ф彃鍊笺€?
+	# 欠阻尼弹簧的解析解：低帧率和长帧下也保持稳定，不依赖逐帧线性插值。
 	var decay := exp(-BANNER_SPRING_DECAY * delta)
 	var phase := BANNER_SPRING_FREQUENCY * delta
 	var cosine := cos(phase)

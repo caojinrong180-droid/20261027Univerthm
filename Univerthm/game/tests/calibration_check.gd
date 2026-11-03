@@ -40,6 +40,10 @@ func _ready() -> void:
 	_ok(overlay != null and overlay.visible, "点按钮打开浮窗")
 	_ok(overlay.get_node_or_null("DimShade") != null, "背景有暗底")
 	_ok(overlay.find_child("CalibrationPanel", true, false) != null, "中间有面板")
+	# 设置页这一版保留「×」和「关闭（Esc）」两颗退出按钮（首次进游戏那版才换掉）
+	_ok(overlay.find_child("CloseButton", true, false) != null, "设置页版本有右上角「×」")
+	var footer_close = overlay.find_child("FooterCloseButton", true, false)
+	_ok(footer_close != null and str(footer_close.text) == "关闭（Esc）", "设置页版本有「关闭（Esc）」")
 
 	# 面板必须居中且不可拖动（锚点定死、没有拖拽逻辑）
 	var panel: Control = overlay.find_child("CalibrationPanel", true, false)

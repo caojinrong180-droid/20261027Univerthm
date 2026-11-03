@@ -2,14 +2,11 @@ extends Control
 ## 设置界面：界面在 scenes/settings.tscn 里，脚本只负责数值和连线。
 
 const Calibration = preload("res://src/ui/calibration_overlay.gd")
-const Tutorial = preload("res://src/ui/tutorial_overlay.gd")
 
 var _settings: AppSettings
 var _preview_player: AudioStreamPlayer
 ## 「辅助测量」浮窗，第一次点按钮时才建
 var _calibration: Calibration
-## 新手教程弹窗，第一次点「重新查看」时才建
-var _tutorial: Tutorial
 
 var _rows := {}
 
@@ -162,7 +159,7 @@ func _on_calibration_applied(value_ms: float) -> void:
 	_save()
 
 
-## 「新手教程」按钮：加在底部那排（返回 / 恢复默认 / 新手教程），点开同一个教程弹窗
+## 「新手教程」按钮：加在底部那排（返回 / 恢复默认 / 新手教程），点了直接进教程谱面
 func _ensure_tutorial_button() -> void:
 	var actions := _actions_row()
 	if actions == null:
@@ -171,7 +168,7 @@ func _ensure_tutorial_button() -> void:
 	if button == null:
 		button = NeonUi.button("新手教程", false, 15)
 		button.name = "TutorialButton"
-		button.tooltip_text = "每次启动后首次进入主界面会自动弹出；这里可以随时再看"
+		button.tooltip_text = "进新手教程谱面（White Noise）重新练一遍"
 		button.custom_minimum_size = Vector2(150, 46)
 		actions.add_child(button)
 		var reset := _find("ResetButton") as Button
@@ -191,21 +188,23 @@ func _actions_row() -> Control:
 	return back.get_parent() as Control
 
 
+## 「新手教程」：直接进新手教程谱面（White Noise 那个包），不再弹教程图
 func _open_tutorial() -> void:
-	if _tutorial == null:
-		_tutorial = Tutorial.new()
-		_tutorial.name = "TutorialOverlay"
-		UiKit.full_rect(_tutorial)
-		_tutorial.closed.connect(_on_tutorial_closed)
-		add_child(_tutorial)
-	_tutorial.open()
-
-
-func _on_tutorial_closed() -> void:
-	if _settings == null or _settings.tutorial_seen:
+	if App.play_tutorial():
 		return
-	_settings.tutorial_seen = true
-	_settings.save()
+	# 包读不出来：别让玩家以为按钮坏了
+	_neon_toast("找不到新手教程谱面：%s" % App.TUTORIAL_ZIP)
+
+
+## 设置页的小提示（能复用场景里那条提示就用它）
+func _neon_toast(text: String) -> void:
+	var toast := find_child("Toast", true, false) as Label
+	if toast != null:
+		toast.text = text
+		toast.modulate.a = 1.0
+		print(text)
+		return
+	push_warning(text)
 
 
 func _on_back() -> void:

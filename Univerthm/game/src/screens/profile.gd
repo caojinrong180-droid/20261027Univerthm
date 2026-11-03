@@ -1,15 +1,19 @@
 extends Control
 ## 个人资料：玩家名（可改，存进 settings.cfg）+ 游玩统计（user://profile.cfg）。
-## 右下角还有「删除游玩存档」：弹确认框，确认后清空成绩 / 通关记录（设置和名字保留）。
+## 右下角还有「删除游玩存档」（清成绩 / 通关记录，设置和名字保留）和
+## 「初始化游戏」（存档 / 设置 / 收藏品全清，回到标题界面 —— 再从标题按第一次进游戏走）。
 
 const Neon = preload("res://src/ui/neon_ui.gd")
 const ConfirmDialog = preload("res://src/ui/confirm_dialog.gd")
+## 红色危险确认框：直接复用神秘曲那块血红面板，只换文案
+const ResetWarning = preload("res://src/ui/first_entry_warning.gd")
 
 var _name_label: Label
 var _avatar: AvatarCircle
 var _edit: LineEdit
 var _stat_grid: GridContainer
 var _dialog: Control
+var _reset_dialog: Node
 
 
 func _ready() -> void:
@@ -89,6 +93,30 @@ func _ensure_delete_button() -> void:
 		actions.move_child(button, back.get_index() + 1)
 	if not button.pressed.is_connected(_open_delete_confirm):
 		button.pressed.connect(_open_delete_confirm)
+	_ensure_reset_button(actions)
+
+
+## 「初始化游戏」按钮：比删存档更狠，清完落到标题界面
+func _ensure_reset_button(actions: Control) -> void:
+	var button := actions.get_node_or_null("FactoryResetButton") as Button
+	if button == null:
+		button = Neon.button("初始化游戏", false, 15)
+		button.name = "FactoryResetButton"
+		button.tooltip_text = "清空存档 / 设置 / 收藏品，然后回到标题界面"
+		button.custom_minimum_size = Vector2(168, 46)
+		var frame := button.get_node_or_null("ButtonFrame") as NeonPanel
+		if frame != null:
+			frame.fill = Color(0.26, 0.02, 0.055, 0.95)
+			frame.edge = Color("ff3b5c")
+			frame.glow = true
+		button.add_theme_color_override("font_color", Color("ffd7de"))
+		button.add_theme_color_override("font_hover_color", Color("ffffff"))
+		actions.add_child(button)
+		var delete_button := actions.get_node_or_null("DeleteSaveButton") as Control
+		if delete_button != null:
+			actions.move_child(button, delete_button.get_index() + 1)
+	if not button.pressed.is_connected(_open_reset_confirm):
+		button.pressed.connect(_open_reset_confirm)
 
 
 func _ensure_dialog() -> void:
@@ -115,6 +143,33 @@ func _delete_save() -> void:
 	var hint := _find("SaveHint")
 	if hint != null:
 		hint.text = "✓ 游玩记录已清空"
+
+
+## 「初始化游戏」的红色确认框：跟神秘曲警告同一块血红面板（FirstEntryWarning），只换文案
+func _ensure_reset_dialog() -> void:
+	if _reset_dialog != null:
+		return
+	_reset_dialog = ResetWarning.new()
+	_reset_dialog.name = "FactoryResetConfirm"
+	UiKit.full_rect(_reset_dialog)
+	add_child(_reset_dialog)
+	_reset_dialog.chosen.connect(_on_reset_chosen)
+
+
+func _open_reset_confirm() -> void:
+	_ensure_reset_dialog()
+	# 第三参数 silent = true：这个框不放音效提示，只闪白
+	_reset_dialog.configure(
+		"这会使游戏进入第一次启动前的状态，\n你的所有数据都会丢失，确定吗？",
+		"存档、成绩、收藏品和设置都会被清空，\n然后回到标题界面。",
+		true)
+	_reset_dialog.open()
+
+
+func _on_reset_chosen(confirmed: bool) -> void:
+	if not confirmed:
+		return
+	App.factory_reset()
 
 
 func _refresh() -> void:

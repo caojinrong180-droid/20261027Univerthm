@@ -46,12 +46,14 @@
 
 **章节选择页**（`scenes/chapter_select.tscn` + `src/screens/chapter_select.gd`）：左边**六本斜着的书脊**
 （平行四边形，`src/ui/chapter_spine.gd` 自己 `_draw` 画底+边+竖排文字，`_has_point` 也按平行四边形判定，
-所以四个角的空白点不到）。顺序是「全部曲目 / 单曲 / 主线·序 / 主线·一 / 心跳电波！精选集 / 鼓立方精选集」，
+所以四个角的空白点不到）。顺序是「全部曲目 / 单曲 / 主线·序 / 主线·一 / 心跳电波 ON AIR!精选集 / 鼓立方精选集」，
 两本精选集的 `index` 都写「联动」；现在只开放「全部曲目」和「主线·序」，另外四本压着纯白小挂锁、点只弹提示。
 右边跟着当前选中的书脊显示 `章节 · 序` / 章节名 / `CL` `FC` `AP` 进度（`App.chapter_progress()` 数的）。
 书上文字贴着**右下角**、整块跟斜边同一个倾角转过去；鼠标停在书上就选中它，点一下进选曲。
 **书脊可以挂封面**：章节表里写 `cover` 就有一张图（「全部曲目」挂 `assets/covers/ALL.png`、
-「主线·序」挂 `assets/covers/C0.png`，源文件都在仓库根的 `img/C/`）。`chapter_spine.gd` 用 `draw_polygon`
+「主线·序」挂 `assets/covers/C0.png`、「心跳电波」挂 `assets/covers/XTDB.png`、
+「鼓立方」挂 `assets/covers/glf.png`，源文件都在仓库根的 `img/C/`）。
+`chapter_spine.gd` 用 `draw_polygon`
 自带的 UV 把图**等比放大裁成平行四边形**（多出来的两边切掉，四个角不会漏图），再压一层上亮下暗的渐变 +
 状态色，底下的竖排字因此看得清；没写 `cover` 的书脊还是原来那块纯色。换封面只要改章节表那一行，不用动场景。
 横排用 `src/ui/spine_carousel.gd`：**滚轮左右滑**，滑到头时只给一点点橡皮筋，松手弹回去。
@@ -97,6 +99,9 @@
 （`BOSS_SCALE` / `SIDE_SCALE`）。
 点方框选中时，右侧详情从**右边滑出来**，右半边垫的是「曲绘糊上去」的衬底
 （`DetailSheetBackdrop`，`cover_blur.gdshader` 磨砂，alpha 0.92）—— 糊的是**当前这首歌的曲绘**。
+这层平时跟着 `_process` 一起刷，可详情板**滑到位之后 `_process` 会自我关掉**（省得每帧空转），
+所以换歌时由 `_update_detail()` 末尾手动 `_apply_sheet(0.0)` 补刷一次；少了这一步，
+它就会永久停在**进界面时选中的那一首**上（看起来像「背景卡住不换」）。
 **??? 的神秘曲不给它单独做黑板了**：未揭晓时（`App.is_hidden_chart()`：列表第 3 首 + 还没有成绩）
 它拿到的就是**纯黑占位曲绘 `assets/none.jpg`**（`App.none_cover()`，懒加载全局共用一张），
 详情面板、地图方框、右半边模糊衬底三处一起变黑，等打出成绩之后自动换回真曲绘。
@@ -210,7 +215,7 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | | `R` | 重试 |
 | | `F11` | 全屏 / 窗口（全屏按屏幕原生分辨率渲染，最清晰） |
 | 警告 | 任意键 / 点击 | 跳过，直接进开屏画面（不按也会 5 秒后自动进） |
-| 开屏 | 任意键 / 点击画面任意处 | 进入主界面（不会自动继续，F11 仍然只是全屏） |
+| 开屏 | 任意键 / 点击画面任意处 | 第一次进游戏先进「全黑的校准页 → 新手教程谱面」，之后直接进主界面（不会自动继续，F11 仍然只是全屏） |
 | 主界面 | `↑ ↓` / `Enter` | 切换按钮 / 确认 |
 | | `C` / `P` / `Esc` | 收藏品 / 个人资料 / 退出 |
 | 选曲 | `↑ ↓` | 选谱面 |
@@ -224,7 +229,7 @@ UI 的虚拟分辨率是 1280×720，`canvas_items` 会按窗口等比放大所�
 | 个人资料 | `Enter` / `Esc` | 保存名字 / 返回主界面 |
 | 设置 | `◀ ▶` / `Esc` / `R` | 调值 / 返回上一页 / 恢复默认 |
 | 设置 · 辅助测量 | `F` / `Esc` | 跟着重音打点 / 关掉浮窗 |
-| 新手教程 | `滚轮` / `↑ ↓` `PgUp PgDn` / `Esc` | 往下翻 / 关掉（每次启动后首次进入主界面自动弹一次，也可在「设置 · 新手教程」打开） |
+| 新手教程 | 「设置 · 新手教程」按钮 | 直接进教程谱面（White Noise）；打完或中途退出回主界面 |
 
 拖拽：把 `.zip`（制谱器导出的包）或 `.json` 拖进窗口会自动复制到 `user://charts` 并刷新（选曲页）；
 把 `.txt` 拖进窗口会复制到 `user://剧情`，收藏品页的「剧情」分类马上就能读到。
@@ -364,7 +369,7 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 ```
 game/
   project.godot              工程设置（1280×720 虚拟分辨率 / 1920×1080 窗口，canvas_items 拉伸）
-  scenes/                    10 个场景：警告 / 开屏 / 主界面 / 收藏品 / 个人资料 / 选曲 / 游玩 / 结算 / 设置
+  scenes/                    11 个场景：警告 / 开屏 / 首次流程 / 主界面 / 收藏品 / 个人资料 / 选曲 / 游玩 / 结算 / 设置
                              + song_row.tscn（选曲列表里每条曲目行；选曲页的界面节点也全在场景里）
   src/
     app.gd                   autoload「App」：设置 + 谱面库 + 本次游玩会话 + 结算数据
@@ -376,13 +381,16 @@ game/
       settings.gd            玩家设置（user://settings.cfg 读写）
     game/
       stage_view.gd          舞台渲染：1:1 复刻制谱器预渲染窗口（_draw）+ 打击特效
+      stage_post.gd          故事板后处理 shader（一条 = 一层，逐层叠）
+      story_layers.gd        故事板图层：谱面场里的文字层（Label，按 chart_time 实时算）
       gameplay.gd            游玩流程：倒计时 → 音频时钟 → 判定 → 暂停 → 结算
     ui/
       palette.gd             全部颜色（换皮先改这里）
       theme_builder.gd       Theme：字体 / 按钮 / 面板 / 滚动条 / 进度条
       ui_kit.gd              建控件的小函数（label / button / panel / chip / stepper…）
       calibration_overlay.gd 音画偏移的「辅助测量」浮窗（节拍器 + 打点 + 取平均）
-      tutorial_overlay.gd    新手教程弹窗（整页教程图 + 滚动；每次启动后首次进入主界面自动弹、设置里可重开）
+      tutorial_overlay.gd    新手教程弹窗（整页教程图 + 滚动；目前没挂入口，设置里那颗按钮改成进教程谱面了）
+      first_run.gd           第一次进游戏：纯黑底 + 辅助校准 → 新手教程谱面 → 主界面
     screens/
       warning.gd             启动：光敏性癫痫警告（5 秒自动继续，任意键 / 点击可跳过）
       splash.gd              开屏：标题 logo + 「点击任意按键进入游戏」（节点都在 scenes/splash.tscn 里）
@@ -397,12 +405,16 @@ game/
   audio/result.mp3           结算音乐（源文件在仓库根的 sound/结算.mp3）
   assets/main_bg.png         主界面背景（换成自己的科幻背景即可）
   assets/Title.png           开屏标题 logo（透明底；四周留白在 scenes/splash.tscn 里用 AtlasTexture 裁掉）
-  assets/tutorial.png        新手教程整页图（源文件 img/教程.png）
+  assets/tutorial.png        新手教程整页图（源文件 img/教程.png；设置里打开的那个弹窗用）
+  tutorial/White_noise.zip   新手教程谱面（第一次进游戏打的那首，不在 charts/ 里所以不进曲库）
   assets/banners/*.png       看板娘立绘（主界面右下角可切换，收藏品里也会列出来；按文件名排序）
   assets/menu/*.png          主界面切图（User_name 名牌 / Start / Collection / Setting / User_profile 按钮 / change_character 切换立绘 / Line 装饰线）
   assets/back.png            选曲页右上角的返回图标（源文件 img/bacK.png；按钮是 scenes/song_select.tscn 里的 BackButton，用 icon + expand_icon）
   assets/covers/C0.png       章节「主线·序」的书脊封面 + 右半屏背景（源文件 img/C/C0.png）
   assets/covers/ALL.png      章节「全部曲目」的封面 + 右半屏背景（源文件 img/C/ALL.png）
+  assets/covers/XTDB.png     章节「心跳电波 ON AIR!精选集」的书脊封面（源文件 img/C/XTDB.png）
+  assets/covers/glf.png      章节「鼓立方精选集」的书脊封面（源文件 img/C/glf.png）
+  assets/none.jpg            神秘曲未揭晓时的纯黑占位曲绘
   src/ui/sprite_button.gd    切图按钮组件（TextureRect + 悬停上浮/不透明度变化），编辑器里可直接挂
   charts/                    ← 你的谱面放这里（现在只有 README）
   剧情/                      ← 剧情 txt 放这里（子文件夹也认，比如 剧情/序章/）
@@ -529,6 +541,24 @@ game/
 每首最好成绩 / 解锁动画记录，以及 `collection.cfg` 里的剧情搜集 —— **曲目重新上锁**；
 `settings.cfg`（音量、偏移、玩家名、看板娘、Debug 开关）完全不碰。
 
+**初始化游戏**：同一个位置还有一颗**红色**的 `初始化游戏`（血红框 + 亮边），点了先弹**血红警告框**
+（直接复用神秘曲那块 `src/ui/first_entry_warning.gd`，`configure(标题, 正文, silent = true)` 换文案；
+`silent = true` 表示**不响音效、也不闪白**，就是安静浮出来）：
+「这会使游戏进入第一次启动前的状态，你的所有数据都会丢失，确定吗？」默认焦点在「否」，`Esc` 也是否。
+正文写的是「存档、成绩、收藏品和设置都会被清空，然后回到标题界面。」
+选「是」走 `App.factory_reset()`：
+
+- 删掉 `user://settings.cfg`、`user://profile.cfg`、`user://collection.cfg`（**玩家自己导入的
+  `user://charts` 不动**，那是内容不是存档）
+- 内存里的统计 / 通关 / 最好成绩 / 收藏品 / 设置全部回到初始值，教程「看过」的标记清掉
+- **设置在内存里也逐项回默认**（`AppSettings.load_settings()` 拿默认那一套，同时 `apply_fullscreen()`
+  把窗口变回窗口化、`refresh_music_volume()` 把音乐音量按默认重设、`character_index` 回第一张看板娘）：
+  音画偏移 `0` / 下落速度 `1.0` / 判定窗口 `1.0` / 音乐音量 `0.85` / 打击音量 `0.6` / 打击音开 /
+  打击特效 `2` / 自动演示关 / 键位 `asdf_jkl` / 画面偏移 `-24` / 玩家名 `User` / 看板娘 `0` /
+  `tutorial_seen = false` / Debug 全解锁关 / 全屏关
+- 最后 `goto_splash()` —— 回到**标题（开屏）界面**；点拨任意键之后因为标记已清，会再走一遍
+  「全黑校准 → 新手教程谱面 → 主界面」的首次流程
+
 ### 辅助测量（音画偏移）
 
 「音画偏移」旁边的 `辅助测量` 打开一块**铺满屏幕的暗底 + 居中的浮窗**（不能拖动，
@@ -542,20 +572,42 @@ game/
 - 打满 5 次取平均 → `应用到偏移` 直接写进音画偏移（**覆盖**原值，不留旧值）；
   45 秒一次都没打中就自己停，不会把节拍器挂在后台。
 
-节拍音是脚本现合成的（`calibration_overlay.gd::_make_click`：正弦 + 二次 / 三次谐波、
-指数衰减、2 ms 起音、尾巴收 0），不读 `audio/*.wav`。想换音色只改
-`_build_players()` 里的两组「起始频率 / 结束频率 / 时长 / 衰减 / 音量」。
+节拍音用的是素材：**轻拍 `audio/offest1.wav`（0.08 秒短 tick）、重拍 `audio/offest2.wav`（0.24 秒）**
+（源文件 `sound/offest1.wav` / `sound/offest2.wav`），在 `calibration_overlay.gd` 里 `preload` 成
+`LIGHT_CLICK` / `ACCENT_CLICK`，音量分别 −3 dB / 0 dB（`LIGHT_DB` / `ACCENT_DB`）。
+想换音色直接换这两个 wav；以前那套「脚本现合成正弦 + 谐波」的 `_make_click()` 已经删掉了。
 
-### 新手教程
+**浮窗一开就把菜单背景音乐静音**（`App.menu_music.set_music_volume(0.0)`，等于把那条音乐总线 mute 掉），
+免得音乐盖住节拍音听不准；关掉浮窗时按设置里的「音乐音量」恢复（`_mute_menu_music()`）。
 
-每次启动后第一次进**主界面**时（入场动画结束后 0.55 秒）自动弹一次；同一次运行中返回主界面不会重复弹。
-`src/ui/tutorial_overlay.gd`：暗底 + 居中切角面板，里面是 `assets/tutorial.png`
-（`img/教程.png`，1000×1920 的整页图）—— 按面板宽度等比缩放放进滚动区，
-**滚轮 / `↑ ↓` / `PgUp PgDn` / `Home End` 往下翻**，`Esc` / `×` / `知道了` 关掉。
-关掉之后会把 `settings.cfg` 的 `[ui] tutorial_seen` 记成 `true`，作为已看过的历史记录；下次启动仍会自动弹出。
+### 新手教程（第一次进游戏那条流程）
 
-想再看：设置页底部那排（`← 返回` / `恢复默认` / **`新手教程`**）点一下就能重新打开同一个弹窗；
-从这个入口看完也会记成「看过了」。`恢复默认`（R）**不会**把 `tutorial_seen` 清掉。换教程图只要替换 `assets/tutorial.png`（比例随意）。
+**启动 → 警告 → 开屏（点任意键）→ 全黑的校准页 → 辅助校准 → 关掉 → 打新手教程谱面 → 主界面。**
+
+- 只有 `settings.cfg` 里 `[ui] tutorial_seen` 还是 `false`（第一次进游戏）才走这条流程：
+  开屏 `splash.gd` 的 `_leave()` 里判一下，是第一次就 `App.goto_first_run()`，否则照旧 `goto_menu()`。
+- `scenes/first_run.tscn` + `src/screens/first_run.gd`：整屏**纯黑**（`ColorRect`），
+  0.45 秒后把 `src/ui/calibration_overlay.gd`（设置页那颗「辅助测量」用的同一个浮窗）弹出来，
+  黑底上只有这一块「节拍校准」。`应用到偏移` 会按设置页同一套规则写 `audio_offset_ms` 并存盘。
+- 这一版浮窗是**强制校准**（`CalibrationOverlay.first_run = true`）：右上角**没有「×」**，
+  左下角那颗改成 **`跳过`**（不测了，跳过校准直接进谱面）；设置页那一版照旧是「×」+「关闭（Esc）」。
+- 关掉校准（`应用到偏移` 之后自动关 / 点 `跳过` / 直接 `Esc`）→ `App.play_tutorial()` 直接进谱面，
+  打的是**仓库里的 `game/tutorial/White_noise.zip`**（ARForest《White Noise》EASY Lv.1，97 个音符，
+  来自仓库根的 `Foe_Newer_White_Noise .zip`）。这个包放在 `charts/` 外面，
+  所以**不会**出现在选曲页 / 序章地图里；`ChartSource.entry_from_zip()` 直接按路径建 entry。
+- 这一趟的 `App.session["tutorial"] = true`，`gameplay.gd` 读到就按教程处理：
+  **打完不进结算、不记成绩、不掉剧情**，直接 `App.finish_tutorial()`（把 `tutorial_seen` 写成 `true`）+
+  回主界面；中途 `Esc` 暂停后退出（暂停菜单第三颗按钮 / `Q`）也一样回主界面，不会把人卡在教程里。
+- 包读不出来（被删了 / 坏了）就跳过教程直接进主界面，同时把标记写掉，免得每次启动都卡在黑屏。
+
+**想再打一遍**：设置页底部那排（`← 返回` / `恢复默认` / **`新手教程`**）那颗按钮现在**直接进教程谱面**
+（`settings_screen.gd::_open_tutorial()` → `App.play_tutorial()`），打完 / 中途退出同样回主界面。
+
+**教程图弹窗**（`src/ui/tutorial_overlay.gd`，`assets/tutorial.png`）已经**不挂在任何入口上了** ——
+主界面不再自动弹、设置页那颗按钮也换成进谱面了。组件和 `assets/tutorial.png` 都还留着
+（整页图 + 滚动：滚轮 / `↑ ↓` / `PgUp PgDn` / `Home End` 翻页，`Esc` / `×` / `知道了` 关掉），
+`tests/tutorial_check.tscn` 自检也还在，哪天想接回去直接 `Tutorial.new()` 挂上去就行。
+换教程谱面只要换 `game/tutorial/White_noise.zip`。
 
 ## 美化（留给你）
 
@@ -596,7 +648,12 @@ game/
     `skip_unlock()` 只留给调试 / 测试用；`debug_mode` / 无头模式照旧不播
   - 谱面场的**后处理 Shader** 已生效：一条 shader = 一层，逐层叠加（`shaders/story_grade.gdshader` + `src/game/stage_post.gd`，
     每层一个 ColorRect，层间插 `BackBufferCopy`），15 种预设和网页版同一套公式
-  - **解锁动画 / 文字 / 图片 / 形状图层还没画**（Godot 端只做了解析，图层渲染待补）
+  - 谱面场的**文字图层**也画了（`src/game/story_layers.gd`，`gameplay.gd::_build_story_layers()`）：
+    时间就是 `chart_time`，位置 / 缩放 / 旋转 / 透明度 / 入场出场全走
+    `StoryboardSource.active_layers()` 的 state；`x / y` 是 1280×720 舞台的比例，字号按窗口高度等比放大
+    （1920×1080 时 ×1.5），发光用 Label 的 outline 近似。这一层插在 `Stage` 和 `Post` 之间，
+    所以后处理 shader 会把字一起处理（和制谱器「先画图层再叠 shader」一致）。新手教程的讲解就是这 14 条文字图层。
+  - **图片 / 视频 / 形状图层还没画**（解析层留了字段，渲染待补）；解锁场里的视频走的是另一套（烘焙帧序列）
 - **曲绘作者**：谱面 `meta.illustrator`（制谱器侧栏「曲绘画师」那栏）。选曲详情在「谱师」下面多一行
   「曲绘 XXX」，结算界面的曲目那行也会带上；空串就整段不占位（老谱面不用改）
 
