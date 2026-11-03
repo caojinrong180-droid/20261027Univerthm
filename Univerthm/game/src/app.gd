@@ -12,14 +12,12 @@ const GAMEPLAY_SCENE := "res://scenes/gameplay.tscn"
 const RESULTS_SCENE := "res://scenes/results.tscn"
 const SETTINGS_SCENE := "res://scenes/settings.tscn"
 const MenuMusic = preload("res://src/audio/menu_music.gd")
-const ScreenGlitch = preload("res://src/ui/screen_glitch.gd")
 
 ## 谱面扫描根目录：随游戏发布 + 用户拖进来的
 const CHART_ROOTS := ["res://charts", "user://charts"]
 
 var settings: AppSettings
 var menu_music: MenuMusic
-var screen_glitch: ScreenGlitch
 ## 主菜单按钮点击音效；只有主界面把它接上去
 var ui_sound: UiSound
 var library: Array = []
@@ -94,9 +92,6 @@ func _ready() -> void:
 	refresh_music_volume()
 	get_tree().scene_changed.connect(_sync_menu_music)
 	_sync_menu_music.call_deferred()
-	screen_glitch = ScreenGlitch.new()
-	screen_glitch.name = "ScreenGlitch"
-	add_child(screen_glitch)
 	ui_sound = UiSound.new()
 	ui_sound.name = "UiSound"
 	add_child(ui_sound)

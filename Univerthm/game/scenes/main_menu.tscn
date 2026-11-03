@@ -1,4 +1,4 @@
-[gd_scene format=4 uid="uid://smvbf7grxyti"]
+﻿[gd_scene format=4 uid="uid://smvbf7grxyti"]
 
 [ext_resource type="Script" uid="uid://bkmoapke5bvwh" path="res://src/screens/main_menu.gd" id="1_menu"]
 [ext_resource type="Texture2D" uid="uid://edyaxf484b07" path="res://assets/menu_deep_space.png" id="2_bg"]
@@ -13,8 +13,6 @@
 [ext_resource type="Shader" uid="uid://duwwtjk5cq3qv" path="res://shaders/menu_character.gdshader" id="12_motion"]
 [ext_resource type="Shader" uid="uid://cckapr61me2lu" path="res://shaders/menu_background.gdshader" id="13_background"]
 [ext_resource type="Shader" uid="uid://btccmhixtk426" path="res://shaders/warning_glitch.gdshader" id="14_glow"]
-[ext_resource type="Script" uid="uid://b5prk2g5lk80w" path="res://src/ui/menu_glitch.gd" id="15_glitch"]
-[ext_resource type="Shader" uid="uid://bia07vnhh4o4p" path="res://shaders/menu_local_glitch.gdshader" id="16_glitch"]
 [ext_resource type="Script" uid="uid://c7k8mwi8otr82" path="res://src/ui/menu_pointer_collapse.gd" id="17_pointer"]
 [ext_resource type="Shader" uid="uid://b5m0y24yxh53o" path="res://shaders/menu_pointer_collapse.gdshader" id="18_pointer"]
 [ext_resource type="Texture2D" uid="uid://80vkq6rd1wc3" path="res://assets/banners/stra1.png" id="19_stra"]
@@ -58,16 +56,6 @@ shader_parameter/motion_strength = 1.0
 shader_parameter/sway = 0.005
 shader_parameter/cloth_sway = 0.026
 shader_parameter/cloth_lift = 0.009
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_local_glitch"]
-resource_local_to_scene = true
-shader = ExtResource("16_glitch")
-shader_parameter/region_a = Vector4(0.1, 0.5, 0.25, 0.07)
-shader_parameter/region_b = Vector4(0.6, 0.6, 0.16, 0.04)
-shader_parameter/protected_rect = Vector4(0.65, 0.1, 0.21, 0.3)
-shader_parameter/burst_phase = 1.0
-shader_parameter/burst_seed = 0.0
-shader_parameter/strength = 1.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_pointer"]
 resource_local_to_scene = true
@@ -131,20 +119,6 @@ mouse_filter = 2
 texture = ExtResource("19_stra")
 expand_mode = 1
 stretch_mode = 5
-
-[node name="AmbientGlitch" type="ColorRect" parent="." unique_id=1611172394]
-visible = false
-material = SubResource("ShaderMaterial_local_glitch")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("15_glitch")
-min_interval = 1.2
-max_interval = 2.6
 
 [node name="Line" type="TextureRect" parent="." unique_id=1008318404]
 layout_mode = 0

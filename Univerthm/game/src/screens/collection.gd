@@ -4,8 +4,8 @@ extends Control
 const BANNERS_DIR := "res://assets/banners"
 const AUTHOR_NOTE_ROOT := "res://文档"
 const AUTHOR_NOTE_PATH := "res://文档/作者的话.txt"
-const FILTERS := ["all", "banner", "cover", "story"]
-const TAB_LABELS := {"all": "全部", "banner": "角色立绘", "cover": "曲绘", "story": "剧情"}
+const FILTERS := ["all", "banner", "cover", "story", "other"]
+const TAB_LABELS := {"all": "全部", "banner": "角色", "cover": "曲绘", "story": "剧情", "other": "其他"}
 const TOAST_COLOR := Color("bdf49c")
 const STORY_BODY := Color("ded7ef")
 const Neon = preload("res://src/ui/neon_ui.gd")
@@ -21,6 +21,10 @@ var _story_catalog: Array = []
 var _stories: Array = []
 var _filter := "all"
 var _reading_story := false
+## 预览浮层当前在看的这一组图（角色卡 = 这个角色的全部立绘，可左右翻）
+var _preview_frames: Array = []
+var _preview_index := 0
+var _preview_card := {}
 var _overlay: Control
 var _overlay_tex: TextureRect
 var _overlay_kind: Label
@@ -58,6 +62,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_preview()
 		else:
 			App.goto_menu()
+	elif _overlay.visible and not _reading_story and _preview_frames.size() > 1 \
+			and (event.keycode == KEY_LEFT or event.keycode == KEY_RIGHT):
+		# 角色卡放大时左右翻立绘
+		get_viewport().set_input_as_handled()
+		_step_preview(-1 if event.keycode == KEY_LEFT else 1)
 	elif event.keycode == KEY_R and not _overlay.visible:
 		get_viewport().set_input_as_handled()
 		_reload_stories()
@@ -107,9 +116,11 @@ func _resolve() -> void:
 	_overlay_sub = _find("OverlaySub")
 	# 点背景关闭 + 背景虚化：挂到 Overlay 里（场景里已经有 Overlay 时也在这一层补）
 	_ensure_overlay_effects()
+	_ensure_preview_nav()
 	_find("ClosePreview").pressed.connect(_close_preview)
 	_close_preview()
 	_ensure_story_tab()
+	_ensure_other_tab()
 	for key in FILTERS:
 		var tab := _find("Tab_" + key) as Button
 		if tab != null and not tab.pressed.is_connected(_set_filter.bind(key)):
@@ -146,6 +157,23 @@ func _ensure_story_tab() -> void:
 	row.move_child(tab, (cover.get_index() + 1) if cover != null else row.get_child_count() - 1)
 
 
+## 「其他」分类：目前只有「作者的话」这一份文档
+func _ensure_other_tab() -> void:
+	if _find("Tab_other") != null:
+		return
+	var anchor := _find("Tab_story") as Button
+	if anchor == null:
+		return
+	var tab := Neon.button(TAB_LABELS["other"], false, 14)
+	tab.name = "Tab_other"
+	tab.custom_minimum_size = Vector2(130, 32)
+	tab.toggle_mode = true
+	tab.button_group = anchor.button_group
+	var row := anchor.get_parent()
+	row.add_child(tab)
+	row.move_child(tab, anchor.get_index() + 1)
+
+
 func _refresh_counts() -> void:
 	var banners := 0
 	for card in _cards:
@@ -161,6 +189,9 @@ func _refresh_counts() -> void:
 	var story_tab := _find("Tab_story") as Button
 	if story_tab != null:
 		story_tab.text = "%s  %02d/%02d" % [TAB_LABELS["story"], _stories.size(), _story_catalog.size()]
+	var other_tab := _find("Tab_other") as Button
+	if other_tab != null:
+		other_tab.text = "%s  %02d" % [TAB_LABELS["other"], document_count]
 	var story_count := _find("StoryCount") as Label
 	if story_count != null:
 		story_count.text = "%02d/%02d 篇剧情 · %02d 份文档" % [_stories.size(), _story_catalog.size(), document_count]
@@ -204,7 +235,8 @@ func _scan_stories() -> void:
 func _fill_cards() -> void:
 	var grid := _find("CardGrid") as GridContainer
 	_clear_children(grid)
-	var show_images := _filter != "story"
+	# 「剧情」和「其他」这两栏没有图片卡，列表全交给下面那块 StorySection
+	var show_images := _filter != "story" and _filter != "other"
 	var shown := 0
 	if show_images:
 		for i in _cards.size():
@@ -220,18 +252,26 @@ func _fill_cards() -> void:
 			continue
 		tab.set_pressed_no_signal(key == _filter)
 		tab._refresh()
-	var story_visible := _filter == "all" or _filter == "story"
+	var story_visible := _filter == "all" or _filter == "story" or _filter == "other"
 	if _story_section != null:
 		_story_section.visible = story_visible
 		if story_visible:
 			_fill_stories()
+			# 标题跟着分类走：看「其他」时别还写着「剧情档案」
+			var section_title := _find("StorySectionTitle") as Label
+			if section_title != null:
+				section_title.text = "其他" if _filter == "other" else "剧情档案"
+			var section_sub := _find("StorySectionSub") as Label
+			if section_sub != null:
+				section_sub.text = "/ OTHERS" if _filter == "other" else "/ STORY ARCHIVE"
 	var empty := _find("EmptyState") as Label
 	if empty != null:
-		empty.visible = show_images and shown == 0
+		# 「曲绘」这一栏空着就是空着，一个字都不摆
+		empty.visible = show_images and shown == 0 and _filter != "cover"
 		if _filter == "banner":
 			empty.text = "还没有角色立绘\n把图片放进 assets/banners，会自动收录。"
 		elif _filter == "cover":
-			empty.text = "还没有曲绘\n把这一首完整玩一遍，曲绘才会进收藏。"
+			empty.text = ""
 		else:
 			empty.text = "暂无收藏\n完整玩过的曲目会让曲绘出现在这里。"
 	_resize_grid.call_deferred()
@@ -239,8 +279,15 @@ func _fill_cards() -> void:
 
 func _fill_stories() -> void:
 	_clear_children(_story_rows)
-	if not _author_note.is_empty():
+	# 「作者的话」归到「其他」：全部 / 其他 里都有它，剧情栏里不重复出现
+	var want_note := _filter == "all" or _filter == "other"
+	var want_stories := _filter == "all" or _filter == "story"
+	if want_note and not _author_note.is_empty():
 		_story_rows.add_child(_build_story_row(_author_note, 0, true))
+	if not want_stories:
+		if _story_rows.get_child_count() == 0:
+			_story_rows.add_child(Neon.label("暂无内容", 15, Neon.MUTED))
+		return
 	if _story_catalog.is_empty():
 		if _author_note.is_empty():
 			_story_rows.add_child(Neon.label("暂无剧情档案", 15, Neon.MUTED))
@@ -287,11 +334,15 @@ func _build_story_row(story: Dictionary, index: int, unlocked: bool) -> Button:
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	content.add_child(texts)
-	var row_title := str(story.get("title", "未命名剧情")) if unlocked else "未解锁档案 %02d" % index
+	# 没解锁的剧情只露一个「???」，下面那行写清楚「通关哪一首」才拿得到
+	var row_title := str(story.get("title", "未命名剧情")) if unlocked else "???"
 	var title := Neon.label(row_title, 17, Neon.LIGHT if unlocked else Neon.MUTED, true)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(title)
-	var hint := "通关第 %02d 首曲目后解锁" % index if index <= App.library.size() else "尚无对应曲目"
+	var chart_title := ""
+	if index >= 1 and index <= App.library.size():
+		chart_title = str(App.library[index - 1].get("title", ""))
+	var hint := "通关「%s」后解锁" % chart_title if chart_title != "" else "尚无对应曲目"
 	var excerpt := Neon.label(str(story.get("subtitle", "")) if unlocked else hint, 11, Neon.MUTED)
 	excerpt.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	texts.add_child(excerpt)
@@ -328,15 +379,53 @@ func _collect() -> void:
 	_cards.clear()
 	var dir := DirAccess.open(BANNERS_DIR)
 	if dir != null:
+		# 同一个角色的多张立绘合成一张卡（标题 = 角色名），点开放大后可以左右翻
+		var groups := {}
+		var order_keys := []
+		var loose := []
 		for file in dir.get_files():
 			if not str(file).get_extension().to_lower() in ["png", "jpg", "jpeg", "webp"]:
 				continue
 			var path := "%s/%s" % [BANNERS_DIR, file]
-			if ResourceLoader.exists(path):
-				var title := str(file).get_basename()
-				if title.begins_with("exec-"):
-					title = "角色立绘 %02d" % (_cards.size() + 1)
-				_cards.append({"title": title, "subtitle": "CHARACTER / 角色立绘", "kind": "banner", "tex": load(path)})
+			if not ResourceLoader.exists(path):
+				continue
+			var tex := load(path) as Texture2D
+			if tex == null:
+				continue
+			var stem := str(file).get_basename()
+			var key := _character_key(stem)
+			if key == "":
+				# 没有角色名（exec- 这类散图）：自己一张卡
+				loose.append({
+					"title": "角色立绘 %02d" % (loose.size() + 1),
+					"subtitle": "CHARACTER / 角色",
+					"kind": "banner",
+					"tex": tex,
+					"frames": [tex],
+				})
+				continue
+			if not groups.has(key):
+				groups[key] = {"stems": [], "frames": []}
+				order_keys.append(key)
+			(groups[key]["stems"] as Array).append(stem)
+			(groups[key]["frames"] as Array).append({"n": _character_index(stem), "tex": tex})
+		order_keys.sort()
+		for key in order_keys:
+			var group: Dictionary = groups[key]
+			var frames: Array = group["frames"]
+			frames.sort_custom(func(a, b): return int(a["n"]) < int(b["n"]))
+			var texes := []
+			for frame in frames:
+				texes.append(frame["tex"])
+			_cards.append({
+				"title": _character_name(str(key)),
+				"subtitle": "CHARACTER / 角色  ·  %d 张" % texes.size(),
+				"kind": "banner",
+				"tex": texes[0],
+				"frames": texes,
+			})
+		for card in loose:
+			_cards.append(card)
 	# 首张立绘之后展示曲绘，让默认分类同时呈现两类收藏。
 	# 曲绘是掉落品：这一首完整玩过一遍才进收藏品（自动演示不算）。
 	var cover_index := mini(1, _cards.size())
@@ -347,9 +436,39 @@ func _collect() -> void:
 			continue
 		var tex: Texture2D = ChartSource.load_cover(entry)
 		if tex != null:
-			_cards.insert(cover_index, {"title": str(entry.get("title", "未命名谱面")), "subtitle": str(entry.get("difficulty", "NORMAL")), "kind": "cover", "tex": tex})
+			_cards.insert(cover_index, {"title": str(entry.get("title", "未命名谱面")), "subtitle": str(entry.get("difficulty", "NORMAL")), "kind": "cover", "tex": tex, "frames": [tex]})
 			cover_index += 1
 	_scan_stories()
+
+
+## 立绘文件名 → 角色 key：「stra1」→「stra」。末尾没有数字、或 exec- 这类散图返回空串。
+func _character_key(stem: String) -> String:
+	if stem.begins_with("exec-"):
+		return ""
+	var end := stem.length()
+	while end > 0 and stem.substr(end - 1, 1).is_valid_int():
+		end -= 1
+	if end == stem.length() or end == 0:
+		return ""
+	return stem.substr(0, end)
+
+
+## 立绘文件名末尾的编号：「stra3」→ 3（没有数字就是 0）
+func _character_index(stem: String) -> int:
+	var end := stem.length()
+	var start := end
+	while start > 0 and stem.substr(start - 1, 1).is_valid_int():
+		start -= 1
+	if start == end:
+		return 0
+	return int(stem.substr(start, end - start))
+
+
+## 角色 key → 显示名：首字母大写（stra → Stra）
+func _character_name(key: String) -> String:
+	if key == "":
+		return "角色"
+	return key.substr(0, 1).to_upper() + key.substr(1)
 
 
 # --------------------------------------------------------------------------- #
@@ -365,8 +484,12 @@ func _build_story_ui() -> void:
 	grid.get_parent().add_child(_story_section)
 	var head := UiKit.hbox(10)
 	_story_section.add_child(head)
-	head.add_child(Neon.label("剧情档案", 17, Neon.LIGHT, true))
-	head.add_child(Neon.label("/ STORY ARCHIVE", 11, Neon.PURPLE))
+	var head_title := Neon.label("剧情档案", 17, Neon.LIGHT, true)
+	head_title.name = "StorySectionTitle"
+	head.add_child(head_title)
+	var head_sub := Neon.label("/ STORY ARCHIVE", 11, Neon.PURPLE)
+	head_sub.name = "StorySectionSub"
+	head.add_child(head_sub)
 	var rule := UiKit.rule(Color("4a2f6b"))
 	rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -462,10 +585,6 @@ func _build() -> void:
 	back.name = "AccentBackButton"
 	back.custom_minimum_size.x = 200
 	actions.add_child(back)
-	actions.add_child(UiKit.stretch())
-	var note := Neon.label("角色立绘 / 通关掉落曲绘与剧情", 12, Neon.MUTED)
-	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	actions.add_child(note)
 	_build_overlay()
 
 
@@ -595,13 +714,46 @@ func _open_preview(card: Dictionary) -> void:
 		_story_scroll.hide()
 	_clear_children(_story_text)
 	_overlay_tex.show()
-	_overlay_tex.texture = card.tex
-	if _overlay_kind != null:
-		_overlay_kind.text = "藏品鉴赏 / ARTWORK"
-	_overlay_title.text = card.title
-	_overlay_sub.text = "%s  ·  Esc / 点击关闭" % card.subtitle
+	_preview_card = card
+	var frames: Array = card.get("frames", [])
+	if frames.is_empty() and card.get("tex") != null:
+		frames = [card.tex]
+	_preview_frames = frames
+	_preview_index = 0
+	_show_preview_frame()
 	_show_overlay()
 	_find("ClosePreview").grab_focus()
+
+
+## 把当前这一张画到浮层上；多张时顶部冒出 ◀ n/m ▶
+func _show_preview_frame() -> void:
+	if _overlay_tex == null or _preview_frames.is_empty():
+		return
+	_preview_index = wrapi(_preview_index, 0, _preview_frames.size())
+	var total := _preview_frames.size()
+	_overlay_tex.texture = _preview_frames[_preview_index]
+	var character := str(_preview_card.get("kind", "")) == "banner"
+	if _overlay_kind != null:
+		_overlay_kind.text = "角色 / CHARACTER" if character else "藏品鉴赏 / ARTWORK"
+	_overlay_title.text = str(_preview_card.get("title", ""))
+	if total > 1:
+		_overlay_sub.text = "第 %d / %d 张  ·  ← → 或上方箭头切换  ·  Esc / 点击关闭" % [_preview_index + 1, total]
+	else:
+		_overlay_sub.text = "%s  ·  Esc / 点击关闭" % str(_preview_card.get("subtitle", ""))
+	var nav := _find("PreviewNav") as Control
+	if nav != null:
+		nav.visible = total > 1
+	var count := _find("PreviewCount") as Label
+	if count != null:
+		count.text = "%d / %d" % [_preview_index + 1, total]
+
+
+## 左右翻一张（到头绕回去）
+func _step_preview(step: int) -> void:
+	if _overlay == null or not _overlay.visible or _preview_frames.size() <= 1:
+		return
+	_preview_index = wrapi(_preview_index + step, 0, _preview_frames.size())
+	_show_preview_frame()
 
 
 func _open_story(story: Dictionary) -> void:
@@ -703,8 +855,42 @@ func _ensure_overlay_effects() -> void:
 		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## 角色卡放大后的左右切换：在浮层顶部那行「× 关闭」左边加 ◀ n/m ▶，只有多张图时才显身
+func _ensure_preview_nav() -> void:
+	if _overlay == null or _find("PreviewNav") != null:
+		return
+	var close := _find("ClosePreview") as Button
+	if close == null:
+		return
+	var row := close.get_parent()
+	var nav := UiKit.hbox(6)
+	nav.name = "PreviewNav"
+	nav.visible = false
+	var prev := Neon.button("◀", false, 13)
+	prev.name = "PreviewPrev"
+	prev.custom_minimum_size = Vector2(36, 30)
+	prev.pressed.connect(_step_preview.bind(-1))
+	nav.add_child(prev)
+	var count := Neon.label("1 / 1", 12, Neon.MUTED)
+	count.name = "PreviewCount"
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	nav.add_child(count)
+	var next := Neon.button("▶", false, 13)
+	next.name = "PreviewNext"
+	next.custom_minimum_size = Vector2(36, 30)
+	next.pressed.connect(_step_preview.bind(1))
+	nav.add_child(next)
+	row.add_child(nav)
+	row.move_child(nav, close.get_index())
+
+
 func _close_preview() -> void:
 	_reading_story = false
+	_preview_frames = []
+	_preview_card = {}
+	var nav := _find("PreviewNav") as Control
+	if nav != null:
+		nav.visible = false
 	if _story_scroll != null:
 		_story_scroll.hide()
 	_clear_children(_story_text)

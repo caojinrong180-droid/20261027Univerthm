@@ -240,7 +240,7 @@ theme_override_constants/separation = 14
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.57, 0.68, 1)
 theme_override_font_sizes/font_size = 12
-text = "←→ 选择章节   ·   滚轮 / 拖下面的条   ·   Enter 进入   ·   Esc 返回"
+text = "←→ 选择章节   ·   Enter 进入   ·   Esc 返回"
 
 [node name="Spacer" type="Control" parent="Footer/Row"]
 layout_mode = 2

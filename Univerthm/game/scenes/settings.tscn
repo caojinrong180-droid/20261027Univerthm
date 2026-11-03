@@ -1289,12 +1289,6 @@ edge = Color(0.45882353, 0.3764706, 0.5568628, 1)
 cut = 14.0
 slanted = true
 
-[node name="Label29" type="Label" parent="ContentPanel/VBoxContainer13" unique_id=1118381562]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
-theme_override_font_sizes/font_size = 12
-text = "正数会将谱面整体推后；使用耳机或蓝牙设备时，可根据打击点逐步调整。"
-
 [node name="Control30" type="Control" parent="ContentPanel/VBoxContainer13" unique_id=1356003320]
 custom_minimum_size = Vector2(5, 5)
 layout_mode = 2

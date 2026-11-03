@@ -5,32 +5,10 @@ extends Control
 ## 背景是 `assets/chose_bg.png` 一张铺满全屏的星空图（毛玻璃效果已经烘在图里了，运行时不再糊）。
 
 const LockIcon = preload("res://src/ui/lock_icon.gd")
+const ChaptersData = preload("res://src/core/chapters.gd")
 
-## 章节表：key 写进 App.chapter_key；spine = 书脊上竖着写的字；unlocked = false 的锁着不能进；
-## cover = 书脊上的章节封面（不写就是纯色书脊）；index = 右边那行「章节 · ___」。
-## 以后要按章节分谱面，改 App.chapter_charts() 就行，这里不用动。
-const CHAPTERS := [
-	{
-		"key": "all",
-		"index": "全部",
-		"spine": "全部曲目",
-		"name": "全部曲目",
-		"unlocked": true,
-		"cover": preload("res://assets/covers/ALL.png"),
-	},
-	{"key": "single", "index": "单曲", "spine": "单曲", "name": "单曲合集", "unlocked": false},
-	{
-		"key": "main_0",
-		"index": "序",
-		"spine": "主线·序",
-		"name": "一切的开端",
-		"unlocked": true,
-		"cover": preload("res://assets/covers/C0.png"),
-	},
-	{"key": "main_1", "index": "一", "spine": "主线·一", "name": "尚未开放", "unlocked": false},
-	{"key": "heartbeat", "index": "联动", "spine": "心跳电波！", "name": "心跳电波！精选集", "unlocked": false},
-	{"key": "drum_cube", "index": "联动", "spine": "鼓立方", "name": "鼓立方精选集", "unlocked": false},
-]
+## 章节表在 `src/core/chapters.gd`（选曲页顶上那行标题也用同一份）
+const CHAPTERS := ChaptersData.LIST
 
 const SPINE_IDLE := Color(0.87451, 0.894118, 0.933333)
 const SPINE_LOCKED := Color(0.4, 0.38, 0.47)

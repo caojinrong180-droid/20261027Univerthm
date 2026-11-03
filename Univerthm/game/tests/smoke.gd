@@ -2,6 +2,7 @@ extends Node
 ## headless 冒烟测试：真把选曲 / 游玩 / 结算 / 设置建起来跑一遍，
 
 const SyntheticChart = preload("res://tests/fixtures/synthetic_chart.gd")
+const ChaptersData = preload("res://src/core/chapters.gd")
 
 var passes := 0
 var failures := 0
@@ -299,6 +300,11 @@ func _check_song_select() -> void:
 	await get_tree().process_frame
 	check(select.get_child_count() > 0, "选曲界面建起来了")
 	check(select._rows.size() == App.library.size(), "列表行数 = 谱面数")
+	# 顶上标题 = 当前章节名（不再是写死的一句话）
+	eq(str(select._library_title.text), ChaptersData.display_title(App.chapter_key),
+		"列表标题跟着当前章节")
+	eq(ChaptersData.display_title("all"), "全部曲目", "全部曲目章节的标题")
+	eq(ChaptersData.display_title("main_0"), "主线·序 ｜ 一切的开端", "序章章节的标题")
 	if App.library.is_empty():
 		check(select._selected == -1, "空谱面库时不选中")
 		check(select._list_count.text == "0 个谱面", "空谱面库计数文案")
@@ -488,10 +494,17 @@ func _check_collection() -> void:
 	await get_tree().process_frame
 	check(_lists_story(screen, "_smoke_story.txt"), "搜集后出现在剧情列表")
 	if smoke_index >= 0:
-		check(not (screen._story_rows.get_child(smoke_index + 1) as Button).disabled, "搜集后档案可点击")
+		check(not (screen._story_rows.get_child(smoke_index) as Button).disabled, "搜集后档案可点击")
 	check(screen._story_section.visible, "剧情分类显示列表")
 	check(not screen._find("CardGrid").visible, "剧情分类隐藏卡片网格")
-	eq(screen._find("StoryList").get_child_count(), screen._story_catalog.size() + 1, "列表行数 = 剧情档案与作者文档总数")
+	eq(screen._find("StoryList").get_child_count(), screen._story_catalog.size(),
+		"剧情列表只放正文档（「作者的话」挪去了「其他」）")
+	# 「其他」分类：常驻文档归到这里
+	check(screen._find("Tab_other") != null, "收藏品有「其他」分类")
+	screen._set_filter("other")
+	await get_tree().process_frame
+	eq(screen._find("StoryList").get_child_count(), 1, "「其他」分类里只有作者的话")
+	check(screen._find("CardGrid") == null or not screen._find("CardGrid").visible, "「其他」分类不显示卡片网格")
 
 	if not App.library.is_empty():
 		var stories := StorySource.scan()

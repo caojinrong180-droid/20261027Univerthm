@@ -5,6 +5,7 @@ const Neon = preload("res://src/ui/neon_ui.gd")
 const Preview = preload("res://src/audio/song_preview.gd")
 const EntryWarning = preload("res://src/ui/first_entry_warning.gd")
 const StoryReader = preload("res://src/ui/story_reader.gd")
+const ChaptersData = preload("res://src/core/chapters.gd")
 const ROW_SCENE = preload("res://scenes/song_row.tscn")
 ## 曲目行的框高（列表里只留标题 + 作者，行做细一点）
 const ROW_HEIGHT := 72.0
@@ -72,6 +73,8 @@ var _body: BoxContainer
 var _list_box: VBoxContainer
 var _empty_state: VBoxContainer
 var _list_count: Label
+## 列表顶上那行标题（显示当前章节名，不是写死的一句话）
+var _library_title: Label
 var _detail_title: Label
 var _detail_artist: Label
 var _detail_illust: Label
@@ -145,6 +148,10 @@ func _ready() -> void:
 	_list_box = $Main/MusicBody/Library/SongListScroll/ListPad/SongList
 	_empty_state = $Main/MusicBody/Library/EmptyState
 	_list_count = $Main/MusicBody/Library/HeadPad/Head/ListCount
+	_library_title = $Main/MusicBody/Library/HeadPad/Head/LibraryTitle
+	# 顶上的标题跟着当前章节走（「全部曲目」/「主线·序 ｜ 一切的开端」…）
+	if _library_title != null:
+		_library_title.text = ChaptersData.display_title(App.chapter_key)
 	_detail_scroll = $Main/MusicBody/DetailScroll
 	_cover_frame = $Main/MusicBody/DetailScroll/DetailBox/CoverCenter/CoverFrame
 	_cover = _cover_frame.get_node("Art/SelectedCover")

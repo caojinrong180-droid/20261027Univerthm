@@ -124,10 +124,6 @@ func _ensure_unlock_row() -> void:
 		box.add_child(row)
 		box.move_child(row, anchor.get_index() + 1)
 		_style_stepper(row)
-		var hint := NeonUi.label("调试用：跳过逐首解锁，所有曲目直接可玩。", 11, NeonUi.MUTED)
-		hint.name = "UnlockAllHint"
-		box.add_child(hint)
-		box.move_child(hint, row.get_index() + 1)
 
 
 ## 「辅助测量」的小按钮：场景里没有就在「音画偏移」标题后面补一个
@@ -322,7 +318,6 @@ func _build() -> void:
 	var offset := _make_row("OffsetRow", "音画偏移", _step_offset)
 	box.add_child(offset)
 	_style_stepper(offset)
-	box.add_child(NeonUi.label("正数会将谱面整体推后；使用耳机或蓝牙设备时，可根据打击点逐步调整。", 12, NeonUi.MUTED))
 	box.add_child(UiKit.gap(5))
 	box.add_child(NeonUi.section("声音", "AUDIO"))
 	var music := _make_row("MusicRow", "音乐音量", _step_music)

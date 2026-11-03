@@ -51,7 +51,6 @@ func _run() -> void:
 	early_click.pressed = false
 	get_viewport().push_input(early_click, true)
 	await menu.entrance_finished
-	menu.get_node("AmbientGlitch").stop()
 	menu.get_node("MouseCollapse").stop()
 	menu.pointer_parallax = false
 	await _capture("00_default")
