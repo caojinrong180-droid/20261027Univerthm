@@ -9,6 +9,11 @@ const TAB_LABELS := {"all": "全部", "banner": "角色立绘", "cover": "曲绘
 const TOAST_COLOR := Color("bdf49c")
 const STORY_BODY := Color("ded7ef")
 const Neon = preload("res://src/ui/neon_ui.gd")
+const ACRYLIC_SHADER = preload("res://shaders/pause_acrylic.gdshader")
+## 预览 / 阅读浮层出现与收起的时长（秒）与入场缩放起点
+const OVERLAY_IN_TIME := 0.28
+const OVERLAY_OUT_TIME := 0.16
+const OVERLAY_IN_SCALE := 0.93
 
 var _cards: Array = []
 var _author_note: Dictionary = {}
@@ -27,6 +32,12 @@ var _story_scroll: ScrollContainer
 var _story_text: VBoxContainer
 var _toast: Label
 var _toast_tween: Tween
+## 预览 / 阅读浮层：背景虚化（抄下收藏品界面再磨砂压暗）+ 面板缓动出现的补间
+var _overlay_capture: BackBufferCopy
+var _overlay_blur: ColorRect
+var _overlay_frame: NeonPanel
+var _overlay_tween: Tween
+var _overlay_closing := false
 
 
 func _ready() -> void:
@@ -94,7 +105,8 @@ func _resolve() -> void:
 	_overlay_kind = _find("OverlayKind")
 	_overlay_title = _find("OverlayTitle")
 	_overlay_sub = _find("OverlaySub")
-	_find("Dim").gui_input.connect(_on_dim_input)
+	# 点背景关闭 + 背景虚化：挂到 Overlay 里（场景里已经有 Overlay 时也在这一层补）
+	_ensure_overlay_effects()
 	_find("ClosePreview").pressed.connect(_close_preview)
 	_close_preview()
 	_ensure_story_tab()
@@ -172,7 +184,6 @@ func _reload_stories() -> void:
 
 ## 保留完整目录用于显示锁定槽位；全文仍须通关对应谱面才能阅读。
 func _scan_stories() -> void:
-	var owned := StorySource.unlocked_names()
 	_story_catalog = StorySource.scan()
 	_author_note = {}
 	for entry in StorySource.scan([AUTHOR_NOTE_ROOT]):
@@ -181,7 +192,8 @@ func _scan_stories() -> void:
 			break
 	_stories.clear()
 	for entry in _story_catalog:
-		if owned.has(str(entry.get("file", ""))):
+		# Debug 的「全部解锁」也管收藏品：那时候所有剧情都算已搜集
+		if App.story_collected(str(entry.get("file", ""))):
 			_stories.append(entry)
 
 
@@ -219,9 +231,9 @@ func _fill_cards() -> void:
 		if _filter == "banner":
 			empty.text = "还没有角色立绘\n把图片放进 assets/banners，会自动收录。"
 		elif _filter == "cover":
-			empty.text = "还没有曲绘\n带曲绘的谱面导入后，会自动出现在这里。"
+			empty.text = "还没有曲绘\n把这一首完整玩一遍，曲绘才会进收藏。"
 		else:
-			empty.text = "暂无收藏\n带曲绘的谱面导入后，会自动出现在这里。"
+			empty.text = "暂无收藏\n完整玩过的曲目会让曲绘出现在这里。"
 	_resize_grid.call_deferred()
 
 
@@ -233,10 +245,9 @@ func _fill_stories() -> void:
 		if _author_note.is_empty():
 			_story_rows.add_child(Neon.label("暂无剧情档案", 15, Neon.MUTED))
 		return
-	var owned := StorySource.unlocked_names()
 	for i in _story_catalog.size():
 		var story: Dictionary = _story_catalog[i]
-		_story_rows.add_child(_build_story_row(story, i + 1, owned.has(str(story.get("file", "")))))
+		_story_rows.add_child(_build_story_row(story, i + 1, App.story_collected(str(story.get("file", "")))))
 
 
 func _build_story_row(story: Dictionary, index: int, unlocked: bool) -> Button:
@@ -327,9 +338,12 @@ func _collect() -> void:
 					title = "角色立绘 %02d" % (_cards.size() + 1)
 				_cards.append({"title": title, "subtitle": "CHARACTER / 角色立绘", "kind": "banner", "tex": load(path)})
 	# 首张立绘之后展示曲绘，让默认分类同时呈现两类收藏。
+	# 曲绘是掉落品：这一首完整玩过一遍才进收藏品（自动演示不算）。
 	var cover_index := mini(1, _cards.size())
 	for entry in App.library:
 		if not bool(entry.get("has_cover", false)):
+			continue
+		if not App.cover_collected(str(entry.get("key", ""))):
 			continue
 		var tex: Texture2D = ChartSource.load_cover(entry)
 		if tex != null:
@@ -449,7 +463,7 @@ func _build() -> void:
 	back.custom_minimum_size.x = 200
 	actions.add_child(back)
 	actions.add_child(UiKit.stretch())
-	var note := Neon.label("角色立绘 / 谱面曲绘 / 剧情文本，自动收录", 12, Neon.MUTED)
+	var note := Neon.label("角色立绘 / 通关掉落曲绘与剧情", 12, Neon.MUTED)
 	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	actions.add_child(note)
 	_build_overlay()
@@ -520,7 +534,8 @@ func _build_overlay() -> void:
 	add_child(overlay)
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0.015, 0.008, 0.035, 0.94)
+	dim.color = Color(0.015, 0.008, 0.035, 0.35)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UiKit.full_rect(dim)
 	overlay.add_child(dim)
 	var frame := Neon.panel(Vector4(24, 16, 24, 18))
@@ -585,7 +600,7 @@ func _open_preview(card: Dictionary) -> void:
 		_overlay_kind.text = "藏品鉴赏 / ARTWORK"
 	_overlay_title.text = card.title
 	_overlay_sub.text = "%s  ·  Esc / 点击关闭" % card.subtitle
-	_overlay.show()
+	_show_overlay()
 	_find("ClosePreview").grab_focus()
 
 
@@ -615,7 +630,7 @@ func _open_story(story: Dictionary) -> void:
 			_add_story_block(block)
 		if _story_text.get_child_count() == 0:
 			_add_story_notice("这篇剧情还是空的。", Neon.MUTED)
-	_overlay.show()
+	_show_overlay()
 	_find("ClosePreview").grab_focus()
 
 
@@ -644,6 +659,50 @@ func _add_story_notice(message: String, color: Color) -> void:
 	_story_text.add_child(notice)
 
 
+## 预览 / 阅读浮层的背景虚化 + 出现动画要用的节点。
+## 场景里的 Overlay 是现成的（collection.tscn），这里只往里补一层虚化底；
+## 代码搭的场景（`_build_overlay()`）也走同一条路，不会重复加。
+func _ensure_overlay_effects() -> void:
+	if _overlay == null:
+		return
+	_overlay_frame = _find("PreviewFrame") as NeonPanel
+	var overlay := _overlay
+	var blur := _find("BlurBackdrop") as ColorRect
+	if blur == null:
+		_overlay_capture = BackBufferCopy.new()
+		_overlay_capture.name = "OverlayCapture"
+		_overlay_capture.copy_mode = BackBufferCopy.COPY_MODE_DISABLED
+		overlay.add_child(_overlay_capture)
+		overlay.move_child(_overlay_capture, 0)      # 要先抄画面，再画虚化层
+		blur = ColorRect.new()
+		blur.name = "BlurBackdrop"
+		var material := ShaderMaterial.new()
+		material.shader = ACRYLIC_SHADER
+		material.set_shader_parameter("blur_px", 9.0)
+		material.set_shader_parameter("dim", 0.38)
+		material.set_shader_parameter("frost", 0.42)
+		material.set_shader_parameter("grain", 0.0)
+		material.set_shader_parameter("sheen", 0.0)
+		material.set_shader_parameter("rim", 0.0)
+		material.set_shader_parameter("lift", 0.04)
+		material.set_shader_parameter("tint", Color(0.3, 0.22, 0.48, 1.0))
+		blur.material = material
+		UiKit.full_rect(blur)
+		overlay.add_child(blur)
+		overlay.move_child(blur, 1)                 # 垫在 Dim / 面板下面
+	_overlay_blur = blur
+	blur.mouse_filter = Control.MOUSE_FILTER_STOP
+	if not blur.gui_input.is_connected(_on_dim_input):
+		blur.gui_input.connect(_on_dim_input)
+	if not overlay.visibility_changed.is_connected(_sync_overlay_capture):
+		overlay.visibility_changed.connect(_sync_overlay_capture)
+	# 场景里的 Dim 原本几乎全黑（0.94），压到 0.35 让虚化透出来
+	var dim := _find("Dim") as ColorRect
+	if dim != null:
+		dim.color = Color(0.015, 0.008, 0.035, 0.35)
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 func _close_preview() -> void:
 	_reading_story = false
 	if _story_scroll != null:
@@ -651,8 +710,76 @@ func _close_preview() -> void:
 	_clear_children(_story_text)
 	if _overlay_tex != null:
 		_overlay_tex.show()
+	if _overlay == null:
+		return
+	# 没开 / 正在收：直接落回隐藏状态，别叠加补间
+	if not _overlay.visible or _overlay_closing:
+		_overlay.hide()
+		_sync_overlay_capture()
+		return
+	_overlay_closing = true
+	_kill_overlay_tween()
+	_overlay_tween = create_tween().set_parallel(true)
+	_overlay_tween.tween_property(_overlay_frame, "modulate:a", 0.0, OVERLAY_OUT_TIME) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_overlay_tween.tween_property(_overlay_frame, "scale", Vector2(0.985, 0.985), OVERLAY_OUT_TIME) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	_overlay_tween.tween_property(_overlay_blur, "modulate:a", 0.0, OVERLAY_OUT_TIME)
+	_overlay_tween.chain().tween_callback(_finish_overlay_close)
+
+
+## 浮层出现：面板从 OVERLAY_IN_SCALE 放大回来 + 淡入，背景虚化同步化开
+func _show_overlay() -> void:
+	if _overlay == null:
+		return
+	_kill_overlay_tween()
+	_overlay_closing = false
+	_overlay.show()
+	_sync_overlay_capture()
+	_animate_overlay_in()
+
+
+func _animate_overlay_in() -> void:
+	await get_tree().process_frame
+	if _overlay == null or not _overlay.visible or _overlay_closing or _overlay_frame == null:
+		return
+	_overlay_frame.pivot_offset = _overlay_frame.size * 0.5
+	_overlay_frame.scale = Vector2(OVERLAY_IN_SCALE, OVERLAY_IN_SCALE)
+	_overlay_frame.modulate.a = 0.0
+	_overlay_blur.modulate.a = 0.0
+	_overlay_tween = create_tween().set_parallel(true)
+	_overlay_tween.tween_property(_overlay_frame, "scale", Vector2.ONE, OVERLAY_IN_TIME) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_overlay_tween.tween_property(_overlay_frame, "modulate:a", 1.0, 0.2) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_overlay_tween.tween_property(_overlay_blur, "modulate:a", 1.0, 0.24) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _finish_overlay_close() -> void:
 	if _overlay != null:
 		_overlay.hide()
+	if _overlay_frame != null:
+		_overlay_frame.modulate.a = 1.0
+		_overlay_frame.scale = Vector2.ONE
+	if _overlay_blur != null:
+		_overlay_blur.modulate.a = 1.0
+	_overlay_closing = false
+	_overlay_tween = null
+	_sync_overlay_capture()
+
+
+func _kill_overlay_tween() -> void:
+	if _overlay_tween != null and _overlay_tween.is_valid():
+		_overlay_tween.kill()
+	_overlay_tween = null
+
+
+## 只在浮层真的露出来的时候抄屏幕，收起后彻底不碰渲染管线
+func _sync_overlay_capture() -> void:
+	if _overlay_capture == null or _overlay == null:
+		return
+	_overlay_capture.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT if _overlay.visible else BackBufferCopy.COPY_MODE_DISABLED
 
 
 # --------------------------------------------------------------------------- #

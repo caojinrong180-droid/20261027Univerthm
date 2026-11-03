@@ -85,7 +85,7 @@ func _run() -> void:
 	# 使用主界面的真实按钮，确认淡出发生在进入选曲时。
 	get_tree().current_scene.get_node("StartButton").pressed.emit()
 	await get_tree().scene_changed
-	check(get_tree().current_scene.scene_file_path == App.SELECT_SCENE, "开始游戏按钮进入选曲")
+	check(get_tree().current_scene.scene_file_path == App.CHAPTER_SCENE, "开始游戏按钮进入章节选择")
 	check(music.phase == Music.Phase.FADING_OUT and music.player.playing, "点开始游戏后淡出声源")
 	music._transition.custom_step(0.3)
 	check(music.player.volume_linear > 0.0 and music.player.volume_linear < 1.0, "淡出过程中平滑降低音量")

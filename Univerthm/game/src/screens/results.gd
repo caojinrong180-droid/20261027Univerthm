@@ -165,9 +165,9 @@ func _build() -> void:
 
 	column.add_child(UiKit.rule(RULE))
 	column.add_child(_build_actions())
-	var drop := _build_story_drop()
-	if drop != null:
-		column.add_child(drop)
+	var drops := _build_drops()
+	if drops != null:
+		column.add_child(drops)
 
 
 ## 曲目：左边曲名 / 作者 / 谱师与曲绘，右边难度、等级、时长、自动演示。
@@ -316,16 +316,21 @@ func _build_actions() -> Control:
 # 小零件
 # --------------------------------------------------------------------------- #
 
-## 掉落提示：最下方那条「收藏品 · Stra的笔记#1 已搜集」。
-func _build_story_drop() -> Control:
-	var drop = _result.get("story_drop", {})
-	if not (drop is Dictionary) or drop.is_empty():
+## 掉落提示：最下方那几条「收藏品 · Stra的笔记#1 已搜集」/「收藏品 · 曲绘「曲名」已搜集」。
+## 剧情和曲绘可能同时掉，同一条横条里排成两行；都没有就整条不占位。
+func _build_drops() -> Control:
+	var lines: Array = []
+	var story = _result.get("story_drop", {})
+	if story is Dictionary and str(story.get("title", "")) != "":
+		lines.append(["StoryDropText", "收藏品 · %s 已搜集" % str(story["title"])])
+	var cover = _result.get("cover_drop", {})
+	if cover is Dictionary and str(cover.get("title", "")) != "":
+		lines.append(["CoverDropText", "收藏品 · 曲绘「%s」已搜集" % str(cover["title"])])
+	if lines.is_empty():
 		return null
-	var title := str(drop.get("title", ""))
-	if title == "":
-		return null
+
 	var strip := Neon.panel(Vector4(14, 5, 14, 6))
-	strip.name = "StoryDrop"
+	strip.name = "CollectDrops"
 	strip.fill = Color(0.045, 0.06, 0.03, 0.62)
 	strip.edge = Color("66854a")
 	strip.cut = 10
@@ -333,13 +338,17 @@ func _build_story_drop() -> Control:
 	var row := UiKit.hbox(10)
 	strip.add_child(row)
 	row.add_child(_tag("NEW", Color("2c4318"), Color("bdf49c")))
-	var text := Neon.label("收藏品 · %s 已搜集" % title, 15, Color("bdf49c"), true)
-	text.name = "StoryDropText"
-	# 带省略号的 Label 最小宽度只有 1px，必须自己吃满剩余宽度，不然会被旁边的占位控件挤没
-	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(text)
+	var lines_box := UiKit.vbox(2)
+	lines_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lines_box)
+	for line in lines:
+		var text := Neon.label(str(line[1]), 15, Color("bdf49c"), true)
+		text.name = str(line[0])
+		# 带省略号的 Label 最小宽度只有 1px，必须自己吃满剩余宽度，不然会被旁边的占位控件挤没
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		lines_box.add_child(text)
 	return strip
 
 ## 切角小标签：难度 / 等级 / 时长 / AUTO PLAY。

@@ -8,17 +8,27 @@ class_name FirstEntryWarning
 
 signal chosen(confirmed: bool)
 
+const Stinger = preload("res://audio/warning.wav")
+
 const HEADLINE := "踏出这一步就不能反悔了，你确定吗？"
-const BODY := "踏进去之后就没有退路了：这一趟不能暂停，按 Esc 也出不来，\n" \
-	+ "解锁动画也不能跳过。中途把游戏关掉，一切都会回到现在这一步之前。"
+const BODY := "进入后游戏将不能暂停。"
 const RED := Color("ff3b5c")
 const RED_FILL := Color(0.09, 0.012, 0.022, 0.97)
 const RED_SOFT := Color("c98a97")
+## 弹出时的闪白：冲到多亮、多久冲上去、多久退干净（秒）
+const FLASH_PEAK := 0.92
+const FLASH_IN := 0.05
+const FLASH_OUT := 0.34
 
 var buttons: Array[Button] = []
 var _card: NeonPanel
 var _no_button: Button
 var _yes_button: Button
+## 正文和闪白层留个引用，方便测试 / 以后改文案
+var _body: Label
+var _flash: ColorRect
+var _flash_tween: Tween
+var _stinger: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -68,14 +78,12 @@ func _ready() -> void:
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(560, 0)
 	box.add_child(body)
+	_body = body
 
 	box.add_child(UiKit.rule(Color(RED, 0.38)))
 
 	var actions := UiKit.hbox(14)
 	box.add_child(actions)
-	var hint := NeonUi.label("Esc = 否", 11, Color("9c7f88"))
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	actions.add_child(hint)
 	actions.add_child(UiKit.stretch())
 
 	_no_button = _make_button("否", false)
@@ -90,7 +98,45 @@ func _ready() -> void:
 	actions.add_child(_yes_button)
 	buttons.append(_yes_button)
 
+	# 闪白层盖在最上面：弹出瞬间整屏白一下再退掉
+	_flash = ColorRect.new()
+	_flash.name = "Flash"
+	_flash.color = Color(1, 1, 1, 0)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.full_rect(_flash)
+	add_child(_flash)
+
+	# 弹出音效：直接用素材 `audio/warning.wav`（源文件 sound/Warning.wav）
+	_stinger = AudioStreamPlayer.new()
+	_stinger.name = "Stinger"
+	_stinger.stream = Stinger
+	add_child(_stinger)
+
 	hide()
+
+
+## 弹出瞬间：闪白 + 一声低频轰鸣
+func _play_stinger() -> void:
+	if _stinger == null or _stinger.stream == null:
+		return
+	var volume := 1.0
+	if App.settings != null:
+		volume = clampf(App.settings.music_volume, 0.0, 1.0)
+	_stinger.volume_db = linear_to_db(maxf(0.001, volume)) - 2.0
+	_stinger.play()
+
+
+func _flash_white() -> void:
+	if _flash == null:
+		return
+	if _flash_tween != null and _flash_tween.is_valid():
+		_flash_tween.kill()
+	_flash.color = Color(1, 1, 1, 0)
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "color:a", FLASH_PEAK, FLASH_IN) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_flash_tween.tween_property(_flash, "color:a", 0.0, FLASH_OUT) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
 ## 自己的按钮：共用霓虹按钮会自动刷回紫色，这块框要的是血红，所以在这儿现画。
@@ -143,9 +189,11 @@ func _refresh_button(button: Button) -> void:
 		frame.glow = false
 
 
-## 弹出来：默认焦点在「否」，手滑也不会直接踏进去
+## 弹出来：默认焦点在「否」，手滑也不会直接踏进去；同时闪一下白 + 响一声
 func open() -> void:
 	show()
+	_play_stinger()
+	_flash_white()
 	if _no_button != null:
 		_no_button.grab_focus()
 

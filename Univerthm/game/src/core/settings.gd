@@ -13,7 +13,7 @@ const KEY_LAYOUT_LABELS := {
 var audio_offset_ms := 0.0
 ## 下落速度倍率：1.0 = 判定线到画面顶走 2 秒，2.0 = 1 秒，0.5 = 4 秒
 var speed_mult := 1.0
-## 判定窗口倍率：1.0 = 55 / 80 / 140 / 220 ms
+## 判定窗口倍率：1.0 = 40 / 70 / 110 / 125 ms
 var judge_window_scale := 1.0
 ## 音乐 / 打击音音量 0~1
 var music_volume := 0.85

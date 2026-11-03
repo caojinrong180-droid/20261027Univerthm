@@ -1124,7 +1124,7 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69803923, 0.654902, 0.7882353, 1)
 theme_override_font_sizes/font_size = 12
-text = "角色立绘 / 谱面曲绘 / 剧情文本，自动收录"
+text = "角色立绘 / 通关掉落曲绘与剧情"
 vertical_alignment = 1
 
 [node name="Overlay" type="Control" parent="." unique_id=1944527307]

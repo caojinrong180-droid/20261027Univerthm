@@ -11,6 +11,7 @@ func _ready() -> void:
 	await _shot_warning()
 	await _shot_splash()
 	await _shot_menu()
+	await _shot_chapter_select()
 	await _shot_collection()
 	await _shot_profile()
 	await _shot_song_select()
@@ -69,6 +70,31 @@ func _shot_menu() -> void:
 	menu.queue_free()
 	await _wait_frames(2)
 	App.tutorial_shown_this_run = keep_tutorial
+
+
+func _shot_chapter_select() -> void:
+	# 四本：默认停在「全部曲目」、两本锁着的联动精选（顺便验证横排会滑过去）、「主线·序」
+	await _shot_chapter("all", "00e_chapter_select")
+	await _shot_chapter("heartbeat", "00g_chapter_select_heartbeat")
+	await _shot_chapter("drum_cube", "00h_chapter_select_drumcube")
+	await _shot_chapter("main_0", "00f_chapter_select_prologue")
+
+
+func _shot_chapter(chapter: String, file_name: String) -> void:
+	# App.chapter_key 会被 App.refresh_library() 按存档里的进度覆盖，所以进场景之后直接点一本
+	var screen = load("res://scenes/chapter_select.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await _wait_frames(2)
+	var table: Array = screen.get_script().get_script_constant_map()["CHAPTERS"]
+	for i in table.size():
+		if str(table[i].get("key", "")) == chapter:
+			screen._pick(i)
+			break
+	# 等背景那块淡进（0.3 秒）走完，否则截到的是半透明
+	await get_tree().create_timer(0.45).timeout
+	await _capture(file_name)
+	screen.queue_free()
+	await _wait_frames(2)
 
 
 func _shot_collection() -> void:

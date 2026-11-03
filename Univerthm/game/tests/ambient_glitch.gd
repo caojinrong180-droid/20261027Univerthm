@@ -59,7 +59,7 @@ func _run() -> void:
 	_begin_burst("选曲返回按钮")
 	_click(select.find_child("BackButton", true, false))
 	await scene_changed
-	check(current_scene.scene_file_path == app.MENU_SCENE, "故障层不拦截返回按钮点击")
+	check(current_scene.scene_file_path == app.CHAPTER_SCENE, "故障层不拦截返回按钮点击")
 	_check_disabled("主界面不叠加第二层故障")
 	var menu := current_scene
 	await menu.entrance_finished

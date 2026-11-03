@@ -31,7 +31,8 @@
 编辑器里也可以「导入」→ 选 `game/project.godot`，然后 **F5**。
 主场景是**光敏性癫痫警告**（`scenes/warning.tscn`）：停 5 秒自动进入**开屏画面**（`scenes/splash.tscn`，
 标题 logo + 一行「点击任意按键进入游戏」；点画面任意处或按任意键才进**主界面**），
-在主界面点「开始游戏」才进入**选曲界面**（`scenes/song_select.tscn`）。
+在主界面点「开始游戏」先进**章节选择**（`scenes/chapter_select.tscn`），选完章节才进**选曲界面**
+（`scenes/song_select.tscn`）；选曲页按 `Esc` / 左上角返回会退回章节选择，章节页再退才回主界面。
 空谱面库时选曲界面会提示你把 zip 拖进来。
 
 主界面循环播放 `audio/difusion.mp3`：从开屏画面就开始 1.5 秒淡入，一路连着主界面播；打开和返回设置时保持连续播放；
@@ -42,8 +43,77 @@
 点「重试 / 选曲」先淡出 0.22 秒再换场景（换场景失败会把音量接回来）；中途按 Esc 同理。
 音量跟着设置里的「音乐音量」走。
 
-选曲页以所选曲绘模糊铺满背景。左侧列表每条只有**曲名 + 作者**（曲绘和难度只在右侧详情里显示），
-行高 `ROW_HEIGHT = 72`，选中行的框就是行本身的高度（不会再溢到下一行）。
+**章节选择页**（`scenes/chapter_select.tscn` + `src/screens/chapter_select.gd`）：左边**六本斜着的书脊**
+（平行四边形，`src/ui/chapter_spine.gd` 自己 `_draw` 画底+边+竖排文字，`_has_point` 也按平行四边形判定，
+所以四个角的空白点不到）。顺序是「全部曲目 / 单曲 / 主线·序 / 主线·一 / 心跳电波！精选集 / 鼓立方精选集」，
+两本精选集的 `index` 都写「联动」；现在只开放「全部曲目」和「主线·序」，另外四本压着纯白小挂锁、点只弹提示。
+右边跟着当前选中的书脊显示 `章节 · 序` / 章节名 / `CL` `FC` `AP` 进度（`App.chapter_progress()` 数的）。
+书上文字贴着**右下角**、整块跟斜边同一个倾角转过去；鼠标停在书上就选中它，点一下进选曲。
+**书脊可以挂封面**：章节表里写 `cover` 就有一张图（「全部曲目」挂 `assets/covers/ALL.png`、
+「主线·序」挂 `assets/covers/C0.png`，源文件都在仓库根的 `img/C/`）。`chapter_spine.gd` 用 `draw_polygon`
+自带的 UV 把图**等比放大裁成平行四边形**（多出来的两边切掉，四个角不会漏图），再压一层上亮下暗的渐变 +
+状态色，底下的竖排字因此看得清；没写 `cover` 的书脊还是原来那块纯色。换封面只要改章节表那一行，不用动场景。
+横排用 `src/ui/spine_carousel.gd`：**滚轮左右滑**，滑到头时只给一点点橡皮筋，松手弹回去。
+书比可视区多（现在是 6 本）时不缩书脊、就靠滑；键盘 / 悬停选到画面外那本时 `ensure_visible()`
+会把它滑进来。**进界面这一次不滑**（`_pick(_default_index(), false)`）：容器还没排好时 `size.x` 还是 0，
+按「可视区 0 宽」算会把整排推到中间，所以书脊永远从**最左边**开始；`ensure_visible()` 自己也加了一道
+`size.x <= 0` 就返回的保险。方向键 / Enter / Esc 也能用。
+书脊**下面那条细滚动条**是 `src/ui/carousel_scrollbar.gd`：一条轨道 + 圆头滑块，滑块长度 = 可视区占内容的
+比例、位置跟着横排走；**按住能拖**（滑块中间跟着鼠标），点轨道也能跳。内容装得下时它自己隐身。
+
+**背景就是一张烘好的图**：`Background`（`TextureRect`）铺满全屏，图是 `assets/chose_bg.png`
+（源文件 `img/chose_bg.png`），`stretch_mode = KEEP_ASPECT_COVERED`，换章节不换图。
+**毛玻璃是烘在图里的**——运行时不做模糊、没有 shader、没有 SubViewport、没有渐变遮罩：
+脚本不碰背景，要换观感就直接换这张图。（之前那套「低分辨率 SubViewport + 两个 shader + 左右渐变」
+已经整条拆掉，`shaders/chapter_bg_glass.gdshader` 也删了。）
+
+**序章的「地图」选曲**（`src/screens/song_map.gd`）：从章节选择点「主线·序」进来时，左边不再是列表，
+而是一张**铺满整屏、可以拖的手绘感路线图**——方框 = 曲绘，方框之间用折线连起来，
+**背景固定是章节地图 `assets/C0_Map.png`**（`MAP_BG_PATH`，原图直接铺满、不磨砂）：选曲 / 切歌都不会换成曲绘
+（`_set_background()` 在地图模式下直接 return，`_set_map_background()` 把场景里曲绘那套模糊材质临时摘掉，
+切回普通列表时 `_restore_background_materials()` 再装回去），而且背景是独立的兄弟节点，
+**不随地图拖动 / 缩放移动**；选中没解锁的曲子也不压暗它（`_apply_lock_visual()` 在地图模式下把 `BackgroundDim` 留在 0）。
+每个方框旁边磕出来的**小四边形 = 这首掉落的收藏品**（`App.story_collected_for_chart()` 收到过就点亮，没收到只有一圈淡描边），
+它离方框挂得比较开（`STORY_DROP_BELOW = 132` / `STORY_DROP_ABOVE = 96` 像素，横向再按方框宽度的
+`STORY_SIDE_SHIFT = 0.26` 斜出去），一条细线连回方框，免得跟曲绘糊在一起；
+四方形里画着一个**简约的「文本」图标**（三条横线、最后一行短一截，`_draw_text_icon()` 现画，没有用图片资源）。
+**点已经收到的收藏品就能直接打开阅读**（`story_clicked` → `song_select.gd` 的 `_on_map_story()` →
+`src/ui/story_reader.gd` 浮层：标题 / 字数与时长 / 可滚动正文 / 滚轮与 ↑↓ PgUp PgDn 翻页 / Esc 或点背景关闭），
+打开的同时响一声素材 `audio/info.wav`（源文件 `sound/Info.wav`，0.46 秒，音量跟设置的「音乐音量」走）；
+不用绕去收藏品界面；没收到的那块点不中，鼠标移到能点的收藏品上会变成手型。
+这个阅读浮层出现时有缓动：面板从 `IN_SCALE = 0.93` 放大到 1（`TRANS_BACK` 收尾）、
+同时从下面 `IN_SLIDE = 24` 像素滑上来（`TRANS_CUBIC`），用时 `IN_TIME = 0.28` 秒；收起是
+`OUT_TIME = 0.16` 秒的反向小回缩。**背景是虚化的**：`BackBufferCopy` 抄下地图，
+`shaders/pause_acrylic.gdshader` 磨砂压暗（`blur_px = 9` / `dim = 0.38` / `frost = 0.42`，去掉了颗粒和板边高光），
+随面板一起淡入淡出，收起时把 `copy_mode` 关掉、不再碰渲染管线。
+**收藏品界面里的剧情 / 立绘预览浮层也是同一套**（`collection.gd` 的 `_ensure_overlay_effects()` 往场景里现成的
+`Overlay` 补一层 `BlurBackdrop`，`_show_overlay()` / `_close_preview()` 走 `OVERLAY_IN_SCALE = 0.93` 的缩放淡入与
+`OVERLAY_OUT_TIME = 0.16` 的收尾；点背景关闭挂在那层虚化底上，原来的 `Dim` 从 0.94 压到 0.35 让虚化透出来）。
+内容比屏幕大（相邻曲子间距 `SLOT_RATIO = 0.62 × 屏宽`），**按住左键在任意位置上下左右拖**，拖到边界卡住；
+内容四周还多留了一圈可拖的空白（`PAN_SLACK = 0.62 × 视口`，四个方向各一份），所以能一路拉出去、
+不会一拖就贴边顶死（`_clamp_pan()` / `_clamp_axis()`）；
+滚轮也能左右挪，进场默认停在整张图的中间。**魔王曲（等级最高的那首）曲绘保持原尺寸，其它曲子小一圈**
+（`BOSS_SCALE` / `SIDE_SCALE`）。
+点方框选中时，右侧详情从**右边滑出来**，右半边垫的是「曲绘糊上去」的衬底
+（`DetailSheetBackdrop`，`cover_blur.gdshader` 磨砂，alpha 0.92）—— 糊的是**当前这首歌的曲绘**。
+**??? 的神秘曲不给它单独做黑板了**：未揭晓时（`App.is_hidden_chart()`：列表第 3 首 + 还没有成绩）
+它拿到的就是**纯黑占位曲绘 `assets/none.jpg`**（`App.none_cover()`，懒加载全局共用一张），
+详情面板、地图方框、右半边模糊衬底三处一起变黑，等打出成绩之后自动换回真曲绘。
+所以整块区域是「同一张图」出来的，没有多压一层板、也不会有拼缝；
+点黑区域仍然是「点外边」收起详情（衬底 `mouse_filter = IGNORE`，点击落到地图上走空白点击）。
+没选中之前右边是空的；顶栏「地图 / 列表」按钮（或 `Tab`）随时切回普通列表，底栏提示也跟着换。
+**收起时整块板必须真的移出画面**：挪出去的距离由 `_sheet_hide_distance()` 现算（板宽 / 到右边界的距离 + 28），
+之前固定 `SHEET_HIDE = 320` 而板子有 588 宽、又被摆在 x≈579，收起来后右边有 380 像素是
+「看不见但照吃点击」的死区 —— 点那一片的方框就会像没反应；现在收起时还会把它的 `mouse_filter`
+设成 `IGNORE` 兜一层。方框命中判定往外扩 `NODE_HIT_PAD = 10`，拖动阈值放宽到 `DRAG_SLOP = 10`，
+点不中/手一抖的问题基本没了。
+**地图只有序章（`App.chapter_key == "main_0"`）有**，其它章节（「全部曲目」等）**只有普通列表**：
+`_map_available()` 判章节，`_apply_view()` 在非序章直接 `_show_map = false` 并把地图节点藏掉，
+连「地图 / 普通列表」那颗按钮都不显示（`_view_button.visible = _map_available()`），`Tab` 也就不起作用。
+序章内部：`App.all_charts_unlocked()` 之前顶部「普通列表」按钮是灰的、点一下只提示，
+**解锁全部曲目之后**才能切到普通列表（切回地图随时可以）；存档删掉之后会自动退回地图。
+
+选曲页以所选曲绘模糊铺满背景。左侧列表每条只有**曲名 + 作者**（曲绘和难度只在右侧详情里显示），行高 `ROW_HEIGHT = 72`，选中行的框就是行本身的高度（不会再溢到下一行）。
 列表**不做任何位移动画**：切歌时行瞬间就位，只有选中底色和左侧绿条变化（以前那种往左弹一下的
 「扇形」位移被删掉了）。
 鼠标移到某一行上才有的两个效果（都带缓动，`HOVER_ANIM = 0.18` 秒、`TRANS_CUBIC / EASE_OUT`）：
@@ -71,17 +141,40 @@
 「游玩一次谱面解锁」；按键盘 `A` 也只会弹同样的提示，不会开演示。
 
 **神秘曲（第 3 首）**：`SECRET_INDEX = 2` 这一首在**还没打出成绩**之前，列表行、曲名、作者、
-谱师 / 曲绘、难度 / 时长全部显示 `???`，右侧曲绘是**纯黑**（`CoverMask`），连模糊背景也换成默认星空
-（不然会从背景把曲绘漏出来），**也不播试听**（放音乐同样算剧透）。
-等它第一次打完、`[progress] best` 里有记录了，就自动恢复完整信息并恢复试听。
+谱师 / 曲绘、难度 / 时长全部显示 `???`；**曲绘整体换成纯黑占位图 `assets/none.jpg`**
+（`App.is_hidden_chart()` + `App.none_cover()`，详情面板 / 地图方框 / 右半边模糊衬底三处一起换，
+所以不会从背景把真曲绘漏出来），**也不播试听**（放音乐同样算剧透）。
+等它第一次打完、`[progress] best` 里有记录了，就自动换回真曲绘、恢复完整信息和试听。
 它同时也受逐首解锁约束，所以一开始看到的是「黑卡 + 锁」。
 
 **神秘曲的第一次踏入**：还没正式踏进去之前，在选曲页点它会先弹一块血红警告框
 （`src/ui/first_entry_warning.gd` + `App.needs_first_entry()`）——
-「踏出这一步就不能反悔了，你确定吗？」。选「否」（或按 `Esc`）关掉框、留在列表，什么都不进；
-选「是」之后屏幕**慢慢压到全黑**（`FADE_TO_BLACK` 0.8 秒，`song_select.gd` 的 `_fade_to_black()`），
-黑透了才切场景；谱面这一侧再从黑里淡出来——`FROM_BLACK_HOLD` 0.45 秒全黑 + `FROM_BLACK_FADE` 0.75 秒淡出
-（`gameplay.gd` 的 `_reveal_from_black()`），解锁动画在黑幕开始淡出时才起播，前后接成一段。
+「踏出这一步就不能反悔了，你确定吗？」，正文就一句「进入后游戏将不能暂停。」。
+**弹出瞬间有一记闪白 + 一声警告音**：闪白是盖在最上面的 `ColorRect`（`FLASH_PEAK = 0.92`，
+`FLASH_IN = 0.05` 冲上去、`FLASH_OUT = 0.34` 退干净）；音效就是素材 `audio/warning.wav`
+（源文件 `sound/Warning.wav`，`first_entry_warning.gd` 里 `preload` 成 `Stinger`），音量跟设置的「音乐音量」走。
+（以前那套「现算合成」的 `src/audio/warning_stinger.gd` 已经不再被这里使用。）
+选「否」（或按 `Esc`）关掉框、留在列表，什么都不进；选「是」之后走和普通进入一样的**进入过场**。
+**进入过场**（`song_select.gd` 的 `_start_entry()` / `_run_entry_intro()`，普通点「开始」和神秘曲选「是」都走它）：
+**过场里只留「曲绘 + 曲名」两样**，其余信息（作者 / 谱师·曲绘 / 难度·Lv·时长 / BEST）不参与——
+详情板整块隐掉（`modulate.a = 0`），换成两个临时节点 `EntryCover` / `EntryTitle`：
+它们从详情板里曲绘、曲名**当时的实际位置**起步（所以看起来就是这两样从板上脱离），飞到屏幕正中并放大
+（曲绘边长 = 屏高 × `ENTRY_COVER_RATIO = 0.44`，曲名放大到 `ENTRY_TITLE_ZOOM = 1.65` 倍，0.46 秒 `TRANS_CUBIC` 收尾）。
+三段：
+① 曲绘 + 曲名飞到正中放大，**背景同时虚化**（`BackBufferCopy` 抄下此刻的界面，`shaders/entry_bg_blur.gdshader`
+   磨砂一层盖回去：9×9 高斯、步长只有半径的 1/4，采样密过像素，所以不会在高对比的地方拉出重影；
+   虚化程度就靠这层的 alpha 从 0 → 1 跟着飞行走）。同时响一声：**普通谱面**是素材
+   `audio/enter_the_song.wav`（源文件 `sound/Enter_the_song.wav`，1.5 秒）；
+   **神秘曲在警告框里选「是」**时换成素材 `audio/enter_the_final.wav`（源文件 `sound/enter_the_final.wav`，
+   3.2 秒），由 `App.play_final_entry_sound()` 播——播放器挂在 `App` 上，**换场景也不会被掐掉**，
+   能一路响进谱面里。两者的音量都跟设置的「音乐音量」走；
+② 停一下（`ENTRY_HOLD_TIME = 0.16` 秒），黑场压上来（`ENTRY_BLACK_TIME = 0.4` 秒；黑幕是最后加的子节点，
+   盖在曲绘/曲名上面）；
+③ **全黑之后**才调 `App.play_entry(..., from_black = true)` 换场景。
+谱面这一侧 `gameplay.gd` 的 `_reveal_from_black()` 再从黑里淡出来：**有解锁动画时黑屏先停 5 秒**
+（`FROM_BLACK_HOLD_UNLOCK = 5.0`，让「进入谱面」的黑场落一下），5 秒到了才 `_unlock.start()`，
+同时黑幕用 `FROM_BLACK_FADE = 0.75` 秒淡出，动画正好从黑里起来；
+没有解锁动画时用 `FROM_BLACK_HOLD_SILENT = 0.15` + `FROM_BLACK_FADE_SILENT = 0.4`，免得把 2 秒倒计时也盖掉。
 这段解锁动画**不能跳过**（任意键 / 点击只被吃掉），整段看完才进倒计时。
 进谱面后**这一趟 `Esc` 既不暂停也不回选曲**（`_first_entry`，`_pause()` 也直接返回）。
 全部打完到结算时 `App.commit_entry()` 才把 key 写进 `[progress] entered`，
@@ -228,7 +321,7 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 **剧情靠通关掉落，未搜集时在收藏品页显示不剧透的锁定槽位**：
 
 - 选曲列表里**第 N 首谱面**通关 → 掉**第 N 篇**剧情（剧情按文件名自然排序），每篇只掉一次
-- 自动演示不掉；结算界面最下方会出现一条「收藏品 · Stra的笔记#1 已搜集」（`results.gd::_build_story_drop`）
+- 自动演示不掉；结算界面最下方会出现一条「收藏品 · Stra的笔记#1 已搜集」（`results.gd::_build_drops`）
 - 搜集进度存 `user://collection.cfg` 的 `[stories] unlocked`（按文件名记，改了文件名就重新上锁）；
   删掉这个文件 = 全部重新锁上
 - 切到「剧情」分类时（以及按 `R`）会重新扫一遍目录；未搜集的篇目只显示编号与解锁条件，通关后才显示标题、摘要并可阅读
@@ -239,6 +332,26 @@ HUD 的数字和文字每次重绘都会跟着判定器走（`hud_progress()` / 
 - 不写标题就用文件名，自动去掉开头编号：`01_第一章 相遇.txt` → `第一章 相遇`
 - 编码：UTF-8（带 BOM 也行）最好；记事本存的 UTF-16「Unicode」也能读；GBK / ANSI 会显示乱码并提示另存为 UTF-8
 - 导出版本要带 `*.txt`：`export_presets.cfg` 的 `include_filter` 已经写成 `*.txt`
+
+**有立绘 / 分支 / 演出的剧情**用网页版视觉小说编辑器写：双击 `web/vn-editor.html`（用法与导出格式见
+[`web/VN_EDITOR.md`](../web/VN_EDITOR.md)）。它导出两份东西：`.vnproj.json` 是带素材的工程（拖回编辑器接着编），
+`.vn.json` 是给引擎读的扁平指令流——素材按文件名引用，`jump` / 选项已经解析成 `script` 下标，
+引擎侧只要一个游标按 `op` 逐条执行；素材文件按导出的 `.assets.json` 清单拷进工程即可。
+
+## 收藏品掉落
+
+三个分类的来源不一样：
+
+| 分类 | 什么时候进收藏品 |
+| --- | --- |
+| 角色立绘 | 一直全开（`assets/banners/` 里有什么就显示什么） |
+| 曲绘 | **完整玩过一次这一首**才进收藏品（自动演示不算，`App.cover_collected()`）；没玩过的曲目不会出现 |
+| 剧情 | 见上一节：第 N 首谱面通关 → 第 N 篇笔记 |
+
+- 一声通关结算时，这一趟新掉的曲绘 / 剧情会在页面最下方串成一条绿色提示（`results.gd::_build_drops`），
+  例如「收藏品 · Stra的笔记#1 已搜集」+「收藏品 · 曲绘「dream of utopia」已搜集」；没有新掉落就整条不占位
+- 曲绘的解锁状态直接由「通关过没有」（`user://profile.cfg` 的 `[progress] cleared`）决定，不额外存一份
+- Debug 的「全部解锁」打开时，曲绘和剧情都算已搜集
 
 ## 目录结构
 
@@ -282,6 +395,8 @@ game/
   assets/banners/*.png       看板娘立绘（主界面右下角可切换，收藏品里也会列出来；按文件名排序）
   assets/menu/*.png          主界面切图（User_name 名牌 / Start / Collection / Setting / User_profile 按钮 / change_character 切换立绘 / Line 装饰线）
   assets/back.png            选曲页右上角的返回图标（源文件 img/bacK.png；按钮是 scenes/song_select.tscn 里的 BackButton，用 icon + expand_icon）
+  assets/covers/C0.png       章节「主线·序」的书脊封面 + 右半屏背景（源文件 img/C/C0.png）
+  assets/covers/ALL.png      章节「全部曲目」的封面 + 右半屏背景（源文件 img/C/ALL.png）
   src/ui/sprite_button.gd    切图按钮组件（TextureRect + 悬停上浮/不透明度变化），编辑器里可直接挂
   charts/                    ← 你的谱面放这里（现在只有 README）
   剧情/                      ← 剧情 txt 放这里（子文件夹也认，比如 剧情/序章/）
@@ -301,13 +416,13 @@ game/
 
 | 判定 | 时间窗 | 权重 |
 | --- | --- | --- |
-| PERFECT+ | ≤ 55 ms | 100% |
-| PERFECT | ≤ 80 ms | 100% |
-| GOOD | 80 ~ 140 ms | 75% |
-| BAD | 140 ~ 220 ms | 0% |
-| MISS | 超过 220 ms 没打 / hold 断了 | 0% |
+| PERFECT+ | ≤ 40 ms | 100% |
+| PERFECT | ≤ 70 ms | 100% |
+| GOOD | 70 ~ 110 ms | 75% |
+| BAD | 110 ~ 125 ms | 0% |
+| MISS | 超过 125 ms 没打 / hold 断了 | 0% |
 
-- 按键找音符：轨道判定区接受这个键 + 未判定 + `|dt| ≤ 220ms`（Bad 窗口），取 `|dt|` 最近的那个；超过就完全打不中
+- 按键找音符：轨道判定区接受这个键 + 未判定 + `|dt| ≤ 125ms`（Bad 窗口），取 `|dt|` 最近的那个；超过就完全打不中
 - **分数**：`1,000,000 × (Σ权重 / 可判定音符数) + 10,000 × (Perfect+ 数 / 可判定音符数)`
   - 全 Perfect+ = **1,010,000**（非 Perfect+ 部分满分 1,000,000，Perfect+ 单独再算 10,000）
   - 没有连击加成，分数只由准确率决定

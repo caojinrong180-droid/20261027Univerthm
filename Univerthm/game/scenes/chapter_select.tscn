@@ -1,0 +1,254 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://src/screens/chapter_select.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/chose_bg.png" id="2_bg"]
+[ext_resource type="SystemFont" path="res://src/ui/fonts/bold_font.tres" id="3_bold"]
+[ext_resource type="Texture2D" path="res://assets/back.png" id="4_back"]
+[ext_resource type="Script" path="res://src/ui/chapter_spine.gd" id="5_spine"]
+[ext_resource type="Script" path="res://src/ui/spine_carousel.gd" id="6_carousel"]
+[ext_resource type="Script" path="res://src/ui/carousel_scrollbar.gd" id="7_scroll"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_flat"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 0)
+border_color = Color(1, 1, 1, 0)
+
+[node name="ChapterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TopBar" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 48.0
+offset_top = 22.0
+offset_right = -48.0
+offset_bottom = 62.0
+grow_horizontal = 2
+
+[node name="Toolbar" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Logo" type="Label" parent="TopBar/Toolbar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 24
+text = "Univerthm"
+
+[node name="Spacer" type="Control" parent="TopBar/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="TopBar/Toolbar"]
+custom_minimum_size = Vector2(72, 52)
+layout_mode = 2
+tooltip_text = "返回主界面 · Esc"
+theme_override_colors/icon_normal_color = Color(0.78, 0.75, 0.86, 0.92)
+theme_override_colors/icon_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_flat")
+theme_override_styles/hover = SubResource("StyleBoxFlat_flat")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_flat")
+theme_override_styles/focus = SubResource("StyleBoxFlat_flat")
+icon = ExtResource("4_back")
+expand_icon = true
+
+[node name="Main" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = 96.0
+offset_right = -56.0
+offset_bottom = -76.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Body" type="HBoxContainer" parent="Main"]
+layout_mode = 2
+theme_override_constants/separation = 36
+
+[node name="CardsColumn" type="VBoxContainer" parent="Main/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 12
+
+[node name="Cards" type="Control" parent="Main/Body/CardsColumn"]
+custom_minimum_size = Vector2(0, 430)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("6_carousel")
+
+[node name="Scroll" type="Control" parent="Main/Body/CardsColumn"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("7_scroll")
+
+[node name="Card0" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_right = 188.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "全部曲目"
+
+[node name="Card1" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_left = 188.0
+offset_right = 376.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "单曲"
+
+[node name="Card2" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_left = 376.0
+offset_right = 564.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "主线·序"
+
+[node name="Card3" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_left = 564.0
+offset_right = 752.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "主线·一"
+
+[node name="Card4" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_left = 752.0
+offset_right = 940.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "心跳电波！"
+
+[node name="Card5" type="Button" parent="Main/Body/CardsColumn/Cards"]
+custom_minimum_size = Vector2(188, 430)
+layout_mode = 0
+offset_left = 940.0
+offset_right = 1128.0
+offset_bottom = 430.0
+script = ExtResource("5_spine")
+skew = 52.0
+spine_text = "鼓立方"
+
+[node name="Info" type="VBoxContainer" parent="Main/Body"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+
+[node name="IndexLabel" type="Label" parent="Main/Body/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.658824, 0.411765, 1, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 21
+text = "章节 · 全部"
+
+[node name="NameLabel" type="Label" parent="Main/Body/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.964706, 1, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 34
+text = "全部曲目"
+autowrap_mode = 3
+
+[node name="Gap" type="Control" parent="Main/Body/Info"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="StatCL" type="Label" parent="Main/Body/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.764706, 0.737255, 0.819608, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 17
+text = "CL   0/0"
+
+[node name="StatFC" type="Label" parent="Main/Body/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.764706, 0.737255, 0.819608, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 17
+text = "FC   0/0"
+
+[node name="StatAP" type="Label" parent="Main/Body/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.764706, 0.737255, 0.819608, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 17
+text = "AP   0/0"
+
+[node name="Footer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 48.0
+offset_top = -56.0
+offset_right = -48.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Row" type="HBoxContainer" parent="Footer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Hint" type="Label" parent="Footer/Row"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.57, 0.68, 1)
+theme_override_font_sizes/font_size = 12
+text = "←→ 选择章节   ·   滚轮 / 拖下面的条   ·   Enter 进入   ·   Esc 返回"
+
+[node name="Spacer" type="Control" parent="Footer/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Toast" type="Label" parent="Footer/Row"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.964706, 1, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 12

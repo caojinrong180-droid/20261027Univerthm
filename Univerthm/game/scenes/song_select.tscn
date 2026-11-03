@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://crc3ad8rwx2mk" path="res://src/ui/neon_panel.gd" id="5_gjh0a"]
 [ext_resource type="Script" uid="uid://r2cpnu64ei44" path="res://src/ui/lock_icon.gd" id="6_lock"]
 [ext_resource type="Texture2D" uid="uid://btq0hnw30e1ra" path="res://assets/back.png" id="7_back"]
+[ext_resource type="Script" path="res://src/screens/song_map.gd" id="9_map"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_nxupt"]
 shader = ExtResource("2_bi366")
@@ -317,7 +318,38 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0)
 
+[node name="MapPanel" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("9_map")
+[node name="ViewToggle" type="Button" parent="."]
+custom_minimum_size = Vector2(168, 40)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -84.0
+offset_top = 16.0
+offset_right = 84.0
+offset_bottom = 56.0
+grow_horizontal = 2
+tooltip_text = "切换地图 / 普通列表 · Tab"
+theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
+theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
+theme_override_fonts/font = ExtResource("4_vcqj4")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_3qhab")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_5sutn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_ud7ll")
+theme_override_styles/focus = SubResource("StyleBoxFlat_w7xak")
+text = "普通列表"
 [node name="TopBar" type="MarginContainer" parent="." unique_id=125925670]
+mouse_filter = 2
 layout_mode = 0
 anchor_right = 1.0
 offset_left = 48.0
@@ -326,6 +358,7 @@ offset_right = -48.0
 offset_bottom = 64.0
 
 [node name="Toolbar" type="HBoxContainer" parent="TopBar" unique_id=776146977]
+mouse_filter = 2
 layout_mode = 2
 theme_override_constants/separation = 16
 
@@ -341,6 +374,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
+
 [node name="SettingsButton" type="Button" parent="TopBar/Toolbar" unique_id=965076971]
 layout_mode = 2
 tooltip_text = "音量、打击特效与偏移 · S"
@@ -355,9 +389,9 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_w7xak")
 text = "设置"
 
 [node name="BackButton" type="Button" parent="TopBar/Toolbar" unique_id=698768091]
-custom_minimum_size = Vector2(52, 40)
+custom_minimum_size = Vector2(72, 52)
 layout_mode = 2
-tooltip_text = "返回主界面 · Esc"
+tooltip_text = "返回章节选择 · Esc"
 mouse_default_cursor_shape = 2
 theme_override_colors/font_color = Color(0.7647059, 0.7372549, 0.81960785, 1)
 theme_override_colors/font_hover_color = Color(0.972549, 0.9647059, 1, 1)
@@ -372,6 +406,7 @@ icon = ExtResource("7_back")
 expand_icon = true
 
 [node name="Main" type="MarginContainer" parent="." unique_id=757284018]
+mouse_filter = 2
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -383,8 +418,10 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="MusicBody" type="BoxContainer" parent="Main" unique_id=311317284]
+mouse_filter = 2
 layout_mode = 2
 theme_override_constants/separation = 66
+
 
 [node name="Library" type="VBoxContainer" parent="Main/MusicBody" unique_id=809253305]
 layout_mode = 2
@@ -657,6 +694,7 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_autoplay_disabled")
 text = "自动演示"
 
 [node name="Footer" type="HBoxContainer" parent="." unique_id=1662101171]
+mouse_filter = 2
 layout_mode = 0
 anchor_top = 1.0
 anchor_right = 1.0

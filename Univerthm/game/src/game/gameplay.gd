@@ -1,16 +1,22 @@
 extends Control
 ## 游玩场景：倒计时 → 播放 → 判定 → 暂停 / 结算。
 
-enum State { COUNTDOWN, PLAYING, PAUSED, DONE, UNLOCK }
+enum State { COUNTDOWN, PLAYING, PAUSED, DONE, UNLOCK, RESUME }
 
 signal state_changed
 
 const LEAD_IN := 2.0
+## 从暂停里恢复时的倒计时秒数
+const RESUME_LEAD_IN := 3.0
 const HIT_SOUND_PATH := "res://audio/hit.wav"
 const PauseActions = preload("res://src/ui/pause_actions.gd")
 ## 从选曲页「变黑」接过来时：先压住全黑这么久，再淡出去（露出解锁动画 / 舞台）
-const FROM_BLACK_HOLD := 0.45
+## 有解锁动画（??? 那首）：黑屏先停 5 秒，让「进入谱面」的黑场落一下，再让动画从黑里起来
+const FROM_BLACK_HOLD_UNLOCK := 5.0
+## 没有解锁动画：黑屏很短，直接淡出到倒计时
+const FROM_BLACK_HOLD_SILENT := 0.15
 const FROM_BLACK_FADE := 0.75
+const FROM_BLACK_FADE_SILENT := 0.4
 
 @onready var stage: StageView = $Stage
 @onready var post: StagePost = $Post
@@ -49,6 +55,11 @@ var debug_run_result: Dictionary = {}
 
 var _countdown_elapsed := 0.0
 var _countdown_from := 0.0
+## 暂停恢复时冻结在哪个谱面时间
+var _resume_from := 0.0
+## 重开（同一首曲）时跳过开场倒计时
+var _skip_countdown := false
+var _countdown_label: Label
 var _end_time := 0.0
 var _audio_length := 0.0
 var _audio_done := false
@@ -118,12 +129,22 @@ func _ready() -> void:
 	stage.song_length = maxf(0.1, song_total)
 
 	_build_pause_layer()
+	_build_countdown_label()
 
 	_build_unlock()
 	_countdown_from = -_chart_offset() - LEAD_IN
 	chart_time = _countdown_from
 	stage.chart_time = chart_time
-	state = State.UNLOCK if _unlock != null else State.COUNTDOWN
+	# 从暂停菜单「重开」进来的这一趟不要开场倒计时，直接进谱面
+	var skip_countdown := bool(App.session.get("skip_countdown", false))
+	App.session.erase("skip_countdown")
+	if _unlock != null:
+		_skip_countdown = skip_countdown
+		state = State.UNLOCK
+	elif skip_countdown:
+		_start_playing_now()
+	else:
+		state = State.COUNTDOWN
 	# 选曲页那边已经黑透了：这一侧也从黑里淡出来，接上解锁动画
 	if bool(App.session.get("from_black", false)):
 		_reveal_from_black()
@@ -136,6 +157,8 @@ func _process(delta: float) -> void:
 			pass          # 帧播放自己走时间，播完发 finished
 		State.COUNTDOWN:
 			_tick_countdown(delta)
+		State.RESUME:
+			_tick_resume(delta)
 		State.PLAYING:
 			_tick_play(delta)
 
@@ -174,6 +197,23 @@ func _tick_countdown(delta: float) -> void:
 		if has_audio:
 			player.play()
 		chart_time = -_chart_offset()
+		state = State.PLAYING
+
+
+## 暂停恢复：画面冻在暂停点，数 3 秒再继续（音乐也等数完再放开）
+func _tick_resume(delta: float) -> void:
+	_countdown_elapsed += delta
+	var remaining := maxf(0.0, RESUME_LEAD_IN - _countdown_elapsed)
+	chart_time = _resume_from
+	stage.chart_time = chart_time
+	stage.queue_redraw()
+	_update_countdown_label(remaining)
+	# 累加的 delta 可能差一点点到 3.0（浮点），留个 epsilon 免得总是差一帧
+	if _countdown_elapsed + 1e-6 >= RESUME_LEAD_IN:
+		_hide_countdown_label()
+		if has_audio:
+			player.stream_paused = false
+		chart_time = _resume_from
 		state = State.PLAYING
 
 
@@ -243,7 +283,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_ESCAPE:
 					_resume()
 				KEY_R:
-					App.retry()
+					_retry()
+				KEY_Q:
+					App.goto_select()
+		State.RESUME:
+			match code:
+				KEY_ESCAPE:
+					_pause()
+				KEY_R:
+					_retry()
 				KEY_Q:
 					App.goto_select()
 		State.PLAYING:
@@ -251,7 +299,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_ESCAPE:
 					_pause()
 				KEY_R:
-					App.retry()
+					_retry()
 				_:
 					var zone := _zone_for_key(code)
 					if zone != "":
@@ -260,7 +308,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if code == KEY_ESCAPE:
 				App.goto_select()
 			elif code == KEY_R:
-				App.retry()
+				_retry()
 
 
 func _zone_for_key(code: int) -> String:
@@ -342,11 +390,14 @@ func _autoplay_step(t: float) -> void:
 # --------------------------------------------------------------------------- #
 
 func _pause() -> void:
-	if state != State.PLAYING:
+	if state != State.PLAYING and state != State.RESUME:
 		return
 	# 神秘曲第一次踏入：这一趟不给暂停（Esc 也已经被 _unhandled_input 吃掉）
 	if _first_entry:
 		return
+	_hide_countdown_label()
+	_held.clear()
+	_rebuild_zones()
 	state = State.PAUSED
 	if has_audio:
 		player.stream_paused = true
@@ -356,10 +407,29 @@ func _pause() -> void:
 func _resume() -> void:
 	if state != State.PAUSED:
 		return
-	state = State.PLAYING
-	if has_audio:
-		player.stream_paused = false
 	_pause_layer.close()
+	_resume_from = chart_time
+	_countdown_elapsed = 0.0
+	if _countdown_label != null:
+		_countdown_label.show()
+	_update_countdown_label(RESUME_LEAD_IN)
+	state = State.RESUME
+
+
+## 从暂停菜单「重开」：同一首重新来一遍，但不要开场倒计时
+func _retry() -> void:
+	App.retry(true)
+
+
+func _start_playing_now() -> void:
+	_hide_countdown_label()
+	_countdown_elapsed = LEAD_IN
+	chart_time = -_chart_offset()
+	stage.chart_time = chart_time
+	stage.queue_redraw()
+	if has_audio:
+		player.play()
+	state = State.PLAYING
 
 
 func _finish() -> void:
@@ -394,9 +464,10 @@ func _finish() -> void:
 		"autoplay": autoplay,
 		"length": _end_time,
 	}
-	# 通关掉落剧情（自动演示不掉）：第 N 首谱面 → 第 N 篇笔记
+	# 通关掉落（自动演示不掉）：第 N 首谱面 → 第 N 篇笔记；这一首的曲绘也一并进收藏
 	if not autoplay:
 		result["story_drop"] = App.grant_story_drop(result)
+		result["cover_drop"] = App.grant_cover_drop(result)
 	App.last_result = result
 	debug_run_result = result
 	if not autoplay:
@@ -450,9 +521,38 @@ func _on_pause_action(action: int) -> void:
 		0:
 			_resume()
 		1:
-			App.retry()
+			_retry()
 		2:
 			App.goto_select()
+
+
+# --------------------------------------------------------------------------- #
+# 暂停恢复的 3 秒倒计时（画面正中一个数字）
+# --------------------------------------------------------------------------- #
+
+func _build_countdown_label() -> void:
+	_countdown_label = Label.new()
+	_countdown_label.name = "ResumeCountdown"
+	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_countdown_label.add_theme_font_size_override("font_size", 120)
+	_countdown_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.full_rect(_countdown_label)
+	_countdown_label.hide()
+	add_child(_countdown_label)
+
+
+func _update_countdown_label(remaining: float) -> void:
+	if _countdown_label == null:
+		return
+	var frac := remaining - floorf(remaining)
+	_countdown_label.text = str(maxi(1, ceili(remaining)))
+	_countdown_label.modulate = Color(1, 1, 1, clampf(0.45 + 0.55 * frac, 0.0, 1.0))
+
+
+func _hide_countdown_label() -> void:
+	if _countdown_label != null:
+		_countdown_label.hide()
 
 
 # --------------------------------------------------------------------------- #
@@ -464,7 +564,7 @@ func is_autoplay() -> bool:
 
 
 func is_chart_playing() -> bool:
-	return state == State.PLAYING
+	return state == State.PLAYING or state == State.RESUME
 
 
 func get_judge() -> RhythmJudge:
@@ -472,8 +572,10 @@ func get_judge() -> RhythmJudge:
 
 
 func debug_start_now() -> void:
+	_hide_countdown_label()
 	_countdown_elapsed = LEAD_IN
 	chart_time = -_chart_offset()
+	stage.chart_time = chart_time
 	state = State.PLAYING
 
 
@@ -485,6 +587,8 @@ func debug_advance(delta: float) -> void:
 	match state:
 		State.COUNTDOWN:
 			_tick_countdown(delta)
+		State.RESUME:
+			_tick_resume(delta)
 		State.PLAYING:
 			_tick_play(delta)
 
@@ -560,10 +664,15 @@ func _reveal_from_black() -> void:
 	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(cover)                                # 最后加 = 盖在所有东西上面
 	var tween := create_tween()
-	tween.tween_interval(FROM_BLACK_HOLD)
+	# 有解锁动画：黑屏先停 2 秒（??? 那首要求的时长），再让动画从黑里起来；
+	# 没有解锁动画：黑场马上就淡，别把 2 秒倒计时也盖掉
+	var has_unlock := _unlock != null
+	var hold := FROM_BLACK_HOLD_UNLOCK if has_unlock else FROM_BLACK_HOLD_SILENT
+	var fade := FROM_BLACK_FADE if has_unlock else FROM_BLACK_FADE_SILENT
+	tween.tween_interval(hold)
 	# 黑透了才让解锁动画动起来：开头那几帧不会被糊在淡出里
 	tween.tween_callback(_start_unlock_after_black)
-	tween.tween_property(cover, "color:a", 0.0, FROM_BLACK_FADE) \
+	tween.tween_property(cover, "color:a", 0.0, fade) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.finished.connect(cover.queue_free)
 
@@ -578,6 +687,10 @@ func _finish_unlock() -> void:
 	if _unlock != null:
 		_unlock.queue_free()
 		_unlock = null
+	if _skip_countdown:
+		_skip_countdown = false
+		_start_playing_now()
+		return
 	state = State.COUNTDOWN
 	_countdown_elapsed = 0.0
 	chart_time = _countdown_from

@@ -123,7 +123,7 @@ func _run() -> void:
 	var start_button: Control = menu.get_node("StartButton")
 	_click(start_button.get_global_rect().get_center())
 	await get_tree().scene_changed
-	check(get_tree().current_scene.scene_file_path == App.SELECT_SCENE, "开始游戏按钮正常进入选曲")
+	check(get_tree().current_scene.scene_file_path == App.CHAPTER_SCENE, "开始游戏按钮正常进入章节选择")
 	App.goto_menu()
 	await get_tree().scene_changed
 	check(get_tree().current_scene.get_node("Banner").texture.resource_path.ends_with("/stra1.png"), "重新进入主界面仍默认第一张")

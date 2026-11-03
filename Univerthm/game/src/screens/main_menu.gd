@@ -96,7 +96,7 @@ func _ready() -> void:
 	_active_character = clampi(App.character_index, 0, 1)
 	_current_banner = _active_character * POSES_PER_CHARACTER
 
-	_start_button.pressed.connect(func(): App.goto_select())
+	_start_button.pressed.connect(func(): App.goto_chapters())
 	($CollectionButton as SpriteButton).pressed.connect(func(): App.goto_collection())
 	($SettingButton as SpriteButton).pressed.connect(func(): App.goto_settings())
 	($ProfileButton as SpriteButton).pressed.connect(func(): App.goto_profile())

@@ -40,6 +40,10 @@ func _initialize() -> void:
 	print("== 设置 ==")
 	_test_settings()
 
+	print("== 音效 ==")
+	_test_warning_stinger()
+	_test_entry_stinger()
+
 	print("\n%d passed, %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
 
@@ -335,36 +339,36 @@ func _new_judge(chart: Dictionary, scale := 1.0) -> RhythmJudge:
 func _test_judge_windows() -> void:
 	var chart := _make_chart([{"time": 1.0, "lane": 0}])
 	var j := _new_judge(chart)
-	var r := j.press("left", 1.04)
+	var r := j.press("left", 1.03)
 	check(bool(r["hit"]), "按得到音符")
-	eq(str(r["result"]), "perfect_plus", "40ms → Perfect+")
+	eq(str(r["result"]), "perfect_plus", "30ms → Perfect+（窗口 ≤40ms）")
 	eq(int(j.counts["perfect_plus"]), 1, "Perfect+ 计数")
 	eq(j.combo, 1, "连击 1")
 	near(j.score, 1010000.0, "单个 Perfect+ = 满分 1,010,000", 0.5)
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
-	r = j.press("left", 1.07)
-	eq(str(r["result"]), "perfect", "70ms → Perfect")
+	r = j.press("left", 1.06)
+	eq(str(r["result"]), "perfect", "60ms → Perfect（40~70ms）")
 	near(j.score, 1000000.0, "单个 Perfect = 1,000,000", 0.5)
 	near(j.accuracy_live(), 1.0, "Perfect 权重 100%")
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
-	r = j.press("left", 1.12)
-	eq(str(r["result"]), "good", "120ms → Good")
+	r = j.press("left", 1.10)
+	eq(str(r["result"]), "good", "100ms → Good（70~110ms）")
 	near(j.score, 750000.0, "单个 Good = 750,000", 0.5)
 	near(j.accuracy_live(), 0.75, "Good 权重 75%")
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
-	r = j.press("left", 1.2)
-	eq(str(r["result"]), "bad", "200ms → Bad（140~220ms）")
+	r = j.press("left", 1.12)
+	eq(str(r["result"]), "bad", "120ms → Bad（110~125ms）")
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
-	r = j.press("left", 1.15)
-	eq(str(r["result"]), "bad", "150ms → Bad（Good 只到 140ms）")
+	r = j.press("left", 1.12)
+	eq(str(r["result"]), "bad", "120ms → Bad（Good 只到 110ms）")
 	near(j.score, 0.0, "Bad 不给分", 0.5)
 	near(j.accuracy_live(), 0.0, "Bad 权重 0%")
 	check(not j.is_full_combo(), "有 Bad 不算 FC")
@@ -374,21 +378,21 @@ func _test_judge_windows() -> void:
 	j = _new_judge(chart)
 	j.press("left", 1.0)
 	eq(j.combo, 1, "Perfect 连击 1")
-	j.press("left", 2.2)
-	eq(int(j.counts["bad"]), 1, "200ms 记 Bad")
+	j.press("left", 2.12)
+	eq(int(j.counts["bad"]), 1, "120ms 记 Bad")
 	eq(j.combo, 0, "Bad 断连")
 
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart)
-	r = j.press("left", 1.25)
-	check(not bool(r["hit"]), "超过 220ms → 空打")
+	r = j.press("left", 1.14)
+	check(not bool(r["hit"]), "超过 125ms → 空打")
 	eq(str(r["kind"]), "empty", "空打 kind")
 
 	# 窗口倍率
 	chart = _make_chart([{"time": 1.0, "lane": 0}])
 	j = _new_judge(chart, 2.0)
-	r = j.press("left", 1.4)
-	eq(str(r["result"]), "bad", "窗口 2× 时 400ms 还能打到（bad）")
+	r = j.press("left", 1.24)
+	eq(str(r["result"]), "bad", "窗口 2× 时 240ms 还能打到（bad）")
 
 
 func _test_judge_zones() -> void:
@@ -513,10 +517,10 @@ func _test_judge_early_late() -> void:
 		{"time": 3.0, "lane": 0}, {"time": 4.0, "lane": 0},
 	])
 	var j := _new_judge(chart)
-	j.press("left", 0.93)      # 早 70ms → Perfect Early（≤55ms 是 Perfect+，不记 Early/Late）
-	j.press("left", 2.07)      # 晚 70ms → Perfect Late
+	j.press("left", 0.94)      # 早 60ms → Perfect Early（≤40ms 是 Perfect+，不记 Early/Late）
+	j.press("left", 2.06)      # 晚 60ms → Perfect Late
 	j.press("left", 2.90)      # 早 100ms → Good Early
-	j.press("left", 4.12)      # 晚 120ms → Good Late
+	j.press("left", 4.10)      # 晚 100ms → Good Late
 	eq(int(j.early_late["perfect_early"]), 1, "Perfect Early 计数")
 	eq(int(j.early_late["perfect_late"]), 1, "Perfect Late 计数")
 	eq(int(j.early_late["good_early"]), 1, "Good Early 计数")
@@ -526,7 +530,7 @@ func _test_judge_early_late() -> void:
 	var hold_chart := _make_chart([{"time": 1.0, "lane": 0, "type": "hold", "duration": 1.0}])
 	var j2 := _new_judge(hold_chart)
 	j2.set_pressed_zones(["left"])
-	j2.press("left", 1.07)
+	j2.press("left", 1.06)
 	eq(int(j2.early_late["perfect_late"]), 1, "hold 头判 late 计入")
 	j2.set_pressed_zones([])
 	j2.update(1.2)
@@ -913,6 +917,52 @@ func _test_zoom_shake_preset() -> void:
 
 	# 区间外不该生效
 	eq(StoryboardSource.active_shaders(scene, 3.0).size(), 0, "区间外不生效")
+
+
+func _test_warning_stinger() -> void:
+	var stinger = load("res://src/audio/warning_stinger.gd")
+	check(stinger != null, "警告音效脚本在")
+	if stinger == null:
+		return
+	var stream: AudioStreamWAV = stinger.make_stream()
+	check(stream != null, "警告音效能合成出来")
+	if stream == null:
+		return
+	check(stream.data.size() > 100000, "警告音效有实打实的采样数据（%d 字节）" % stream.data.size())
+	near(stream.get_length(), stinger.DURATION, "警告音效时长 ≈ %.1f 秒" % stinger.DURATION, 0.05)
+	eq(stream.format, AudioStreamWAV.FORMAT_16_BITS, "警告音效是 16bit WAV")
+	eq(stream.mix_rate, 44100, "警告音效采样率 44.1k")
+	check(not stream.stereo, "警告音效是单声道")
+
+
+func _test_entry_stinger() -> void:
+	var stinger = load("res://src/audio/entry_stinger.gd")
+	check(stinger != null, "进入过场音效脚本在")
+	if stinger == null:
+		return
+	var stream: AudioStreamWAV = stinger.make_stream()
+	check(stream != null, "进入过场音效能合成出来")
+	if stream == null:
+		return
+	check(stream.data.size() > 100000, "进入过场音效有采样数据（%d 字节）" % stream.data.size())
+	near(stream.get_length(), stinger.DURATION, "进入过场音效时长 ≈ %.2f 秒" % stinger.DURATION, 0.05)
+	eq(stream.format, AudioStreamWAV.FORMAT_16_BITS, "进入过场音效是 16bit WAV")
+	eq(stream.mix_rate, 44100, "进入过场音效采样率 44.1k")
+	# 包络：起手应该轻、亮铃那段（0.55s 后）最有能量、尾巴收干净
+	var count := stream.data.size() / 2
+	var seg := func(a: float, b: float) -> float:
+		var from := int(a * 44100.0)
+		var to := mini(int(b * 44100.0), count)
+		var sum := 0.0
+		for i in range(from, to):
+			var v := float(stream.data.decode_s16(i * 2)) / 32768.0
+			sum += v * v
+		return sqrt(sum / float(maxi(1, to - from)))
+	var head: float = seg.call(0.0, 0.1)
+	var chime: float = seg.call(0.55, 0.75)
+	var tail: float = seg.call(1.1, 1.2)
+	check(head < chime, "亮铃那一下比起手更响（%.2f → %.2f）" % [head, chime])
+	check(tail < chime, "尾巴收得干净（%.2f）" % tail)
 
 
 func _find_entry(entries: Array, title: String) -> Dictionary:

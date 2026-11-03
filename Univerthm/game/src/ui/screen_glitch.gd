@@ -4,6 +4,7 @@ extends CanvasLayer
 const Glitch = preload("res://src/ui/menu_glitch.gd")
 const SCREENS := [
 	"res://scenes/warning.tscn", "res://scenes/splash.tscn",
+	"res://scenes/chapter_select.tscn",
 	"res://scenes/song_select.tscn",
 	"res://scenes/settings.tscn", "res://scenes/collection.tscn",
 	"res://scenes/profile.tscn", "res://scenes/results.tscn",

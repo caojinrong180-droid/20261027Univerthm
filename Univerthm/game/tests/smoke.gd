@@ -46,6 +46,7 @@ func _run() -> void:
 	await _check_splash_input()
 	await _check_menu_sound()
 	await _check_song_select()
+	await _check_map_story()
 	await _check_song_select_return()
 	await _check_collection()
 	await _check_result_story_drop()
@@ -303,7 +304,135 @@ func _check_song_select() -> void:
 		check(select._list_count.text == "0 个谱面", "空谱面库计数文案")
 	else:
 		check(select._detail_title.text != "", "详情标题已填（焦点在第一行）")
+
+	# 地图模式：背景固定成章节地图（不换成曲绘、也不磨砂）
+	var map_bg := load("res://assets/C0_Map.png") as Texture2D
+	check(map_bg != null, "章节地图背景资源在")
+	var saved_unlock_all := App.settings.unlock_all
+	var saved_chapter := App.chapter_key
+	App.settings.unlock_all = true          # 解锁全部之后才允许切普通列表
+	App.chapter_key = "main_0"              # 地图是序章独占，这里切到序章再看地图
+	select._show_map = true
+	select._apply_view()
+	await get_tree().process_frame
+	if map_bg != null:
+		eq(select._background_b.texture, map_bg, "地图模式背景 = C0_Map")
+		check(select._background_b.material == null, "地图背景不套曲绘的模糊材质")
+		select._set_background(null)
+		eq(select._background_b.texture, map_bg, "换选曲子也不会把背景切成曲绘")
+	select._show_map = false
+	select._apply_view()
+	await get_tree().process_frame
+	check(not select._show_map, "解锁全部之后能切回普通列表")
+	check(select._background_a.material != null or select._background_b.material != null,
+		"切回列表时模糊材质装回去了")
+	# 非序章章节：只有普通列表，按钮也不显示
+	App.chapter_key = "all"
+	select._apply_view()
+	await get_tree().process_frame
+	check(not select._show_map, "全部曲目章节不进地图")
+	check(not select._map.visible, "全部曲目章节不显示地图")
+	check(not select._view_button.visible, "全部曲目章节不显示切换按钮")
+	App.settings.unlock_all = saved_unlock_all
+	App.chapter_key = saved_chapter
 	select.queue_free()
+	await get_tree().process_frame
+
+
+## 序章地图上的剧情收藏品：点它直接开阅读浮层（不用跳去收藏品界面）
+func _check_map_story() -> void:
+	var saved_chapter := App.chapter_key
+	App.chapter_key = "main_0"          # 地图是序章独占，测试先切到序章
+	var screen = load("res://scenes/song_select.tscn").instantiate()
+	get_tree().root.add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(screen._reader != null, "选曲页带剧情阅读浮层")
+	var stories := StorySource.scan(["res://剧情"])
+	if stories.is_empty():
+		check(true, "没有剧情文件，跳过收藏品阅读的检查")
+		App.chapter_key = saved_chapter
+		screen.queue_free()
+		await get_tree().process_frame
+		return
+	screen._reader.open(stories[0])
+	await get_tree().process_frame
+	check(screen._reader.is_open(), "点收藏品能直接打开阅读")
+	eq(screen._reader.story_title(), str(stories[0].get("title", "")), "读的是这一篇的标题")
+	check(screen._reader.body_block_count() > 0, "正文块已生成")
+	screen._reader.close()
+	await get_tree().process_frame
+	check(not screen._reader.is_open(), "关闭之后浮层收起")
+
+	# 一路接过去：地图信号 → 选曲页 → 阅读浮层
+	if not App.library.is_empty():
+		screen._map.story_clicked.emit(0)
+		await get_tree().process_frame
+		check(screen._reader.is_open(), "地图的收藏品点击接到了阅读浮层")
+		eq(screen._reader.story_title(), str(App.story_for_chart(0).get("title", "")), "读的是这首对应那篇")
+		screen._reader.close()
+		await get_tree().process_frame
+
+	# 命中判定：只有收到过的收藏品点得中
+	var map = screen._map
+	if map != null and not map._nodes.is_empty():
+		map._nodes[0]["story"] = true
+		var geom: Dictionary = map._collectible_geom(0)
+		var center: Vector2 = geom["center"]
+		eq(map._collectible_at(center), 0, "点中收藏品那一小块")
+		check(map._collectible_at(center + Vector2(420.0, 420.0)) < 0, "点别处不算点中收藏品")
+		map._nodes[0]["story"] = false
+		check(map._collectible_at(center) < 0, "没收到的收藏品点不中")
+		# 拖动范围：内容四周还留了一圈空白，能比「贴边」再多挪
+		if map.size.x > 100.0:
+			var content: Vector2 = map._content_size()
+			check(map._clamp_pan(Vector2(9999.0, 9999.0)).x > 0.0, "能往右下多拉一圈空白")
+			check(map._clamp_pan(Vector2(-9999.0, -9999.0)).x < map.size.x - content.x,
+				"往左上也比原来能拉得更远")
+		# 点方框留了容差：贴边、差几个像素也算点中
+		var rect: Rect2 = map.node_position(0)
+		eq(map._node_at(rect.get_center()), 0, "点方框中心命中")
+		eq(map._node_at(rect.position + Vector2(-6.0, -6.0)), 0, "方框外扩几像素也算点中")
+		check(map._node_at(rect.position + Vector2(-80.0, -80.0)) < 0, "离得远就不算点中")
+
+	# 右侧详情收起时不能留一条「看不见但吃点击」的死区
+	# （测试环境里 chapter 可能是 all，先显式切到地图视图，后面的遮罩逻辑都依赖它）
+	screen._show_map = true
+	screen._apply_view()
+	await get_tree().process_frame
+	if screen._detail_scroll != null:
+		screen._set_sheet(false, false)
+		await get_tree().process_frame
+		eq(screen._detail_scroll.mouse_filter, Control.MOUSE_FILTER_IGNORE, "详情收起时不接鼠标")
+		check(screen._sheet_hide_distance() >= screen._detail_scroll.size.x + 24.0,
+			"收起时至少挪出去一整块板宽")
+		if screen._base_ready:
+			check(screen._detail_scroll.position.x >= screen.size.x, "收起后详情整块移到屏幕外")
+		screen._set_sheet(true, false)
+		await get_tree().process_frame
+		eq(screen._detail_scroll.mouse_filter, Control.MOUSE_FILTER_STOP, "详情展开时正常接点击")
+
+	# ??? 的神秘曲：曲绘换成纯黑占位（assets/none.jpg）；普通曲子还是真曲绘
+	var none_cover := load("res://assets/none.jpg") as Texture2D
+	check(none_cover != null, "纯黑占位曲绘 none.jpg 在")
+	if screen._row_hidden.size() > App.FIRST_ENTRY_INDEX and screen._row_hidden[App.FIRST_ENTRY_INDEX]:
+		screen._on_map_focused(App.FIRST_ENTRY_INDEX)
+		await get_tree().process_frame
+		check(screen._selected_hidden, "选中的是 ??? 的神秘曲")
+		eq(screen._cover.texture, none_cover, "??? 的曲绘换成纯黑 none.jpg")
+		check(not screen._cover_mask.visible, "有了纯黑曲绘就不用再挂遮罩")
+		# 地图上那个方框也一样
+		if not screen._map._nodes.is_empty():
+			var node_cover = screen._map._nodes[App.FIRST_ENTRY_INDEX]["node"].cover
+			eq(node_cover, none_cover, "地图方框里的曲绘也是纯黑占位")
+		screen._on_map_focused(0)
+		await get_tree().process_frame
+		check(not screen._selected_hidden, "选中的是普通曲子")
+		check(screen._cover.texture != none_cover, "普通曲子用真曲绘")
+		screen._on_map_focused(App.FIRST_ENTRY_INDEX)
+		await get_tree().process_frame
+	App.chapter_key = saved_chapter
+	screen.queue_free()
 	await get_tree().process_frame
 
 
@@ -311,6 +440,9 @@ func _check_song_select() -> void:
 func _check_collection() -> void:
 	# 这个测试会真的写搜集进度，跑完要把玩家的 user://collection.cfg 原样放回去
 	var unlock_backup := _backup_file(StorySource.UNLOCK_PATH)
+	# Debug 的「全部解锁」现在把收藏品也算已搜集，这里先关掉，按真实搜集状态断言
+	var saved_unlock_all := App.settings.unlock_all
+	App.settings.unlock_all = false
 	var builtins := StorySource.scan(["res://剧情"])
 	eq(builtins.size(), 3, "序章三篇剧情随游戏资源可扫描")
 	for i in builtins.size():
@@ -387,23 +519,49 @@ func _check_collection() -> void:
 		check(screen._story_text.get_child_count() >= 3, "正文块已生成（小标题 + 段落）")
 		eq(str(screen._overlay_title.text), "冒烟剧情", "阅读区标题 = 剧情标题")
 		eq(str(screen._overlay_kind.text), "剧情阅览 / STORY", "阅读区标签切换成剧情")
+		check(screen._find("BlurBackdrop") != null, "阅读浮层带背景虚化层")
+		check(screen._overlay_tween != null, "出现时有缓动补间")
 		screen._close_preview()
-		check(not screen._overlay.visible, "关掉阅读区")
+		await get_tree().create_timer(0.3).timeout
+		check(not screen._overlay.visible, "关掉阅读区（收起动画走完才藏）")
 	screen._set_filter("all")
 	await get_tree().process_frame
 	check(screen._find("CardGrid").visible, "全部分类仍显示卡片")
 	check(screen._story_section.visible, "全部分类下面也带剧情列表")
+
+	# 曲绘掉落：完整玩过一遍之前不进收藏品（只动内存，不写玩家存档）
+	var cover_entry := {}
+	for item in App.library:
+		if bool(item.get("has_cover", false)):
+			cover_entry = item
+			break
+	if not cover_entry.is_empty() and not App.settings.unlock_all:
+		var cover_key := str(cover_entry.get("key", ""))
+		if not App.is_cleared(cover_key):
+			var before := _cover_card_count(screen)
+			check(not App.cover_collected(cover_key), "没玩过的曲目：曲绘还没掉")
+			App.cleared.append(cover_key)
+			check(App.cover_collected(cover_key), "完整玩过一次：曲绘算已搜集")
+			screen._collect()
+			screen._fill_cards()
+			eq(_cover_card_count(screen), before + 1, "通关后这张曲绘进了收藏品")
+			App.cleared.erase(cover_key)
+			screen._collect()
+			screen._fill_cards()
+			eq(_cover_card_count(screen), before, "回滚后曲绘从收藏品里消失")
+
 	screen.queue_free()
 	await get_tree().process_frame
 
 	# 收拾现场：临时剧情 + 搜集进度
 	_restore_file(StorySource.UNLOCK_PATH, unlock_backup)
+	App.settings.unlock_all = saved_unlock_all
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(story_path))
 	check(not FileAccess.file_exists(story_path), "冒烟剧情已清理")
 	check(not await _lists_story_after_reload("_smoke_story.txt"), "清理后剧情重新上锁")
 
 
-## 结算最下方：有新掉落时显示「收藏品 · xxx 已搜集」
+## 结算最下方：有新掉落时显示「收藏品 · xxx 已搜集」（剧情 / 曲绘可能同时掉）
 func _check_result_story_drop() -> void:
 	var original: Dictionary = App.last_result
 	var base := {
@@ -415,14 +573,31 @@ func _check_result_story_drop() -> void:
 	}
 	App.last_result = base.duplicate()
 	App.last_result["story_drop"] = {"file": "Stra的笔记#1.txt", "title": "Stra的笔记#1", "number": 1}
+	App.last_result["cover_drop"] = {"key": "test:cover", "title": "dream of utopia"}
 	var results = load("res://scenes/results.tscn").instantiate()
 	get_tree().root.add_child(results)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var drop_text := results.find_child("StoryDropText", true, false) as Label
-	check(drop_text != null, "结算最下方有掉落提示")
+	check(drop_text != null, "结算最下方有剧情掉落提示")
 	if drop_text != null:
-		eq(drop_text.text, "收藏品 · Stra的笔记#1 已搜集", "掉落提示文案")
+		eq(drop_text.text, "收藏品 · Stra的笔记#1 已搜集", "剧情掉落提示文案")
+	var cover_text := results.find_child("CoverDropText", true, false) as Label
+	check(cover_text != null, "同一趟掉的曲绘也在提示里")
+	if cover_text != null:
+		eq(cover_text.text, "收藏品 · 曲绘「dream of utopia」已搜集", "曲绘掉落提示文案")
+	results.queue_free()
+	await get_tree().process_frame
+
+	# 只掉曲绘、不掉剧情时也要显示
+	App.last_result = base.duplicate()
+	App.last_result["cover_drop"] = {"key": "test:cover", "title": "dream of utopia"}
+	results = load("res://scenes/results.tscn").instantiate()
+	get_tree().root.add_child(results)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(results.find_child("StoryDropText", true, false) == null, "没有剧情掉落时不显示那一行")
+	check(results.find_child("CoverDropText", true, false) != null, "只有曲绘掉落时照样提示")
 	results.queue_free()
 	await get_tree().process_frame
 
@@ -432,7 +607,7 @@ func _check_result_story_drop() -> void:
 	get_tree().root.add_child(results)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	check(results.find_child("StoryDrop", true, false) == null, "没有新掉落时不显示提示条")
+	check(results.find_child("CollectDrops", true, false) == null, "没有新掉落时不显示提示条")
 	results.queue_free()
 	await get_tree().process_frame
 	App.last_result = original
@@ -443,6 +618,15 @@ func _lists_story(screen: Node, file_name: String) -> bool:
 		if str(entry.get("file", "")) == file_name:
 			return true
 	return false
+
+
+## 收藏品里曲绘卡片的张数
+func _cover_card_count(screen: Node) -> int:
+	var count := 0
+	for card in screen._cards:
+		if str(card.get("kind", "")) == "cover":
+			count += 1
+	return count
 
 
 ## 换个新的收藏品页（重扫后）这颗临时剧情还在不在列表里
@@ -494,11 +678,11 @@ func _check_song_select_return() -> void:
 		get_viewport().push_input(key, true)
 		check(get_viewport().is_input_handled(), "选曲 Esc 在场景切换前消费，返回按钮焦点：%s" % focus_back)
 		await get_tree().scene_changed
-		eq(get_tree().current_scene.scene_file_path, App.MENU_SCENE, "选曲 Esc 返回主界面")
+		eq(get_tree().current_scene.scene_file_path, App.CHAPTER_SCENE, "选曲 Esc 返回章节选择")
 		key.echo = true
 		get_viewport().push_input(key, true)
 		await get_tree().process_frame
-		eq(get_tree().current_scene.scene_file_path, App.MENU_SCENE, "返回后长按 Esc 保持在主界面")
+		eq(get_tree().current_scene.scene_file_path, App.CHAPTER_SCENE, "返回后长按 Esc 保持在章节选择")
 		key.echo = false
 		key.pressed = false
 		get_viewport().push_input(key, true)
@@ -547,9 +731,15 @@ func _check_gameplay_autoplay() -> void:
 	check(game.state == 1, "进入播放状态")
 
 	game._pause()
-	check(game.state == 2, "Esc 暂停")
+	check(game.state == game.State.PAUSED, "Esc 暂停")
 	game._resume()
-	check(game.state == 1, "继续")
+	check(game.state == game.State.RESUME, "继续 → 先数 3 秒")
+	check(game._countdown_label.visible, "倒计时数字露出来")
+	check(game._countdown_label.text == "3", "倒计时从 3 开始")
+	for i in 180:
+		game.debug_advance(1.0 / 60.0)
+	check(game.state == game.State.PLAYING, "数完回到播放")
+	check(not game._countdown_label.visible, "倒计时数字收起")
 
 	var dt := 1.0 / 60.0
 	var guard := 0
@@ -676,12 +866,27 @@ func _check_key_input() -> void:
 	game.debug_advance(0.5)
 	near(game.chart_time, paused_time, "暂停不推进谱面时钟")
 	game._resume()
-	check(game.state == 1, "关掉暂停继续")
+	check(game.state == game.State.RESUME, "关掉暂停 → 3 秒倒计时")
+	near(game.chart_time, paused_time, "倒计时期间画面冻在暂停点")
+	for i in 180:
+		game.debug_advance(1.0 / 60.0)
+	check(game.state == game.State.PLAYING, "倒计时结束继续玩")
 	check(not game._pause_layer.visible, "恢复后隐藏暂停 UI")
+	near(game.chart_time, paused_time, "倒计时不推进谱面时钟")
 	check(App.settings.hit_sound == original_sound, "暂停不修改打击音")
 	near(App.settings.hit_volume, original_volume, "暂停不修改打击音量")
 	check(App.settings.hit_fx == original_fx, "暂停不修改打击特效")
 	game.queue_free()
+	await get_tree().process_frame
+
+	# 从暂停菜单「重开」：同一首重新来，但不要开场倒计时
+	_make_session()
+	App.session["skip_countdown"] = true
+	var quick = _new_gameplay()
+	await get_tree().process_frame
+	check(quick.state == quick.State.PLAYING, "重开：直接进播放，没有开场倒计时")
+	check(not bool(App.session.get("skip_countdown", false)), "跳过标记用完就清掉")
+	quick.queue_free()
 	await get_tree().process_frame
 
 	# 特效设成「关」时不该产生任何打击特效
@@ -753,10 +958,6 @@ func _check_first_entry_gate() -> void:
 	check(App.needs_first_entry(key), "神秘曲没踏入过 → 要弹红色警告")
 	check(not App.needs_first_entry("test:synthetic"), "别的曲子不弹警告")
 	check(not App.has_entered(key), "还没正式踏入")
-
-	# 只是一趟没打完就强关游戏：没有任何落盘，下次还是「第一次」
-	App.load_stats()
-	check(App.needs_first_entry(key), "没结算就没有落盘，强关后回到踏入之前")
 
 	# 之前演过解锁动画（unlock_seen 里有它）也照样能再看：这一趟以「正式踏入」为准
 	App.unlock_seen.append(key)
@@ -876,6 +1077,11 @@ func _check_first_entry_warning() -> void:
 	await get_tree().process_frame
 	check(screen._warning != null and screen._warning.is_open(), "点神秘曲先弹红色警告")
 	check(not screen._leaving, "警告没答完不会离开选曲页")
+	eq(str(screen._warning._body.text), "进入后游戏将不能暂停。", "警告正文只剩一句话")
+	check(screen._warning._flash != null, "警告框带闪白层")
+	check(screen._warning._flash_tween != null, "弹出时闪白补间跑起来了")
+	check(screen._warning._stinger != null and screen._warning._stinger.stream != null,
+		"警告框带合成的短音效")
 	screen._warning._choose(false)
 	await get_tree().process_frame
 	check(not screen._warning.is_open(), "选「否」关掉警告框")
@@ -883,17 +1089,21 @@ func _check_first_entry_warning() -> void:
 	check(App.session.is_empty() or str(App.session.get("entry", {}).get("key", "")) != key,
 		"选「否」没有进谱面")
 
-	# 选「是」：先慢慢变黑，黑透了才切场景（这里把补间掐掉，别真的换场景）
+	# 选「是」：接进入过场（详情板移到中间 → 音效 → 放大 → 全黑），黑透才切场景
 	screen._play_selected(false)
 	await get_tree().process_frame
 	check(screen._warning.is_open(), "再点一次又弹警告")
 	screen._warning._choose(true)
 	await get_tree().process_frame
-	check(screen._fade != null, "选「是」之后先盖一层黑幕")
-	check(screen._leaving, "变黑期间不再响应操作")
-	check(str(App.session.get("entry", {}).get("key", "")) != key, "还没黑透就不切场景")
-	if screen._fade_tween != null and screen._fade_tween.is_valid():
-		screen._fade_tween.kill()
+	check(screen._entering, "选「是」之后播进入过场")
+	check(screen._entry_tween != null and screen._entry_tween.is_valid(), "过场补间在跑")
+	check(screen._entry_player.stream != null, "过场带合成的进入音效")
+	check(screen._leaving, "过场期间不再响应操作")
+	check(str(App.session.get("entry", {}).get("key", "")) != key, "过场没走完就不切场景")
+	# 掐掉补间，别真的把场景换掉
+	if screen._entry_tween != null and screen._entry_tween.is_valid():
+		screen._entry_tween.kill()
+	screen._entering = false
 	screen.queue_free()
 	await get_tree().process_frame
 	App.settings.unlock_all = saved_unlock_all
@@ -916,6 +1126,9 @@ func _check_from_black() -> void:
 	if cover != null:
 		check(float(cover.color.a) > 0.99, "接过来的时候是全黑")
 		check(cover.get_index() == game.get_child_count() - 1, "黑幕盖在最上层")
+	# 有解锁动画时黑屏要压 5 秒才起播（??? 那首的节奏）
+	var gameplay_script := load("res://src/game/gameplay.gd")
+	check(float(gameplay_script.FROM_BLACK_HOLD_UNLOCK) >= 4.99, "解锁动画前的黑屏是 5 秒")
 	await get_tree().create_timer(0.6).timeout
 	if cover != null and is_instance_valid(cover):
 		check(float(cover.color.a) < 0.99, "压一会儿之后黑幕开始淡出")

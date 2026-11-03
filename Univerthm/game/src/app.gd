@@ -4,6 +4,7 @@ extends Node
 const WARNING_SCENE := "res://scenes/warning.tscn"
 const SPLASH_SCENE := "res://scenes/splash.tscn"
 const MENU_SCENE := "res://scenes/main_menu.tscn"
+const CHAPTER_SCENE := "res://scenes/chapter_select.tscn"
 const COLLECTION_SCENE := "res://scenes/collection.tscn"
 const PROFILE_SCENE := "res://scenes/profile.tscn"
 const SELECT_SCENE := "res://scenes/song_select.tscn"
@@ -55,8 +56,31 @@ var unlock_seen: Array[String] = []
 var entered: Array[String] = []
 ## 「神秘曲」在列表里的第几首（0 开始，2 = 第 3 首）：第一次踏入要红色确认 + 当次禁用 Esc。
 const FIRST_ENTRY_INDEX := 2
-## 每首曲子的最好成绩：谱面 key → { "score": int, "acc": float }（自动演示不计入）。
+## 每首曲子的最好成绩：谱面 key → { "score": int, "acc": float, "fc": bool, "ap": bool }
+## （自动演示不计入）。章节选择页的 CL / FC / AP 就是从这里数出来的。
 var best_records := {}
+## 当前选中的章节 key（章节选择页写入，选曲页据此过滤）
+var chapter_key := "all"
+
+
+## 神秘曲（「???」）第一次踏入、在警告框里选「是」之后放的那声特殊音效。
+## 挂在 App 上播，换场景（进谱面）也不会被掐掉，能一路响进谱面里。
+const FINAL_ENTRY_SOUND := preload("res://audio/enter_the_final.wav")
+var _final_entry_sound: AudioStreamPlayer
+
+
+## 放「特殊进入音」：音量跟设置里的「音乐音量」走，重入会从头再来
+func play_final_entry_sound() -> void:
+	if _final_entry_sound == null:
+		_final_entry_sound = AudioStreamPlayer.new()
+		_final_entry_sound.name = "FinalEntrySound"
+		add_child(_final_entry_sound)
+	var volume := 1.0
+	if settings != null:
+		volume = clampf(settings.music_volume, 0.0, 1.0)
+	_final_entry_sound.stream = FINAL_ENTRY_SOUND
+	_final_entry_sound.volume_db = linear_to_db(maxf(0.001, volume)) - 1.0
+	_final_entry_sound.play()
 
 
 func _ready() -> void:
@@ -164,12 +188,15 @@ func play_entry(entry: Dictionary, autoplay := false, from_black := false) -> bo
 	return true
 
 
-func retry() -> void:
+## 重开同一首。skip_countdown = true 时不走开场倒计时（从暂停菜单重开用这个）
+func retry(skip_countdown := false) -> void:
 	if session.is_empty():
 		goto_select()
 		return
+	var entry = session["entry"]
 	autoplay_once = autoplay_enabled()
-	play_entry(session["entry"], autoplay_once)
+	if play_entry(entry, autoplay_once) and skip_countdown:
+		session["skip_countdown"] = true
 
 
 ## 归档一局成绩（自动演示不计入，也不解锁下一首）
@@ -190,13 +217,16 @@ func record_result(res: Dictionary) -> void:
 		if key != "":
 			if not cleared.has(key):
 				cleared.append(key)
-			# 每首曲子自己的最好成绩（分数更高才算刷新）
+			# 每首曲子自己的最好成绩（分数更高才刷新；FC / AP 达成过就永久保留）
 			var old: Dictionary = best_records.get(key, {})
 			if score > int(old.get("score", -1)):
-				best_records[key] = {
-					"score": score,
-					"acc": float(res.get("accuracy", 0.0)),
-				}
+				old["score"] = score
+				old["acc"] = accuracy
+			if bool(res.get("fc", false)):
+				old["fc"] = true
+			if bool(res.get("ap", false)):
+				old["ap"] = true
+			best_records[key] = old
 	save_stats()
 
 
@@ -204,6 +234,72 @@ func record_result(res: Dictionary) -> void:
 func best_record(key: String) -> Dictionary:
 	var found = best_records.get(key, {})
 	return found if found is Dictionary else {}
+
+
+## 章节包含哪些谱面。现在所有谱面都算进每个章节；以后按章节分谱面就改这里。
+func chapter_charts(_key: String) -> Array:
+	return library
+
+
+## 章节的 CL / FC / AP 进度：{ total, cl, fc, ap }
+func chapter_progress(key: String) -> Dictionary:
+	var charts := chapter_charts(key)
+	var result := {"total": charts.size(), "cl": 0, "fc": 0, "ap": 0}
+	for entry in charts:
+		var chart_key := str(entry.get("key", ""))
+		if is_cleared(chart_key):
+			result["cl"] = int(result["cl"]) + 1
+		var record := best_record(chart_key)
+		if bool(record.get("fc", false)):
+			result["fc"] = int(result["fc"]) + 1
+		if bool(record.get("ap", false)):
+			result["ap"] = int(result["ap"]) + 1
+	return result
+
+
+## 这个章节的谱面是不是全解锁了（序章的「地图」界面要全解锁才开）
+func all_charts_unlocked() -> bool:
+	for i in library.size():
+		if not is_chart_unlocked(i):
+			return false
+	return not library.is_empty()
+
+
+## 第 index 首曲目掉的是哪篇剧情：{ file, title }；没配到返回空字典
+func story_for_chart(index: int) -> Dictionary:
+	if index < 0:
+		return {}
+	var stories := StorySource.scan()
+	if index >= stories.size():
+		return {}
+	return stories[index]
+
+
+## 每首曲目的收藏品搜集了没有（选曲地图上挂的那个小四边形用）。
+## Debug 的「全部解锁」打开时，收藏品也一律算已搜集。
+func story_collected_for_chart(index: int) -> bool:
+	var story := story_for_chart(index)
+	if story.is_empty():
+		return false
+	return story_collected(str(story.get("file", "")))
+
+
+## 这一篇剧情算不算「已搜集」：Debug 全解锁时一律算
+func story_collected(story_name: String) -> bool:
+	if story_name == "":
+		return false
+	if settings != null and settings.unlock_all:
+		return true
+	return StorySource.is_unlocked(story_name)
+
+
+## 这一首的曲绘搜集了没有：完整玩过一遍才算（自动演示不算）；Debug 全解锁时一律算
+func cover_collected(key: String) -> bool:
+	if key == "":
+		return false
+	if settings != null and settings.unlock_all:
+		return true
+	return is_cleared(key)
 
 
 ## 删除游玩记录：次数 / 平均分 / 最好成绩 / 通关列表 / 每首最好成绩 / 解锁动画记录 /
@@ -276,6 +372,29 @@ func has_entered(key: String) -> bool:
 	return key != "" and entered.has(key)
 
 
+## 神秘曲还没揭晓时用的纯黑占位曲绘（assets/none.jpg）
+const NONE_COVER_PATH := "res://assets/none.jpg"
+var _none_cover: Texture2D = null
+
+
+## 这张是不是「还没揭晓的神秘曲」：列表第 3 首、而且还没有成绩。
+## 未揭晓时它的曲绘一律显示成纯黑占位（`none_cover()`），打出成绩之后自然换回真曲绘。
+func is_hidden_chart(key: String) -> bool:
+	if key == "":
+		return false
+	var gated := first_entry_key()
+	if gated == "" or key != gated:
+		return false
+	return best_record(key).is_empty()
+
+
+## 纯黑占位曲绘（懒加载，全局共用一张）
+func none_cover() -> Texture2D:
+	if _none_cover == null:
+		_none_cover = load(NONE_COVER_PATH) as Texture2D
+	return _none_cover
+
+
 ## 这一次进谱面是不是「神秘曲的第一次踏入」：
 ## 选曲页要弹红色警告（踏出这一步就不能反悔），谱面里当次不许按 Esc 暂停 / 退出。
 func needs_first_entry(key: String) -> bool:
@@ -314,19 +433,29 @@ func should_mark_unlock_seen(key: String) -> bool:
 	return key != "" and not needs_first_entry(key)
 
 
-## 通关掉落：列表里第 N 首谱面掉第 N 篇剧情（按文件名自然排序），每篇只掉一次。
-func grant_story_drop(result: Dictionary) -> Dictionary:
+## 谱面库里这个 key 是第几首（找不到 -1）
+func library_index(key: String) -> int:
+	for i in library.size():
+		if str(library[i].get("key", "")) == key:
+			return i
+	return -1
+
+
+## 结算结果对应的谱面库条目（找不到返回 {}）
+func library_entry_for(result: Dictionary) -> Dictionary:
 	var entry = result.get("entry", {})
 	if not (entry is Dictionary):
 		return {}
-	var key := str(entry.get("key", ""))
+	var index := library_index(str(entry.get("key", "")))
+	return library[index] if index >= 0 else {}
+
+
+## 通关掉落：列表里第 N 首谱面掉第 N 篇剧情（按文件名自然排序），每篇只掉一次。
+func grant_story_drop(result: Dictionary) -> Dictionary:
+	var key := str(library_entry_for(result).get("key", ""))
 	if key == "":
 		return {}
-	var index := -1
-	for i in library.size():
-		if str(library[i].get("key", "")) == key:
-			index = i
-			break
+	var index := library_index(key)
 	if index < 0:
 		return {}
 	var stories := StorySource.scan()
@@ -341,6 +470,17 @@ func grant_story_drop(result: Dictionary) -> Dictionary:
 		"title": str(story.get("title", story_name.get_basename())),
 		"number": index + 1,
 	}
+
+
+## 曲绘掉落：一首曲子第一次被完整玩完（自动演示不算）就进收藏品。
+## 曲绘的解锁状态直接由「通关过没有」决定，不额外存一份。
+func grant_cover_drop(result: Dictionary) -> Dictionary:
+	var item := library_entry_for(result)
+	if item.is_empty() or not bool(item.get("has_cover", false)):
+		return {}
+	if is_cleared(str(item.get("key", ""))):
+		return {}  # 已经有了：重打不再提示
+	return {"key": str(item.get("key", "")), "title": str(item.get("title", ""))}
 
 
 ## 选曲列表里第 index 首能不能玩：
@@ -394,6 +534,8 @@ func load_stats() -> void:
 				best_records[str(key)] = {
 					"score": int(item.get("score", 0)),
 					"acc": float(item.get("acc", 0.0)),
+					"fc": bool(item.get("fc", false)),
+					"ap": bool(item.get("ap", false)),
 				}
 
 
@@ -416,7 +558,12 @@ func goto_select() -> void:
 	get_tree().change_scene_to_file(SELECT_SCENE)
 
 
-## 主界面（启动 → 警告 → 开屏 → 这里 → 点「开始游戏」才进选曲）
+## 章节选择（主界面「开始游戏」→ 这里 → 选完章节才进选曲）
+func goto_chapters() -> void:
+	get_tree().change_scene_to_file(CHAPTER_SCENE)
+
+
+## 主界面（启动 → 警告 → 开屏 → 这里 → 点「开始游戏」才进章节选择）
 func goto_menu() -> void:
 	get_tree().change_scene_to_file(MENU_SCENE)
 

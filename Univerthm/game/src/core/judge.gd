@@ -6,10 +6,10 @@ signal note_judged(note: Dictionary, result: String, dt: float)
 signal hold_completed(note: Dictionary)
 signal hold_broken(note: Dictionary)
 
-const PERFECT_PLUS_SEC := 0.055
-const PERFECT_SEC := 0.080
-const GOOD_SEC := 0.140
-const BAD_SEC := 0.220
+const PERFECT_PLUS_SEC := 0.040
+const PERFECT_SEC := 0.070
+const GOOD_SEC := 0.110
+const BAD_SEC := 0.125
 
 ## 权重：Perfect+ / Perfect 记满，Good 记 75%，Bad / Miss 记 0
 const WEIGHT := {"perfect_plus": 1.0, "perfect": 1.0, "good": 0.75, "bad": 0.0, "miss": 0.0}
