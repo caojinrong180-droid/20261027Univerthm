@@ -696,6 +696,35 @@ game/
 `tests/fixtures/synthetic_chart.gd` 是**测试专用的合成谱面**：运行时在内存里拼出来，
 不写盘、不放进 `charts/`，只为了在没有真实谱面的情况下验证渲染和判定。
 
+## 打包（导出 exe）
+
+预设就在 `game/export_presets.cfg`：**Windows Desktop**、`embed_pck = true`（单文件 exe，不用带 pck）、
+`include_filter = "*.txt,*.zip"`（剧情文本和新手教程谱面包要跟着走）、`exclude_filter = "tests/*"`（测试截图不进包）。
+输出路径是预设里写死的 `../../.ignore/output/UniverthmV1.2.1.exe`（相对 `game/`，也就是仓库上一层的
+`.ignore/output/`）。**游戏名就是 `Univerthm`**（`project.godot` 的 `config/name`，窗口标题 / 任务栏都认它），
+exe 的「属性 → 详细信息」里 ProductName / FileDescription = `Univerthm`、版本 `1.2.1`，
+这些 Windows 资源是 `rcedit` 写进去的（编辑器设置 `export/windows/rcedit` 指向
+`%APPDATA%\Godot\rcedit-x64.exe`，没装的话导出照样成功，只是 exe 属性里还是空白的）。
+
+注意：`config/name` 同时决定存档目录（`%APPDATA%\Godot\app_userdata\<项目名>`）。改名前叫 `Rhythm Game`，
+改名后老存档还在旧目录里，想搬就手动复制 `settings.cfg` / `profile.cfg` / `collection.cfg` / `charts/`。
+
+```powershell
+# 1) 装一次导出模板（只做一次）：解压官方 tpz 到
+#    %APPDATA%\Godot\export_templates\4.7.2.stable\（里面直接是 windows_release_x86_64.exe 这些文件）
+#    https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
+# 2) 导出
+& 'Godot_v4.7.2-stable_win64_console.exe' --headless --path game --export-release "Windows Desktop" `
+  'D:\workspace\20261027Univerthm\.ignore\output\UniverthmV1.2.1.exe'
+```
+
+**引擎的 Godot 开屏已经关掉了**（`project.godot` 的 `[application]`）：`boot_splash/show_image = false`、
+`boot_splash/bg_color = 黑`、`boot_splash/minimum_display_time = 0` —— 双击 exe 不会看到 Godot 的 logo，
+直接黑屏进游戏第一帧（光敏性警告），跟编辑器里按 F5 的手感一致。
+
+打包前先跑一遍 `tests/run_core_tests.gd` 和 `tests/smoke.tscn`（见上一节）；
+`user://charts` 里玩家自己导入的谱面不会被打进包里，属于玩家数据。
+
 ## 已知限制
 
 - 不支持变速：`timing.bpm_events` 只取第一个 BPM（会告警）
