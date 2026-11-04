@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "backend": "native",
+  "rasterEngine": "pdfium",
+  "source": "saved",
+  "inputPath": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\deck2.pdf",
+  "sourceSha256": "0fa07954e3dc557c1a9e450fe57337e02446ec1fcbb001309d0b99fbddb64400",
+  "dpi": 110,
+  "pageCount": 14,
+  "images": [
+    {
+      "index": 1,
+      "page": 1,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview5\\page-0001.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 1008631
+    },
+    {
+      "index": 2,
+      "page": 14,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview5\\page-0002.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 557536
+    }
+  ],
+  "missingFonts": []
+}

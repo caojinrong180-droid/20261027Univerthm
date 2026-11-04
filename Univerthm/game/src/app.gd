@@ -154,8 +154,11 @@ func autoplay_enabled() -> bool:
 	return autoplay_once or settings.autoplay
 
 
-## 「自动演示」按钮的解锁条件：游玩过一次谱面（自动演示自己不算次数）
+## 「自动演示」的解锁条件：游玩过一次谱面（自动演示自己不算次数）；
+## 设置里开了「全部解锁（Debug）」时直接可用 —— 那个开关就是要把所有东西放开。
 func autoplay_unlocked() -> bool:
+	if settings != null and settings.unlock_all:
+		return true
 	return int(stats.get("plays", 0)) > 0
 
 

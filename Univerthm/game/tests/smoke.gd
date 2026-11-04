@@ -1250,6 +1250,26 @@ func _check_first_entry_warning() -> void:
 	if screen._entry_tween != null and screen._entry_tween.is_valid():
 		screen._entry_tween.kill()
 	screen._entering = false
+	screen._leaving = false
+
+	# 自动演示的解锁：原本要「游玩过一次」；开了「全部解锁（Debug）」就直接放开
+	var saved_plays := int(App.stats.get("plays", 0))
+	App.stats["plays"] = 0
+	App.settings.unlock_all = false
+	check(not App.autoplay_unlocked(), "没打过 & 没全解锁 → 自动演示锁着")
+	App.settings.unlock_all = true
+	check(App.autoplay_unlocked(), "全解锁之后自动演示也放开了")
+	App.stats["plays"] = saved_plays
+
+	# 自动演示：不算「踏入」，所以不弹警告，直接看演出
+	screen._play_selected(true)
+	await get_tree().process_frame
+	check(not (screen._warning != null and screen._warning.is_open()), "??? 的自动演示不弹警告")
+	check(screen._entering or screen._leaving, "??? 的自动演示直接走进场过场")
+	if screen._entry_tween != null and screen._entry_tween.is_valid():
+		screen._entry_tween.kill()
+	screen._entering = false
+	screen._leaving = false
 	screen.queue_free()
 	await get_tree().process_frame
 	App.settings.unlock_all = saved_unlock_all

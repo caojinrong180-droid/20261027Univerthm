@@ -96,7 +96,8 @@ func _ready() -> void:
 		return
 
 	autoplay = App.autoplay_enabled()
-	_first_entry = App.needs_first_entry(_entry_key())
+	# 自动演示不算「踏入」：不锁 Esc、不发警告、不记 entered
+	_first_entry = App.needs_first_entry(_entry_key()) and not autoplay
 	_tutorial = bool(App.session.get("tutorial", false))
 
 	judge = RhythmJudge.new()
@@ -289,24 +290,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			match code:
 				KEY_ESCAPE:
 					_resume()
-				KEY_R:
-					_retry()
 				KEY_Q:
 					_quit_run()
 		State.RESUME:
 			match code:
 				KEY_ESCAPE:
 					_pause()
-				KEY_R:
-					_retry()
 				KEY_Q:
 					_quit_run()
 		State.PLAYING:
 			match code:
 				KEY_ESCAPE:
 					_pause()
-				KEY_R:
-					_retry()
 				_:
 					var zone := _zone_for_key(code)
 					if zone != "":
@@ -314,8 +309,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		State.COUNTDOWN:
 			if code == KEY_ESCAPE:
 				_quit_run()
-			elif code == KEY_R:
-				_retry()
 
 
 ## 退出这一趟：普通谱面回选曲页；新手教程回主界面，并且记下「教程走过了」

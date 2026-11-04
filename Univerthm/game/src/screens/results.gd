@@ -41,9 +41,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# 场景切换会立即移除当前节点，必须在导航前消费按键。
 	match (event as InputEventKey).keycode:
-		KEY_R:
-			get_viewport().set_input_as_handled()
-			_leave(App.retry)
 		KEY_ESCAPE, KEY_Q:
 			get_viewport().set_input_as_handled()
 			_leave(App.goto_select)
@@ -122,7 +119,7 @@ func _exit_tree() -> void:
 func _build() -> void:
 	Neon.background(self)
 	Neon.topbar(self, "结算")
-	Neon.footer(self, "Enter 触发当前按钮  ·  R 重试  ·  Esc 选曲", "RESULT / PERFORMANCE")
+	Neon.footer(self, "Enter 触发当前按钮  ·  Esc 选曲", "RESULT / PERFORMANCE")
 	var head_back := find_child("BackButton", true, false) as Button
 	if head_back != null:
 		head_back.pressed.connect(func(): _leave(App.goto_select))
@@ -292,7 +289,7 @@ func _build_early_late() -> Control:
 
 func _build_actions() -> Control:
 	var row := UiKit.hbox(14)
-	var retry := Neon.button("↻  重试（R）", true)
+	var retry := Neon.button("↻  重试", true)
 	retry.name = "RetryButton"
 	retry.custom_minimum_size.x = 200
 	retry.pressed.connect(func(): _leave(App.retry))

@@ -859,8 +859,9 @@ func _play_selected(autoplay: bool) -> void:
 
 
 func _play_entry(entry: Dictionary, autoplay: bool) -> void:
-	# 神秘曲的第一次踏入：先问「踏出这一步就不能反悔了」，选「否」留在列表
-	if App.needs_first_entry(str(entry.get("key", ""))):
+	# 神秘曲的第一次踏入：先问「踏出这一步就不能反悔了」，选「否」留在列表。
+	# 自动演示不算「踏入」（不记成绩、不落盘），所以不弹这块警告，直接看演出。
+	if not autoplay and App.needs_first_entry(str(entry.get("key", ""))):
 		_pending_entry = entry
 		_pending_autoplay = autoplay
 		_preview.stop()

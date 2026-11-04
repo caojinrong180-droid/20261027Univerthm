@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "backend": "native",
+  "rasterEngine": "pdfium",
+  "source": "saved",
+  "inputPath": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\deck.pdf",
+  "sourceSha256": "6ed0313b5724f66caca32b48a13edf7d790c797e57df4a6ef483cbcc3012284d",
+  "dpi": 110,
+  "pageCount": 14,
+  "images": [
+    {
+      "index": 1,
+      "page": 1,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0001.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 107495
+    },
+    {
+      "index": 2,
+      "page": 2,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0002.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 145893
+    },
+    {
+      "index": 3,
+      "page": 3,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0003.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 126677
+    },
+    {
+      "index": 4,
+      "page": 4,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0004.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 270114
+    },
+    {
+      "index": 5,
+      "page": 5,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0005.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 155964
+    },
+    {
+      "index": 6,
+      "page": 6,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0006.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 157386
+    },
+    {
+      "index": 7,
+      "page": 7,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0007.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 323511
+    },
+    {
+      "index": 8,
+      "page": 8,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0008.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 186161
+    },
+    {
+      "index": 9,
+      "page": 9,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0009.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 168966
+    },
+    {
+      "index": 10,
+      "page": 10,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0010.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 148377
+    },
+    {
+      "index": 11,
+      "page": 11,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0011.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 106231
+    },
+    {
+      "index": 12,
+      "page": 12,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0012.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 560925
+    },
+    {
+      "index": 13,
+      "page": 13,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0013.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 286259
+    },
+    {
+      "index": 14,
+      "page": 14,
+      "path": "D:\\workspace\\20261027Univerthm\\Univerthm\\ppt\\preview3\\page-0014.png",
+      "width": 1467,
+      "height": 825,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "byteLength": 113325
+    }
+  ],
+  "missingFonts": []
+}
