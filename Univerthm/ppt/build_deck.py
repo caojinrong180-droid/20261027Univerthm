@@ -459,12 +459,16 @@ for i, (f, d) in enumerate([("settings.cfg", "音量 / 偏移 / 玩家名"),
 
 panel(s, ML, 5.04, MR - ML, 1.42, fill=PANEL, alpha=85)
 sec_label(s, ML + 0.22, 5.14, "谱 面 管 线", color=CYAN)
-nodes = ["网页制谱器\neditor · core · storyboard", "rchart v3\nchart.json + 音频 + 曲绘",
-         "zip 拖进窗口\n→ user://charts", "舞台渲染\n同一套几何公式"]
+nodes = [("网页制谱器", "editor · core · storyboard"), ("rchart v3", "chart.json + 音频 + 曲绘"),
+         ("zip 拖进窗口", "→ user://charts"), ("舞台渲染", "同一套几何公式")]
 nw = 2.28
-for i, t in enumerate(nodes):
+for i, (head, sub) in enumerate(nodes):
     x = ML + 0.22 + i * (nw + 0.42)
-    chip(s, x, 5.50, nw, 0.66, t, color=BODY, fill=PANEL2, size=8.2, font=FCN, line=PURPLE)
+    chip(s, x, 5.48, nw, 0.70, "", color=BODY, fill=PANEL2, line=PURPLE)
+    text(s, x, 5.58, nw, 0.24, head, size=9.5, color=INK, bold=True,
+         align=PP_ALIGN.CENTER, ls=1.1)
+    text(s, x, 5.84, nw, 0.22, sub, size=7.8, color=MUTED, font=FMONO,
+         align=PP_ALIGN.CENTER, ls=1.1)
     if i < 3:
         arrow(s, x + nw + 0.06, 5.83, x + nw + 0.34, 5.83, color=PURPLE, alpha=80, lw=1.0)
 footer(s, 11)
