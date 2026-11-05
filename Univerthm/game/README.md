@@ -198,7 +198,8 @@
 `shaders/menu_local_glitch.gdshader` 和主界面场景里的 `AmbientGlitch` 节点都移掉了，
 `App.screen_glitch` 也不再生效，界面现在是干净的。警告页自己的 `warning_glitch.gdshader` 是另一回事，保留。
 
-主界面默认显示 `stra1.png`。点击角色本身会在 Stra 的四张立绘之间轮换。点击左下角版本号切到 Kisai 的四张立绘，再点一次切回 Stra；两组各自从第一张开始。切换使用交叉淡化和带惯性回弹的轻微位移、缩放动画。透明空白不会触发，连续点击会依次切换。
+主界面默认显示 `stra1.png`。点击角色本身会在 Stra 的**三张**立绘之间轮换。点击左下角版本号切到 Kisai 的三张立绘，再点一次切回 Stra；两组各自从第一张开始。切换使用交叉淡化和带惯性回弹的轻微位移、缩放动画。透明空白不会触发，连续点击会依次切换。
+（`stra4.png` / `Kisai4.png` 已经删掉了，所以每边是 3 张：`POSES_PER_CHARACTER = 3`；`stra5.png` / `Kisai5.png` 还留在 `assets/banners/` 里但没进主界面那 6 张的列表。）
 
 主界面的四个导航按钮和角色切换按钮有**点击音效**（只有主菜单有，其它界面都不放，悬停不发声）：按下播放 Codex 桌面端内置的 `codex-notification.wav`，文件存为 `audio/click.wav`（0.571 秒，`0 dB`，鼠标左键和回车 / 空格确认都算）。节点挂在 App 上（`src/audio/ui_sound.gd`），所以点「开始游戏」换场景时点击音效不会被掐断；音量在那个文件的顶部改。
 
@@ -703,8 +704,12 @@ game/
 
 预设就在 `game/export_presets.cfg`：**Windows Desktop**、`embed_pck = true`（单文件 exe，不用带 pck）、
 `include_filter = "*.txt,*.zip"`（剧情文本和新手教程谱面包要跟着走）、`exclude_filter = "tests/*"`（测试截图不进包）。
+**exe 图标用 `icon.png`**（`application/icon = "res://icon.png"`，和 `project.godot` 的
+`config/icon` 同一张黑洞图；之前的 `icon.ico` 还留在仓库里给 `config/windows_native_icon` 用）。
+本机实测导出产物：`build/Univerthm.exe`（约 189 MB，pck 打包在里面，`--headless --quit-after` 启动退出码 0）。
 输出路径是预设里写死的 `../../.ignore/output/UniverthmV1.2.1.exe`（相对 `game/`，也就是仓库上一层的
-`.ignore/output/`）。**游戏名就是 `Univerthm`**（`project.godot` 的 `config/name`，窗口标题 / 任务栏都认它），
+`.ignore/output/`），想放到别处就在命令行末尾给个别的路径。
+**游戏名就是 `Univerthm`**（`project.godot` 的 `config/name`，窗口标题 / 任务栏都认它），
 exe 的「属性 → 详细信息」里 ProductName / FileDescription = `Univerthm`、版本 `1.2.1`，
 这些 Windows 资源是 `rcedit` 写进去的（编辑器设置 `export/windows/rcedit` 指向
 `%APPDATA%\Godot\rcedit-x64.exe`，没装的话导出照样成功，只是 exe 属性里还是空白的）。

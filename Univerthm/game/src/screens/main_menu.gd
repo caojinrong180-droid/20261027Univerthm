@@ -7,18 +7,17 @@ signal glow_revealed
 const ExitConfirm = preload("res://src/ui/exit_confirm.gd")
 
 # 固定顺序并显式引用资源，导出后的游戏也能载入全部立绘。
+# Stra 三张 + Kisai 三张（两张「第 4 张」已经删掉了）
 const BANNER_TEXTURES := [
 	preload("res://assets/banners/stra1.png"),
 	preload("res://assets/banners/stra2.png"),
 	preload("res://assets/banners/stra3.png"),
-	preload("res://assets/banners/stra4.png"),
 	preload("res://assets/banners/Kisai1.png"),
 	preload("res://assets/banners/Kisai2.png"),
 	preload("res://assets/banners/Kisai3.png"),
-	preload("res://assets/banners/Kisai4.png"),
 ]
 const BANNER_BLEND_DURATION := 0.24
-const POSES_PER_CHARACTER := 4
+const POSES_PER_CHARACTER := 3
 const BANNER_SPRING_DECAY := 8.5
 const BANNER_SPRING_FREQUENCY := 16.0
 

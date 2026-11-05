@@ -40,7 +40,7 @@ func _run() -> void:
 	get_tree().current_scene = menu
 	var girl: TextureRect = menu.get_node("Banner")
 	var outgoing: TextureRect = menu.get_node("BannerOutgoing")
-	check(menu._banners.size() == 8, "Stra 和 Kisai 的八张立绘均已载入")
+	check(menu._banners.size() == 6, "Stra 和 Kisai 的六张立绘均已载入")
 	check(girl.texture.resource_path == "res://assets/banners/stra1.png", "默认 Stra 原始立绘，不受旧排序设置影响")
 	var early_click := InputEventMouseButton.new()
 	early_click.button_index = MOUSE_BUTTON_LEFT
@@ -75,25 +75,25 @@ func _run() -> void:
 	check(not outgoing.visible and outgoing.texture == null, "过渡结束清理旧立绘")
 	await _capture("02_wave")
 
-	for expected in [2, 3, 0]:
+	for expected in [2, 0]:
 		_click(_image_point(menu, girl, true))
 		await _finish_transition(menu)
-		check(menu._banner_index() == expected and menu._active_character == 0, "默认只在 Stra 四张间循环：%d" % expected)
+		check(menu._banner_index() == expected and menu._active_character == 0, "默认只在 Stra 三张间循环：%d" % expected)
 		check(girl.texture == menu._banners[expected], "显示对应姿势的纹理：%d" % expected)
 		await _capture("%02d_stra" % expected)
-	check(menu._banner_masks.size() == 4, "Stra 四张图均缓存透明命中蒙版")
+	check(menu._banner_masks.size() == 3, "Stra 三张图均缓存透明命中蒙版")
 
 	var version: Control = menu.get_node("Version")
 	_click(version.get_global_rect().get_center())
-	check(menu._active_character == 1 and menu._banner_index() == 4, "点击左下版本号切到 Kisai 第一张")
+	check(menu._active_character == 1 and menu._banner_index() == 3, "点击左下版本号切到 Kisai 第一张")
 	await _finish_transition(menu)
 	await _capture("04_Kisai")
-	for expected in [5, 6, 7, 4]:
+	for expected in [4, 5, 3]:
 		_click(_image_point(menu, girl, true))
 		await _finish_transition(menu)
-		check(menu._banner_index() == expected and menu._active_character == 1, "Kisai 四张独立循环：%d" % expected)
+		check(menu._banner_index() == expected and menu._active_character == 1, "Kisai 三张独立循环：%d" % expected)
 		await _capture("%02d_Kisai" % expected)
-	check(menu._banner_masks.size() == 8, "八张图均缓存透明命中蒙版")
+	check(menu._banner_masks.size() == 6, "六张图均缓存透明命中蒙版")
 	_check_kisai_margins(menu)
 	_click(version.get_global_rect().get_center())
 	check(menu._active_character == 0 and menu._banner_index() == 0, "再次点击版本号回 Stra 第一张")
@@ -101,18 +101,18 @@ func _run() -> void:
 
 	# 在上一张仍可见时连点，验证每次点击都被保留且只触发一次。
 	_click(_image_point(menu, girl, true))
-	for press in 3:
+	for press in 2:
 		_click(_image_point(menu, outgoing, true))
-	check(menu._banner_pending_steps == 3, "切换途中连续三次点击按顺序排队")
-	for transition in 4:
+	check(menu._banner_pending_steps == 2, "切换途中连续两次点击按顺序排队")
+	for transition in 3:
 		menu._banner_tween.custom_step(1.0)
 		menu._process(1.0 / 60.0)
-	check(menu._banner_index() == 0 and not menu._banner_busy and menu._banner_pending_steps == 0, "连续四次点击只在 Stra 内循环一周")
+	check(menu._banner_index() == 0 and not menu._banner_busy and menu._banner_pending_steps == 0, "连续三次点击只在 Stra 内循环一周")
 	check(girl.scale.x > 0.8 and girl.scale.y > 0.8, "连续点击不会累积缩放畸变")
 	menu._process(1.0)
 
 	_click(version.get_global_rect().get_center())
-	check(menu._active_character == 1 and menu._banner_index() == 4, "版本号切到 Kisai 时能启动动画")
+	check(menu._active_character == 1 and menu._banner_index() == 3, "版本号切到 Kisai 时能启动动画")
 	_click(version.get_global_rect().get_center())
 	check(menu._active_character == 0 and menu._banner_index() == 0, "过渡中再次点版本号可立即切回 Stra")
 	await _finish_transition(menu)

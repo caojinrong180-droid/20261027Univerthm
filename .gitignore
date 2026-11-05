@@ -16,3 +16,8 @@ _zoomcheck.js
 .tmp_appdata/
 tests/_shots/
 Thumbs.db
+
+# 构建产物：导出 exe 有 180+ MB，GitHub 单文件上限 100 MB，push 会被拒
+build/
+*.exe
+*.pck
