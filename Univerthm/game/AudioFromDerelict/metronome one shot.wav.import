@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://i8yjfboihlcp"
+path="res://.godot/imported/metronome one shot.wav-2d65c17b4097e6b37087d626798007a1.sample"
+
+[deps]
+
+source_file="res://AudioFromDerelict/metronome one shot.wav"
+dest_files=["res://.godot/imported/metronome one shot.wav-2d65c17b4097e6b37087d626798007a1.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

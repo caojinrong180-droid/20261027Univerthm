@@ -1,4 +1,4 @@
-﻿[gd_scene format=4 uid="uid://smvbf7grxyti"]
+[gd_scene format=4 uid="uid://bj1qawoqvvio"]
 
 [ext_resource type="Script" uid="uid://bkmoapke5bvwh" path="res://src/screens/main_menu.gd" id="1_menu"]
 [ext_resource type="Texture2D" uid="uid://edyaxf484b07" path="res://assets/menu_deep_space.png" id="2_bg"]
@@ -229,7 +229,7 @@ theme_override_colors/font_color = Color(0.101961, 0.0901961, 0.141176, 0.752941
 theme_override_colors/font_outline_color = Color(0.980392, 0.980392, 1, 0.752941)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 13
-text = "v1.2.1"
+text = "v2.1.1"
 
 [node name="PointerCapture" type="BackBufferCopy" parent="." unique_id=204192468]
 copy_mode = 0
