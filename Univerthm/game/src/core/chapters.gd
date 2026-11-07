@@ -16,7 +16,14 @@ const LIST := [
 		"unlocked": true,
 		"cover": preload("res://assets/covers/ALL.png"),
 	},
-	{"key": "single", "index": "单曲", "spine": "单曲", "name": "单曲合集", "unlocked": false},
+	{
+		"key": "single",
+		"index": "单曲",
+		"spine": "单曲",
+		"name": "单曲合集",
+		"unlocked": false,
+		"cover": preload("res://assets/covers/single.png"),
+	},
 	{
 		"key": "main_0",
 		"index": "序",

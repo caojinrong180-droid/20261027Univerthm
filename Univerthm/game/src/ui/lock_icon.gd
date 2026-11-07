@@ -17,6 +17,12 @@ extends Control
 	set(value):
 		body_ratio = value
 		queue_redraw()
+## 锁背后那层暗色圆底：曲绘是亮色的时候（比如单曲那张）白锁会糊掉，垫一层就看得清了。
+## alpha = 0 就不画。
+@export var disc_color := Color(0, 0, 0, 0):
+	set(value):
+		disc_color = value
+		queue_redraw()
 
 
 func _ready() -> void:
@@ -34,6 +40,9 @@ func _draw() -> void:
 	var body_h := h * body_ratio
 	var body_x := (w - body_w) * 0.5
 	var body_y := h - body_h
+	# 亮曲绘上的暗底：一个刚好包住挂锁的圆
+	if disc_color.a > 0.0:
+		draw_circle(Vector2(w * 0.5, h * 0.5), maxf(w, h) * 0.62, disc_color)
 	# 锁梁：圆心压在锁体顶边上，只画上半圈，两个端点正好落在锁体顶面
 	var shackle_center := Vector2(w * 0.5, body_y + line_width * 0.5)
 	draw_arc(shackle_center, w * 0.26, PI, TAU, 40, color, line_width, true)

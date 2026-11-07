@@ -78,11 +78,15 @@ func _is_open(index: int) -> bool:
 	return index >= 0 and index < CHAPTERS.size() and bool(CHAPTERS[index].get("unlocked", false))
 
 
-## 锁着的书脊顶部放一枚纯白小挂锁（贴在斜过去的书脊中线上）
+## 锁着的书脊顶部放一枚纯白小挂锁（贴在斜过去的书脊中线上）。
+## 书脊有曲绘时给个暗色圆底，亮曲绘（单曲那张）上也能看清。
 func _add_lock_icon(card: Button) -> void:
 	var lock := LockIcon.new()
 	lock.name = "LockIcon"
 	lock.color = Color(0.86, 0.84, 0.94, 0.5)
+	if card is ChapterSpine and (card as ChapterSpine).cover != null:
+		lock.disc_color = Color(0.03, 0.02, 0.06, 0.5)
+		lock.color = Color(0.93, 0.91, 1.0, 0.92)
 	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(lock)
 	lock.set_anchors_preset(Control.PRESET_CENTER_TOP)

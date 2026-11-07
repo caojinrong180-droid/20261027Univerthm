@@ -51,8 +51,10 @@
 右边跟着当前选中的书脊显示 `章节 · 序` / 章节名 / `CL` `FC` `AP` 进度（`App.chapter_progress()` 数的）。
 书上文字贴着**右下角**、整块跟斜边同一个倾角转过去；鼠标停在书上就选中它，点一下进选曲。
 **书脊可以挂封面**：章节表里写 `cover` 就有一张图（「全部曲目」挂 `assets/covers/ALL.png`、
-「主线·序」挂 `assets/covers/C0.png`、「心跳电波」挂 `assets/covers/XTDB.png`、
-「鼓立方」挂 `assets/covers/glf.png`，源文件都在仓库根的 `img/C/`）。
+「单曲」挂 `assets/covers/single.png`、「主线·序」挂 `assets/covers/C0.png`、
+「心跳电波」挂 `assets/covers/XTDB.png`、「鼓立方」挂 `assets/covers/glf.png`，
+源文件都在仓库根的 `img/C/`）。**锁着的章节挂了亮色曲绘时，锁图标会垫一层暗色圆底**
+（`LockIcon.disc_color`），不然白锁糊在亮图上根本看不见。
 `chapter_spine.gd` 用 `draw_polygon`
 自带的 UV 把图**等比放大裁成平行四边形**（多出来的两边切掉，四个角不会漏图），再压一层上亮下暗的渐变 +
 状态色，底下的竖排字因此看得清；没写 `cover` 的书脊还是原来那块纯色。换封面只要改章节表那一行，不用动场景。
@@ -416,6 +418,7 @@ game/
   assets/back.png            选曲页右上角的返回图标（源文件 img/bacK.png；按钮是 scenes/song_select.tscn 里的 BackButton，用 icon + expand_icon）
   assets/covers/C0.png       章节「主线·序」的书脊封面 + 右半屏背景（源文件 img/C/C0.png）
   assets/covers/ALL.png      章节「全部曲目」的封面 + 右半屏背景（源文件 img/C/ALL.png）
+  assets/covers/single.png   章节「单曲」的书脊封面（源文件 img/C/single.png）
   assets/covers/XTDB.png     章节「心跳电波 ON AIR!精选集」的书脊封面（源文件 img/C/XTDB.png）
   assets/covers/glf.png      章节「鼓立方精选集」的书脊封面（源文件 img/C/glf.png）
   assets/none.jpg            神秘曲未揭晓时的纯黑占位曲绘
